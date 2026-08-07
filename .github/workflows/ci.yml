@@ -51,7 +51,8 @@ jobs:
         run: ./gradlew :hub-app-installer:testDebugUnitTest
       - name: Build standalone debug APK
         working-directory: apps/mobile/android
-        run: ./gradlew :app:assembleDebug
+        # CI validates the emulator ABI. Release builds remain multi-architecture.
+        run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64
       - name: Assert least-privileged package visibility
         shell: bash
         run: |
