@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-07T00:00:00Z",
+  "packageName": "com.lololabs.hubfixture",
+  "minSdk": 26,
+  "targetSdk": 36,
+  "permissions": ["android.permission.INTERNET"],
+  "certificateSha256": "ad3ab6f4878a16a91ccc0572d3a96248cf2c50ad195187209dcc9a7814c716ef",
+  "fixtures": {
+    "v1": {
+      "file": "v1.apk",
+      "byteSize": 644034,
+      "sha256": "8e50cee640062ba1bfcfb7c3bcae7afbf33dd803e4c26219a132387b8ebf5160",
+      "versionCode": 1,
+      "versionName": "1.0.0"
+    },
+    "v2": {
+      "file": "v2.apk",
+      "byteSize": 644034,
+      "sha256": "5c88eeb5b4eace009f859058c4c5fadfeb3f1695c78a135e48f3a53d2afb4653",
+      "versionCode": 2,
+      "versionName": "2.0.0"
+    },
+    "wrongPackage": {
+      "file": "wrong-package.apk",
+      "byteSize": 644050,
+      "sha256": "374c8ad17eec96dae743cf4d0badd2e7edc8f1d0f6bc4e64e20688d76f5758b4",
+      "packageName": "com.lololabs.wrongfixture",
+      "versionCode": 2,
+      "versionName": "2.0.0"
+    },
+    "wrongCertificate": {
+      "file": "wrong-certificate.apk",
+      "byteSize": 644034,
+      "sha256": "4c0ba5fdea5888e180b968435be608b26bfa6879f3e17b9cd6f9abed8ebcccab",
+      "certificateSha256": "1ba54468327f92d1e3f90d419e4f4c333a2fe07d754237932e4552615d37f4be",
+      "versionCode": 2,
+      "versionName": "2.0.0"
+    }
+  }
+}

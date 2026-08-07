@@ -1,0 +1,11 @@
+{
+  "runId": "22222222-2222-4222-8222-222222222222",
+  "apkUrl": "https://fixture-host.vercel.app/wrong-package.apk",
+  "expectedSize": 644050,
+  "expectedSha256": "374c8ad17eec96dae743cf4d0badd2e7edc8f1d0f6bc4e64e20688d76f5758b4",
+  "packageName": "com.lololabs.hubfixture",
+  "versionCode": "2",
+  "certificateSha256": "ad3ab6f4878a16a91ccc0572d3a96248cf2c50ad195187209dcc9a7814c716ef",
+  "minSdk": 26,
+  "permissions": ["android.permission.INTERNET"]
+}

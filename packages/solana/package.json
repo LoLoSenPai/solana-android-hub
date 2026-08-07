@@ -1,0 +1,30 @@
+{
+  "name": "@hub/solana",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hub/domain": "workspace:*",
+    "@hub/validation": "workspace:*",
+    "@metaplex-foundation/mpl-token-metadata": "3.4.0",
+    "@solana/kit": "6.10.0",
+    "helius-sdk": "3.0.0",
+    "tweetnacl": "1.0.3",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+  <queries>
+    <package android:name="com.lololabs.hubfixture" />
+  </queries>
+
+  <application>
+    <receiver
+      android:name="com.lololabs.hub.installer.InstallResultReceiver"
+      android:exported="false" />
+  </application>
+</manifest>

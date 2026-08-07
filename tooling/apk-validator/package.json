@@ -1,0 +1,16 @@
+{
+  "name": "@hub/apk-validator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node --check src/validate.mjs",
+    "lint": "node --check src/validate.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "node --check src/validate.mjs"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.lololabs.hub.installer'
+version = '0.1.0'
+
+android {
+  namespace 'com.lololabs.hub.installer'
+  compileSdk 36
+
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+    minSdk 26
+    targetSdk 36
+  }
+}
+
+dependencies {
+  implementation 'com.android.tools.build:apksig:8.13.2'
+  testImplementation 'junit:junit:4.13.2'
+}

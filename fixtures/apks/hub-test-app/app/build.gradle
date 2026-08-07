@@ -1,0 +1,41 @@
+plugins {
+  id 'com.android.application'
+}
+
+def fixtureVersionCode = (findProperty('fixtureVersionCode') ?: '1') as Integer
+def fixtureVersionName = findProperty('fixtureVersionName') ?: "${fixtureVersionCode}.0.0"
+def fixtureApplicationId = findProperty('fixtureApplicationId') ?: 'com.lololabs.hubfixture'
+def fixtureKeyStore = findProperty('fixtureKeyStore') ?: '../fixture-signing.jks'
+
+android {
+  namespace 'com.lololabs.hubfixture'
+  compileSdk 36
+
+  defaultConfig {
+    applicationId fixtureApplicationId
+    minSdk 26
+    targetSdk 36
+    versionCode fixtureVersionCode
+    versionName fixtureVersionName
+  }
+
+  signingConfigs {
+    fixture {
+      storeFile file(fixtureKeyStore)
+      storePassword 'hubfixture'
+      keyAlias 'fixture'
+      keyPassword 'hubfixture'
+    }
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+      signingConfig signingConfigs.fixture
+    }
+  }
+
+  buildFeatures {
+    buildConfig true
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@hub/fixture-host",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node -e \"console.log('static fixture host')\"",
+    "lint": "node -e \"console.log('no source to lint')\"",
+    "test": "node -e \"console.log('no source tests')\"",
+    "typecheck": "node -e \"console.log('no TypeScript')\""
+  }
+}

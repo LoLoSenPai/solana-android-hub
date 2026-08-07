@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "codex/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.17.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+  android-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.17.1
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - run: pnpm install --frozen-lockfile
+      - name: Generate the single standalone Android project
+        working-directory: apps/mobile
+        run: pnpm exec expo prebuild --platform android --clean --no-install
+      - name: Test APK identity and installed-edition policies
+        working-directory: apps/mobile/android
+        run: ./gradlew :hub-app-installer:testDebugUnitTest
+      - name: Build standalone debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:assembleDebug
+      - name: Assert least-privileged package visibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump xmltree "$apk" --file AndroidManifest.xml > manifest.txt
+          ! grep -q 'android.permission.QUERY_ALL_PACKAGES' manifest.txt
+          grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' manifest.txt
+          grep -q 'com.lololabs.hubfixture' manifest.txt
+          test "$(grep -c 'E: package (' manifest.txt)" -eq 1

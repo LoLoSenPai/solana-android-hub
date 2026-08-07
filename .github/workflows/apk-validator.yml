@@ -1,0 +1,87 @@
+name: Ephemeral APK validator
+
+on:
+  workflow_dispatch:
+    inputs:
+      correlation_id:
+        description: Immutable release validation correlation ID
+        required: true
+        type: string
+      hub_origin:
+        description: Canonical staging or production Hub origin
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: apk-validator-${{ inputs.correlation_id }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.17.1
+      - uses: android-actions/setup-android@v3
+      - name: Resolve Android inspection tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          test -x "$build_tools/apksigner"
+          test -x "$build_tools/aapt2"
+          echo "APKSIGNER=$build_tools/apksigner" >> "$GITHUB_ENV"
+          echo "AAPT2=$build_tools/aapt2" >> "$GITHUB_ENV"
+      - name: Request immutable manifest with GitHub OIDC
+        id: identity
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('solana-android-hub-apk-validator');
+            core.setSecret(token);
+            core.setOutput('token', token);
+      - name: Download manifest
+        shell: bash
+        env:
+          OIDC_TOKEN: ${{ steps.identity.outputs.token }}
+          HUB_ORIGIN: ${{ inputs.hub_origin }}
+          CORRELATION_ID: ${{ inputs.correlation_id }}
+        run: |
+          set -euo pipefail
+          case "$HUB_ORIGIN" in https://*) ;; *) echo "HTTPS Hub origin required" >&2; exit 1;; esac
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            "$HUB_ORIGIN/api/v1/internal/validator/runs/$CORRELATION_ID/manifest" \
+            --output manifest.json
+      - name: Validate APK in ephemeral runner storage
+        id: validate
+        continue-on-error: true
+        run: node tooling/apk-validator/src/validate.mjs manifest.json result.json
+      - name: Return signed result
+        if: always() && hashFiles('result.json') != ''
+        shell: bash
+        env:
+          OIDC_TOKEN: ${{ steps.identity.outputs.token }}
+          HUB_ORIGIN: ${{ inputs.hub_origin }}
+          CORRELATION_ID: ${{ inputs.correlation_id }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
+            -X POST \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @result.json \
+            "$HUB_ORIGIN/api/v1/internal/validator/runs/$CORRELATION_ID/result"
+      - name: Enforce validation outcome
+        if: steps.validate.outcome != 'success'
+        run: exit 1
+      - name: Remove transient files
+        if: always()
+        run: rm -f manifest.json result.json
