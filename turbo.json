@@ -3,6 +3,24 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": [
+        "ADMIN_WALLETS",
+        "ALLOWED_PREVIEW_APP_MINTS",
+        "APP_ENV",
+        "CONSENT_TERMS_VERSION",
+        "CRON_SECRET",
+        "DATABASE_URL",
+        "EXPO_PUBLIC_HUB_ORIGIN",
+        "GITHUB_DISPATCH_TOKEN",
+        "GITHUB_OIDC_AUDIENCE",
+        "GITHUB_REPOSITORY",
+        "GITHUB_VALIDATOR_REF",
+        "HELIUS_API_KEY",
+        "HUB_ORIGIN",
+        "RELEASE_PUBLICATION_GATE",
+        "SESSION_PEPPER",
+        "SOLANA_NETWORK"
+      ],
       "outputs": [".next/**", "dist/**", "build/**"]
     },
     "dev": {
