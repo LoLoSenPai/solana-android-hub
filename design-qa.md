@@ -68,4 +68,58 @@ Implementation evidence:
 
 Residual P3: a richer real catalogue will improve category and detail visual coverage because the current single fixture has neither a publisher screenshot nor a Games classification. The filter and empty-state behavior already handles that condition correctly.
 
+# Web publisher wallet-selection QA
+
+## Scope and visual truth
+
+This pass covers the redesigned publisher authentication control. The requested product change is intentional rather than a pixel-for-pixel clone: replace the always-visible wallet dropdown plus separate submit button with one clear CTA, then reveal an accessible wallet chooser only when more than one compatible wallet is available.
+
+Source visual truth:
+
+- Existing two-control state: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-70c939fb-9285-4443-8d13-9cfccf4c2018.png`
+
+Implementation evidence:
+
+- Desktop open dialog: `output/playwright/wallet-picker-desktop.png`
+- Mobile open dialog: `output/playwright/wallet-picker-mobile.png`
+- Combined before/after comparison: `output/playwright/wallet-picker-comparison.png`
+
+## Capture normalization and state
+
+- Runtime: optimized Next.js production build with a non-secret design-QA Helius placeholder so the publisher client renders locally.
+- Source: 491 x 296 pixels, existing desktop open-select state.
+- Desktop implementation capture: 1280 x 900 CSS-pixel viewport, open wallet-dialog state.
+- Mobile implementation capture: 390 x 844 CSS-pixel viewport, open wallet-dialog state, screenshot scale `css`.
+- Comparison: the source is shown at its native aspect ratio and the implementation at a contained 390 x 844 CSS-pixel capture. No density-based fidelity claims are made because this is a workflow redesign, not a same-state replica.
+- Wallet images in QA came from the locally installed Phantom and MetaMask extensions. Production renders the icon data supplied by each registered Wallet Standard wallet.
+
+## Full-view and focused comparison findings
+
+- Typography: passed. The chooser follows the existing Hub eyebrow/title/supporting-copy hierarchy and keeps wallet names scannable.
+- Spacing and layout: passed after one iteration. The dialog fits within a 390 x 844 viewport, primary wallet rows retain practical touch height, and the auth CTA becomes full-width on narrow screens.
+- Color and tokens: passed. Existing surface, line, text, muted, and mint tokens are reused; the modal does not introduce a competing visual language.
+- Image quality: passed. Wallet-reported raster icons render at 42 x 42 without distortion and use a consistent rounded mask.
+- Copy and content: passed. The UI states that the next action is a one-time authentication signature and not a transaction. Authentication remains explicitly separate from distribution consent.
+- Interaction: passed. Multiple wallets open the chooser; one wallet proceeds directly to its connect callback; Escape closes the chooser and restores focus; Shift+Tab wraps within the dialog; mobile and desktop layouts remain usable.
+- Accessibility: passed for the implemented scope. The chooser exposes `role=dialog`, `aria-modal`, a labelled heading, deterministic initial focus, keyboard focus containment, Escape dismissal, and trigger-focus restoration.
+
+Focused comparison was needed because the source only contains the publisher-authentication region. `wallet-picker-comparison.png` places that source next to the implemented modal state and shows the intended reduction from two persistent controls to one progressive-disclosure action.
+
+## Comparison history
+
+1. P1 layout — the existing sticky status banner overlapped the publisher form on desktop and the connect control on mobile. It was changed to participate in normal document flow, then the mobile accessibility tree was recaptured with no overlap.
+2. P2 accessibility — the initial dialog focused the first wallet but did not contain keyboard focus. Added first/last focus wrapping and verified backward tabbing from Cancel reaches the final wallet instead of leaving the dialog.
+3. P2 responsive hierarchy — wallet choice rows originally retained a redundant trailing `Continue` label on the narrow layout. The label is hidden below 520px while each full row remains the button and carries the complete accessible name.
+
+## Verification
+
+- `pnpm --filter @hub/web typecheck`: passed
+- `pnpm --filter @hub/web lint`: passed
+- `pnpm --filter @hub/web test`: passed (3 files, 12 tests)
+- `pnpm --filter @hub/web build`: passed
+- Browser console: 0 errors, 0 warnings
+- Primary interactions: multi-wallet open, Escape dismissal, focus restoration, backward focus wrap, and single-wallet direct-connect branch exercised
+
+Residual P3: the external wallet extension's own approval window is controlled by each wallet and was not automated in this visual QA pass. The Hub still uses the same Wallet Standard connect and exact-message-signature APIs that were already exercised by the real publisher flow.
+
 final result: passed

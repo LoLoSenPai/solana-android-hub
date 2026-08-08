@@ -26,6 +26,8 @@ local.properties
 .DS_Store
 Thumbs.db
 .artifacts/
+.playwright-mcp/
+output/playwright/
 apps/web/.qa/
 
 !fixtures/apks/hub-test-app/artifacts/*.apk

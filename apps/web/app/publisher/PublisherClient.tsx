@@ -4,7 +4,8 @@ import { SolanaSignMessage, type SolanaSignMessageFeature } from "@solana/wallet
 import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount, WalletWithFeatures } from "@wallet-standard/base";
 import { StandardConnect, type StandardConnectFeature } from "@wallet-standard/features";
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type CompatibleWallet = WalletWithFeatures<StandardConnectFeature & SolanaSignMessageFeature>;
 type ReleasePolicy = "automatic" | "manual";
@@ -25,7 +26,8 @@ interface ClaimedApp extends DiscoveredApp {
 export function PublisherClient() {
   const registry = useMemo(getWallets, []);
   const [wallets, setWallets] = useState<readonly CompatibleWallet[]>([]);
-  const [selectedWallet, setSelectedWallet] = useState("");
+  const [activeWallet, setActiveWallet] = useState<CompatibleWallet | null>(null);
+  const [walletPickerOpen, setWalletPickerOpen] = useState(false);
   const [account, setAccount] = useState<WalletAccount | null>(null);
   const [apps, setApps] = useState<readonly DiscoveredApp[]>([]);
   const [claims, setClaims] = useState<Record<string, ClaimedApp>>({});
@@ -33,12 +35,14 @@ export function PublisherClient() {
   const [policy, setPolicy] = useState<ReleasePolicy>("manual");
   const [status, setStatus] = useState("Connect a Wallet Standard wallet that supports Ed25519 message signing.");
   const [busy, setBusy] = useState(false);
+  const walletPickerTrigger = useRef<HTMLButtonElement>(null);
+  const walletPickerDialog = useRef<HTMLElement>(null);
+  const firstWalletOption = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const update = () => {
       const compatible = registry.get().filter(isCompatibleWallet);
       setWallets(compatible);
-      setSelectedWallet((current) => current || compatible[0]?.name || "");
     };
     update();
     const offRegister = registry.on("register", update);
@@ -46,9 +50,35 @@ export function PublisherClient() {
     return () => { offRegister(); offUnregister(); };
   }, [registry]);
 
-  const connect = () => run(async () => {
-    const wallet = wallets.find((candidate) => candidate.name === selectedWallet);
-    if (!wallet) throw new Error("No compatible Wallet Standard wallet is available.");
+  useEffect(() => {
+    if (!walletPickerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    firstWalletOption.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeWalletPicker();
+      if (event.key !== "Tab") return;
+      const focusable = walletPickerDialog.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [walletPickerOpen]);
+
+  const connect = (wallet: CompatibleWallet) => run(async () => {
+    closeWalletPicker();
     const connected = await wallet.features[StandardConnect].connect();
     const nextAccount = connected.accounts.find((candidate) => candidate.chains.includes("solana:mainnet")) ?? connected.accounts[0];
     if (!nextAccount) throw new Error("The wallet returned no Solana account.");
@@ -61,9 +91,28 @@ export function PublisherClient() {
       method: "POST",
       body: JSON.stringify({ challengeId: challenge.challengeId, signature })
     });
+    setActiveWallet(wallet);
     setAccount(nextAccount);
-    setStatus(`Authenticated as ${shortAddress(nextAccount.address)}. Authentication is not distribution consent.`);
+    setStatus(`Authenticated with ${wallet.name} as ${shortAddress(nextAccount.address)}. Authentication is not distribution consent.`);
   });
+
+  const requestConnection = () => {
+    const [onlyWallet] = wallets;
+    if (wallets.length === 1 && onlyWallet) {
+      void connect(onlyWallet);
+      return;
+    }
+    if (wallets.length > 1) {
+      setWalletPickerOpen(true);
+      return;
+    }
+    setStatus("No compatible wallet was detected. Install or unlock a Wallet Standard wallet, then retry.");
+  };
+
+  function closeWalletPicker() {
+    setWalletPickerOpen(false);
+    requestAnimationFrame(() => walletPickerTrigger.current?.focus());
+  }
 
   const discover = () => run(async () => {
     const response = await api<{ apps: readonly DiscoveredApp[] }>("/api/v1/publisher/discover-apps");
@@ -86,10 +135,9 @@ export function PublisherClient() {
   };
 
   const consent = (candidate: ClaimedApp) => run(async () => {
-    const wallet = wallets.find((item) => item.name === selectedWallet);
-    if (!wallet || !account) throw new Error("Reconnect the signing wallet.");
+    if (!activeWallet || !account) throw new Error("Reconnect the signing wallet.");
     const challenge = await api<{ challengeId: string; message: string }>(`/api/v1/publisher/apps/${candidate.id}/consent/challenge`, mutation({ releasePolicy: policy }));
-    const signature = await signExact(wallet, account, challenge.message);
+    const signature = await signExact(activeWallet, account, challenge.message);
     await api(`/api/v1/publisher/apps/${candidate.id}/consent`, mutation({
       challengeId: challenge.challengeId,
       signature,
@@ -123,14 +171,59 @@ export function PublisherClient() {
       </details>
       <div className="panel">
         <p className="step-label">1 · Publisher authentication</p>
-        <div className="control-row">
-          <select aria-label="Wallet" value={selectedWallet} onChange={(event) => setSelectedWallet(event.target.value)} disabled={busy || account !== null}>
-            {wallets.length === 0 && <option value="">No compatible wallet found</option>}
-            {wallets.map((wallet) => <option key={wallet.name}>{wallet.name}</option>)}
-          </select>
-          <button type="button" onClick={() => void connect()} disabled={busy || account !== null || !selectedWallet}>{account ? "Authenticated" : "Connect and sign in"}</button>
+        <div className="publisher-auth-row">
+          <button
+            ref={walletPickerTrigger}
+            type="button"
+            className="publisher-connect-button"
+            onClick={requestConnection}
+            disabled={busy || account !== null || wallets.length === 0}
+          >
+            {account ? "Authenticated" : "Connect and sign in"}
+          </button>
+          <div className="publisher-auth-copy">
+            <strong>{account && activeWallet ? activeWallet.name : "Choose your wallet in the next step"}</strong>
+            <span>{account ? shortAddress(account.address) : "One-time authentication message · no transaction"}</span>
+          </div>
         </div>
+        {wallets.length === 0 && <p className="wallet-unavailable-note">No compatible wallet detected. Install or unlock Phantom, Solflare, Backpack, or another Wallet Standard wallet.</p>}
       </div>
+
+      {walletPickerOpen && (
+        <div
+          className="wallet-picker-backdrop"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) closeWalletPicker(); }}
+        >
+          <section ref={walletPickerDialog} className="wallet-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="wallet-picker-title">
+            <div className="wallet-picker-heading">
+              <div>
+                <p className="step-label">Wallet connection</p>
+                <h2 id="wallet-picker-title">Choose your wallet</h2>
+                <p>You will review and sign a one-time authentication message. This does not submit a transaction.</p>
+              </div>
+              <button type="button" className="wallet-picker-cancel secondary" onClick={closeWalletPicker}>Cancel</button>
+            </div>
+            <div className="wallet-option-list">
+              {wallets.map((wallet, index) => (
+                <button
+                  key={wallet.name}
+                  ref={index === 0 ? firstWalletOption : undefined}
+                  type="button"
+                  className="wallet-option secondary"
+                  onClick={() => void connect(wallet)}
+                  disabled={busy}
+                >
+                  <span className="wallet-option-identity">
+                    <Image className="wallet-option-icon" src={wallet.icon} width={42} height={42} alt="" unoptimized />
+                    <span><strong>{wallet.name}</strong><small>Wallet Standard · Ed25519 signing</small></span>
+                  </span>
+                  <span className="wallet-option-action">Continue</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       <div className="panel">
         <p className="step-label">2 · Finalized App authority</p>
