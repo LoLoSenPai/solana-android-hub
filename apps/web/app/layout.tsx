@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { isPublisherOnboardingEnabled } from "@/server/publisher-availability";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,6 +24,8 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  const onboardingEnabled = isPublisherOnboardingEnabled(process.env.HELIUS_API_KEY);
+
   return (
     <html lang="en">
       <body>
@@ -35,7 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <nav aria-label="Primary navigation">
               <Link href="/#discover">Discover</Link>
               <Link href="/#trust-model">Trust model</Link>
-              <Link className="publisher-link" href="/publisher">For publishers</Link>
+              <Link className="publisher-link" href="/publisher">{onboardingEnabled ? "For publishers" : "Publisher onboarding"}</Link>
             </nav>
           </div>
         </header>
@@ -47,7 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           </div>
           <div className="footer-links">
             <Link href="/">Catalogue</Link>
-            <Link href="/publisher">Publisher workspace</Link>
+            <Link href="/publisher">{onboardingEnabled ? "Publisher workspace" : "Publisher onboarding status"}</Link>
           </div>
           <p>Independent catalogue. Not affiliated with or endorsed by Solana Mobile.</p>
         </footer>

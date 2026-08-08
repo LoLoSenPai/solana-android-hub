@@ -1,14 +1,35 @@
+import Link from "next/link";
+import { hubConfig } from "@/server/runtime";
+import { isPublisherOnboardingEnabled } from "@/server/publisher-availability";
 import { PublisherClient } from "./PublisherClient";
 
 export default function PublisherPage() {
+  const onboardingEnabled = isPublisherOnboardingEnabled(hubConfig.heliusApiKey);
+
   return (
     <main>
       <section className="hero compact">
         <p className="eyebrow">Publisher workspace</p>
-        <h1>Claim with authority. Consent separately.</h1>
-        <p>Wallet Standard authentication, finalized App authority, and environment-bound distribution consent are explicit, independently recorded steps.</p>
+        <h1>{onboardingEnabled ? "Claim with authority. Consent separately." : "Publisher onboarding is not open yet."}</h1>
+        <p>{onboardingEnabled
+          ? "Wallet Standard authentication, finalized App authority, and environment-bound distribution consent are explicit, independently recorded steps."
+          : "The public staging catalogue is available, but finalized Solana chain verification is not configured for publisher onboarding in this environment."}</p>
       </section>
-      <PublisherClient />
+      {onboardingEnabled ? <PublisherClient /> : <PublisherUnavailable />}
     </main>
+  );
+}
+
+function PublisherUnavailable() {
+  return (
+    <section className="publisher-workspace" aria-labelledby="publisher-unavailable-title">
+      <div className="panel publisher-unavailable">
+        <p className="step-label">Onboarding paused</p>
+        <h2 id="publisher-unavailable-title">No wallet connection or consent signing is available here.</h2>
+        <p>Until finalized-chain verification is configured, this site will not ask publishers to connect a wallet, sign in, claim an App NFT, or create distribution consent.</p>
+        <p className="muted">Catalogue previews remain isolated to staging and cannot become production consent or production releases.</p>
+        <Link className="publisher-catalogue-link" href="/#discover">Explore the catalogue</Link>
+      </div>
+    </section>
   );
 }

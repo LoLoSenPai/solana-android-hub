@@ -32,3 +32,6 @@ apps/web/.qa/
 !fixtures/apks/hub-test-app/fixture-signing.jks
 !fixtures/apks/hub-test-app/wrong-signing.jks
 !tooling/fixture-host/public/*.apk
+
+/.vercel/
+/.env.local
