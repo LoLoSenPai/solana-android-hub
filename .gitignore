@@ -16,6 +16,7 @@ apps/mobile/ios/
 .env
 .env.*
 !.env.example
+!.env.production.example
 .vercel/
 supabase/.branches/
 supabase/.temp/
@@ -25,6 +26,7 @@ local.properties
 .DS_Store
 Thumbs.db
 .artifacts/
+apps/web/.qa/
 
 !fixtures/apks/hub-test-app/artifacts/*.apk
 !fixtures/apks/hub-test-app/fixture-signing.jks

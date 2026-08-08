@@ -4,10 +4,24 @@ import {
   buildDistributionConsentMessage,
   computeUpdateDecision,
   diffPermissions,
+  normalizeCatalogCategory,
   quarantineReason,
   selectLatestRelease,
   type ReleaseCandidate
 } from "../src/index.js";
+
+describe("catalog categories", () => {
+  it("normalizes publishing aliases into the stable public taxonomy", () => {
+    expect(normalizeCatalogCategory("DeFi & Trading")).toBe("defi");
+    expect(normalizeCatalogCategory("AI & Agents")).toBe("ai-agents");
+    expect(normalizeCatalogCategory("Gaming")).toBe("games");
+  });
+
+  it("keeps missing and unrecognized categories visible under other", () => {
+    expect(normalizeCatalogCategory(undefined)).toBe("other");
+    expect(normalizeCatalogCategory("Experimental category")).toBe("other");
+  });
+});
 
 const base: ReleaseCandidate = {
   id: "release-1",

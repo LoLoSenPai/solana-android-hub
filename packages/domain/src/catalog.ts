@@ -1,11 +1,61 @@
 import type {
   AppEligibility,
+  CatalogCategory,
   InstalledPackageState,
   PermissionDiff,
   ReleaseCandidate,
   SelectionContext,
   UpdateDecision
 } from "./types";
+
+const CATEGORY_ALIASES: Readonly<Record<string, CatalogCategory>> = {
+  ai: "ai-agents",
+  "ai-agents": "ai-agents",
+  agents: "ai-agents",
+  content: "content-streaming",
+  "content-streaming": "content-streaming",
+  media: "content-streaming",
+  streaming: "content-streaming",
+  defi: "defi",
+  "defi-trading": "defi",
+  finance: "defi",
+  payments: "defi",
+  trading: "defi",
+  depin: "depin",
+  "decentralized-physical-infrastructure": "depin",
+  game: "games",
+  games: "games",
+  gaming: "games",
+  lifestyle: "lifestyle",
+  nft: "nfts",
+  nfts: "nfts",
+  collectibles: "nfts",
+  privacy: "privacy-security",
+  "privacy-security": "privacy-security",
+  security: "privacy-security",
+  productivity: "productivity",
+  tools: "productivity",
+  identity: "social-identity",
+  social: "social-identity",
+  "social-identity": "social-identity",
+  wallet: "wallets",
+  wallets: "wallets"
+};
+
+/**
+ * Maps the free-form publishing category to the Hub's stable public taxonomy.
+ * Unknown and missing values remain visible under `other`; they are never
+ * silently promoted into an editorial category such as "Top picks".
+ */
+export function normalizeCatalogCategory(value: unknown): CatalogCategory {
+  if (typeof value !== "string") return "other";
+  const normalized = value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return CATEGORY_ALIASES[normalized] ?? "other";
+}
 
 export function isAppEligible(app: AppEligibility, environment: SelectionContext["environment"]): boolean {
   return app.claimStatus === "verified"

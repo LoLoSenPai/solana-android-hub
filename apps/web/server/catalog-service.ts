@@ -1,6 +1,13 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import { CatalogRepository, type CatalogAppRecord } from "@hub/database";
-import { isAppEligible, isReleaseEligible, selectLatestRelease, type CatalogChannel } from "@hub/domain";
+import {
+  isAppEligible,
+  isReleaseEligible,
+  selectLatestRelease,
+  type CatalogCategory,
+  type CatalogChannel,
+  type CatalogSort
+} from "@hub/domain";
 import { database, hubConfig } from "./runtime";
 
 const repository = new CatalogRepository(database);
@@ -8,6 +15,9 @@ const repository = new CatalogRepository(database);
 export async function listCatalog(input: {
   channel: CatalogChannel;
   query?: string;
+  category?: CatalogCategory;
+  sort?: CatalogSort;
+  androidSdk?: number;
 }): Promise<readonly CatalogAppDto[]> {
   const records = await repository.listReleaseCandidates(hubConfig.appEnvironment, input.query);
   const grouped = new Map<string, CatalogAppRecord[]>();
@@ -27,9 +37,17 @@ export async function listCatalog(input: {
     });
     const selectedRecord = appRecords.find((record) => record.release.id === selected?.id);
     if (!selectedRecord || !selected) continue;
+    if (input.category !== undefined && selectedRecord.category !== input.category) continue;
+    if (input.androidSdk !== undefined && selectedRecord.binary.minSdk > input.androidSdk) continue;
     results.push(toDto(selectedRecord));
   }
-  return results.toSorted((left, right) => left.name.localeCompare(right.name));
+  return results.toSorted((left, right) => {
+    if (input.sort === "recently_updated") {
+      const byUpdatedAt = Date.parse(right.releaseUpdatedAt ?? "") - Date.parse(left.releaseUpdatedAt ?? "");
+      if (Number.isFinite(byUpdatedAt) && byUpdatedAt !== 0) return byUpdatedAt;
+    }
+    return left.name.localeCompare(right.name);
+  });
 }
 
 export async function getCatalogApp(slug: string, channel: CatalogChannel): Promise<CatalogAppDto | undefined> {
@@ -67,6 +85,8 @@ function toDto(record: CatalogAppRecord): CatalogAppDto {
     description: record.description,
     iconUrl: record.iconUri,
     screenshots: [...record.screenshots],
+    category: record.category,
+    releaseUpdatedAt: record.releaseUpdatedAt.toISOString(),
     latestRelease: {
       id: record.release.id,
       releaseMint: record.release.releaseMint,

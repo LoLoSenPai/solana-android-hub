@@ -2,6 +2,7 @@ import type { ExpoConfig } from "expo/config";
 
 const appEnvironment = environmentVariable("APP_ENV") ?? "local";
 const production = appEnvironment === "production";
+const publicWebsiteOrigin = "https://solana-hub.lololabs.xyz";
 const hubOrigin = environmentVariable("EXPO_PUBLIC_HUB_ORIGIN") ?? "http://10.0.2.2:3000";
 const publicationGate = environmentVariable("RELEASE_PUBLICATION_GATE") ?? "device_only_preview";
 
@@ -14,6 +15,7 @@ const config: ExpoConfig = {
   name: production ? "Solana Android Hub" : "Solana Android Hub Dev",
   slug: "solana-android-hub",
   version: "0.1.0",
+  icon: "./assets/icon.png",
   orientation: "portrait",
   scheme: "solanaandroidhub",
   userInterfaceStyle: "dark",
@@ -29,6 +31,7 @@ const config: ExpoConfig = {
   experiments: { typedRoutes: true },
   extra: {
     hubOrigin,
+    publicWebsiteOrigin,
     publicationGate
   }
 };

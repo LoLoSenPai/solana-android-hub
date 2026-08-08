@@ -3,6 +3,7 @@ import type { CatalogAppDto } from "@hub/api-client";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { HubSymbol } from "@/components/HubSymbol";
 import { loadCatalogApp } from "@/features/catalog/api";
 import { saveInstalledApp } from "@/storage/database";
 
@@ -76,24 +77,31 @@ export default function InstallScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-canvas" contentContainerClassName="p-5 pb-12">
-      <Text className="text-xs font-bold uppercase tracking-widest text-mint">On-device security boundary</Text>
-      <Text className="mt-2 text-3xl font-bold text-ink">{app?.name ?? "Secure install"}</Text>
-      <View className="my-6 rounded-2xl border border-line bg-surface p-5">
+    <ScrollView className="flex-1 bg-canvas" contentContainerClassName="p-5 pb-14" showsVerticalScrollIndicator={false}>
+      <View className="mt-2 h-14 w-14 items-center justify-center rounded-[20px] bg-raised">
+        <HubSymbol name="shield_lock" size={29} color="#72F0C6" />
+      </View>
+      <Text className="mt-5 text-xs font-bold uppercase tracking-[1.8px] text-mint">On-device security boundary</Text>
+      <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">{app?.name ?? "Secure install"}</Text>
+      <Text className="mt-3 leading-6 text-muted">Nothing reaches Android’s installer until every release invariant matches.</Text>
+      <View className="my-7 overflow-hidden rounded-[26px] border border-line bg-surface px-5 py-2">
         <StageRow label="Download over hardened HTTPS" active={stage === "validating"} done={["submitted", "complete"].includes(stage)} />
         <StageRow label="Verify SHA-256 and AOSP signature" active={stage === "validating"} done={["submitted", "complete"].includes(stage)} />
         <StageRow label="Match package, version, certificate, permissions" active={stage === "validating"} done={["submitted", "complete"].includes(stage)} />
-        <StageRow label="Android PackageInstaller confirmation" active={stage === "submitted"} done={stage === "complete"} />
+        <StageRow label="Android PackageInstaller confirmation" active={stage === "submitted"} done={stage === "complete"} last />
       </View>
-      <Text className={stage === "error" ? "leading-6 text-warning" : "leading-6 text-muted"}>{detail}</Text>
-      {stage === "loading" || stage === "validating" || stage === "submitted" ? <ActivityIndicator className="mt-6" color="#9cf4c8" /> : null}
+      <View className={stage === "error" ? "flex-row rounded-[22px] border border-warning bg-surface p-4" : "flex-row rounded-[22px] border border-line bg-raised p-4"}>
+        <HubSymbol name={stage === "error" ? "error" : stage === "complete" ? "check_circle" : "info"} size={22} color={stage === "error" ? "#FFC857" : stage === "complete" ? "#72F0C6" : "#93A7A2"} />
+        <Text className={stage === "error" ? "ml-3 flex-1 leading-6 text-warning" : "ml-3 flex-1 leading-6 text-muted"}>{detail}</Text>
+      </View>
+      {stage === "loading" || stage === "validating" || stage === "submitted" ? <ActivityIndicator className="mt-6" color="#72F0C6" /> : null}
       {stage === "permission" && (
-        <Pressable className="mt-7 rounded-2xl bg-mint p-4" onPress={() => void AppInstaller.openUnknownSourcesSettings()}>
+        <Pressable className="mt-7 rounded-[18px] bg-mint p-4 active:opacity-80" onPress={() => void AppInstaller.openUnknownSourcesSettings()}>
           <Text className="text-center font-bold text-canvas">Open Android settings</Text>
         </Pressable>
       )}
       {(stage === "ready" || stage === "error") && app && (
-        <Pressable className="mt-7 rounded-2xl bg-mint p-4" onPress={() => void beginInstall()}>
+        <Pressable className="mt-7 rounded-[18px] bg-mint p-4 active:opacity-80" onPress={() => void beginInstall()}>
           <Text className="text-center font-bold text-canvas">{stage === "error" ? "Try again" : "Validate and install"}</Text>
         </Pressable>
       )}
@@ -101,8 +109,17 @@ export default function InstallScreen() {
   );
 }
 
-function StageRow({ label, active, done }: { label: string; active: boolean; done: boolean }) {
-  return <Text className={`mb-3 ${done ? "text-mint" : active ? "text-ink" : "text-muted"}`}>{done ? "✓" : active ? "●" : "○"}  {label}</Text>;
+function StageRow({ label, active, done, last = false }: { label: string; active: boolean; done: boolean; last?: boolean }) {
+  return (
+    <View className={last ? "flex-row items-center py-4" : "flex-row items-center border-b border-line py-4"}>
+      <HubSymbol
+        name={done ? "check_circle" : active ? "progress_activity" : "radio_button_unchecked"}
+        size={21}
+        color={done ? "#72F0C6" : active ? "#F5F7F2" : "#71847F"}
+      />
+      <Text className={done ? "ml-3 flex-1 text-sm font-semibold text-mint" : active ? "ml-3 flex-1 text-sm font-semibold text-ink" : "ml-3 flex-1 text-sm text-muted"}>{label}</Text>
+    </View>
+  );
 }
 
 async function awaitInstallResult(
