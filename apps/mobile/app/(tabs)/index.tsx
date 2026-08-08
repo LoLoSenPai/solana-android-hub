@@ -74,6 +74,7 @@ export default function DiscoverScreen() {
     () => [...apps].sort((left, right) => (Date.parse(right.releaseUpdatedAt ?? "") || 0) - (Date.parse(left.releaseUpdatedAt ?? "") || 0))[0],
     [apps]
   );
+  const featuredArtwork = availableNow?.featureGraphicUrl ?? availableNow?.bannerUrl ?? availableNow?.screenshots[0];
 
   const openCategory = (category: BrowseCategory) => {
     router.push(`/categories/${category}` as Href);
@@ -150,20 +151,27 @@ export default function DiscoverScreen() {
 
         {!query ? (
           <>
-            <Pressable className="mt-7 overflow-hidden rounded-[30px] active:opacity-90" onPress={() => openCategory("all")}>
-              <ImageBackground source={HUB_HERO} resizeMode="cover" style={{ minHeight: 310 }}>
-                <View className="min-h-[310px] justify-end p-6" style={{ backgroundColor: "rgba(1, 12, 12, 0.38)" }}>
-                  <View className="max-w-[260px]">
-                    <View className="self-start rounded-full bg-ink px-3 py-1.5">
-                      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-canvas">Built for discovery</Text>
-                    </View>
-                    <Text className="mt-4 text-[29px] font-bold leading-8 text-ink">A catalogue you can actually explore.</Text>
-                    <View className="mt-3 self-start rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(1, 12, 12, 0.78)" }}>
-                      <Text className="text-sm leading-5 text-ink">Filter the noise. Keep every trust fact visible.</Text>
-                    </View>
-                    <View className="mt-5 flex-row items-center self-start rounded-full bg-ink px-5 py-3">
-                      <Text className="font-bold text-canvas">Explore with filters</Text>
-                      <HubSymbol name="arrow_forward" size={18} color="#061311" style={{ marginLeft: 8 }} />
+            <Pressable
+              className="mt-7 overflow-hidden rounded-[30px] active:opacity-90"
+              onPress={() => availableNow ? router.push(`/apps/${availableNow.slug}` as Href) : openCategory("all")}
+            >
+              <ImageBackground source={featuredArtwork ? { uri: featuredArtwork } : HUB_HERO} resizeMode="cover" style={{ minHeight: 340 }}>
+                <View className="min-h-[340px] justify-between p-6" style={{ backgroundColor: "rgba(1, 12, 12, 0.48)" }}>
+                  <View className="self-start rounded-full bg-ink px-3 py-1.5">
+                    <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-canvas">{availableNow ? "Featured on the Hub" : "Built for discovery"}</Text>
+                  </View>
+                  <View className="max-w-[285px]">
+                    {availableNow ? (
+                      <View className="mb-4 flex-row items-center">
+                        <AppArtwork app={availableNow} size={58} radius={17} />
+                        <View className="ml-3 flex-1">
+                          <Text className="text-[27px] font-bold leading-8 text-ink">{availableNow.name}</Text>
+                          <Text className="mt-1 text-sm text-ink" numberOfLines={1}>{availableNow.shortDescription}</Text>
+                        </View>
+                      </View>
+                    ) : <Text className="text-[29px] font-bold leading-8 text-ink">A catalogue you can actually explore.</Text>}
+                    <View className="self-start rounded-full bg-ink px-5 py-3">
+                      <Text className="font-bold text-canvas">{availableNow ? "Discover the app" : "Explore with filters"}</Text>
                     </View>
                   </View>
                 </View>

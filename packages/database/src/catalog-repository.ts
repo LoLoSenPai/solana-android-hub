@@ -18,6 +18,8 @@ export interface CatalogAppRecord {
   description: string | null;
   iconUri: string | null;
   screenshots: readonly string[];
+  bannerUri: string | null;
+  featureGraphicUri: string | null;
   category: CatalogCategory;
   eligibility: AppEligibility;
   release: ReleaseCandidate;
@@ -41,6 +43,8 @@ interface CatalogRow {
   description: string | null;
   icon_uri: string | null;
   screenshots: unknown;
+  banner_uri: string | null;
+  feature_graphic_uri: string | null;
   source_category: string | null;
   claim_status: AppEligibility["claimStatus"];
   authority_address: string | null;
@@ -77,11 +81,13 @@ export class CatalogRepository {
         a.name as app_name,
         a.short_description,
         a.description,
-        a.icon_uri,
-        a.screenshots,
+        coalesce(r.icon_uri, a.icon_uri) as icon_uri,
+        case when jsonb_array_length(r.screenshots) > 0 then r.screenshots else a.screenshots end as screenshots,
+        r.banner_uri,
+        r.feature_graphic_uri,
         coalesce(
-          nullif(a.source_snapshot #>> '{appMetadata,properties,category}', ''),
-          nullif(r.source_snapshot #>> '{releaseMetadata,properties,category}', '')
+          nullif(r.source_snapshot #>> '{releaseMetadata,properties,category}', ''),
+          nullif(a.source_snapshot #>> '{appMetadata,properties,category}', '')
         ) as source_category,
         a.claim_status,
         a.authority_address,
@@ -146,6 +152,8 @@ function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
     description: row.description,
     iconUri: row.icon_uri,
     screenshots: Array.isArray(row.screenshots) ? row.screenshots.filter((value): value is string => typeof value === "string") : [],
+    bannerUri: row.banner_uri,
+    featureGraphicUri: row.feature_graphic_uri,
     category: normalizeCatalogCategory(row.source_category),
     eligibility: {
       appMint: row.app_mint,

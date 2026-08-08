@@ -85,6 +85,8 @@ function toDto(record: CatalogAppRecord): CatalogAppDto {
     description: record.description,
     iconUrl: record.iconUri,
     screenshots: [...record.screenshots],
+    bannerUrl: record.bannerUri,
+    featureGraphicUrl: record.featureGraphicUri,
     category: record.category,
     releaseUpdatedAt: record.releaseUpdatedAt.toISOString(),
     latestRelease: {

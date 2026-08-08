@@ -12,6 +12,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
   const authenticity = app.latestRelease.previewOnly ? "Development preview" : "Server-validated release";
   const approval = approvalLabel(app.latestRelease.trust.solanaMobileApproval);
+  const heroArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
 
   return (
     <main className="app-detail-page">
@@ -22,10 +23,11 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
         </div>
 
         <section className="detail-hero" aria-labelledby="app-title">
-          {app.screenshots[0]
+          {heroArtwork
             // Publisher screenshot hosts are metadata-driven, so they stay direct instead of enabling a broad Next image proxy allowlist.
-            ? <img className="detail-hero-image" src={app.screenshots[0]} alt="" />
+            ? <img className="detail-hero-image" src={heroArtwork} alt={`${app.name} cover artwork`} />
             : <Image className="detail-hero-image" src="/hub-hero.png" alt="" fill priority sizes="(max-width: 760px) 100vw, 1280px" />}
+          <span className="detail-hero-scrim" aria-hidden="true" />
           <span className="detail-state">{authenticity}</span>
         </section>
 
@@ -45,12 +47,15 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
           </div>
         </section>
 
-        <section className="detail-description editorial-split" aria-labelledby="about-heading">
+        <section className={`detail-description editorial-split${app.featureGraphicUrl ? " has-feature-art" : ""}`} aria-labelledby="about-heading">
           <div>
             <p className="eyebrow">About this app</p>
             <h2 id="about-heading">A clear view before you install.</h2>
           </div>
-          <p>{app.description ?? app.shortDescription ?? "The publisher has not provided a longer description for this release yet."}</p>
+          <div className="detail-about-copy">
+            <p>{app.description ?? app.shortDescription ?? "The publisher has not provided a longer description for this release yet."}</p>
+            {app.featureGraphicUrl ? <img src={app.featureGraphicUrl} alt={`${app.name} feature artwork`} /> : null}
+          </div>
         </section>
 
         {app.screenshots.length > 0 ? (

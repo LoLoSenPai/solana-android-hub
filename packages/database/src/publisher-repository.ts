@@ -1,6 +1,7 @@
 import type { AppEnvironment, ReleasePolicy } from "@hub/domain";
 import type { AuthorityProofEvidence } from "@hub/solana";
 import type { HubSql } from "./client";
+import { parseJsonValue } from "./json";
 import type { ChallengeRecord } from "./auth-repository";
 
 export interface PublisherAppRecord {
@@ -70,7 +71,7 @@ export class PublisherRepository {
         ) values (
           ${input.publisherId}, ${input.proof.appMint}, ${input.proof.publisherCollectionMint}, ${input.packageName}, ${input.slug},
           ${input.name}, ${input.shortDescription}, ${input.description}, ${input.iconUri}, ${this.sql.json([...input.screenshots])},
-          ${input.metadataUri}, ${input.sourceSnapshotJson}::jsonb, ${input.sourceSnapshotHash}, 'verified',
+          ${input.metadataUri}, ${tx.json(parseJsonValue(input.sourceSnapshotJson))}, ${input.sourceSnapshotHash}, 'verified',
           ${input.proof.path === "metadata_update_authority" ? "update_authority" : "delegated_collection_authority"},
           ${input.proof.wallet}, ${input.proof.finalizedSlot.toString()}, now()
         )
@@ -101,7 +102,7 @@ export class PublisherRepository {
         ) values (
           ${app.id}, ${input.publisherWalletId}, 'verified',
           ${input.proof.path === "metadata_update_authority" ? "update_authority" : "delegated_collection_authority"},
-          ${input.proof.finalizedSlot.toString()}, ${input.evidenceHash}, ${evidenceSnapshotJson}::jsonb, now()
+          ${input.proof.finalizedSlot.toString()}, ${input.evidenceHash}, ${tx.json(parseJsonValue(evidenceSnapshotJson))}, now()
         )
       `;
       return mapApp(app);

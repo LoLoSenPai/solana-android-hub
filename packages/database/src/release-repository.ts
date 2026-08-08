@@ -1,8 +1,10 @@
 import type { AppEnvironment } from "@hub/domain";
 import type { MetadataEvidence } from "@hub/solana";
 import type { NormalizedReleaseMetadata } from "@hub/validation";
+import type { JSONValue } from "postgres";
 import type { HubSql } from "./client";
 import type { PublisherAppRecord } from "./publisher-repository";
+import { parseJsonValue } from "./json";
 
 export interface ScheduledSyncTarget {
   appId: string;
@@ -52,10 +54,10 @@ export class ReleaseRepository {
   }
 
   public async completeSyncJob(job: AcquiredSyncJob, result: unknown, finalizedSlot: bigint): Promise<void> {
-    const resultJson = JSON.stringify(result);
+    const serializedResult: JSONValue = parseJsonValue(JSON.stringify(result));
     await this.sql.begin(async (tx) => {
       await tx`
-        update hub.sync_jobs set status = 'succeeded', result = ${resultJson}::jsonb, completed_at = now(), lease_expires_at = null
+        update hub.sync_jobs set status = 'succeeded', result = ${tx.json(serializedResult)}, completed_at = now(), lease_expires_at = null
         where id = ${job.id} and lease_owner = ${job.leaseOwner} and status = 'running'
       `;
       await tx`
@@ -195,18 +197,23 @@ export class ReleaseRepository {
         insert into hub.releases (
           app_id, release_mint, metadata_uri, source_snapshot, source_snapshot_hash, package_name, version_name,
           version_code, apk_uri, apk_size, apk_sha256, certificate_sha256, min_sdk, target_sdk, permissions, locales,
+          icon_uri, screenshots, banner_uri, feature_graphic_uri,
           collection_verified, metadata_immutable, validation_status, publication_status, quarantine_code, quarantine_detail,
           discovered_slot, validated_at
         ) values (
-          ${input.app.id}, ${input.releaseMint}, ${input.metadataUri}, ${input.sourceSnapshotJson}::jsonb, ${input.sourceSnapshotHash},
+          ${input.app.id}, ${input.releaseMint}, ${input.metadataUri}, ${tx.json(parseJsonValue(input.sourceSnapshotJson))}, ${input.sourceSnapshotHash},
           ${input.normalized.packageName}, ${input.normalized.versionName}, ${input.normalized.versionCode.toString()},
           ${input.normalized.apkUri}, ${input.normalized.apkSize}, ${input.normalized.apkSha256}, ${input.normalized.certificateSha256},
           ${input.normalized.minSdk}, ${input.normalized.targetSdk ?? null}, ${input.normalized.permissions}, ${input.normalized.locales},
+          ${input.normalized.iconUri}, ${tx.json([...input.normalized.screenshots])},
+          ${input.normalized.bannerUri ?? null}, ${input.normalized.featureGraphicUri ?? null},
           true, true, ${validationStatus}::hub.release_validation_status, ${publicationStatus}::hub.publication_status,
           ${quarantineCode}, ${quarantineCode}, ${input.finalizedSlot.toString()}, now()
         )
         on conflict (release_mint) do update set
           source_snapshot = excluded.source_snapshot, source_snapshot_hash = excluded.source_snapshot_hash,
+          icon_uri = excluded.icon_uri, screenshots = excluded.screenshots,
+          banner_uri = excluded.banner_uri, feature_graphic_uri = excluded.feature_graphic_uri,
           validation_status = case
             when hub.releases.validation_status = 'server_binary_valid' and excluded.validation_status = 'metadata_valid'
               then hub.releases.validation_status
@@ -219,21 +226,22 @@ export class ReleaseRepository {
         returning id
       `;
       if (!release) throw new Error("RELEASE_NOT_SAVED");
-      const expectedJson = JSON.stringify({
+      const expected = {
         packageName: input.normalized.packageName,
         versionCode: input.normalized.versionCode.toString(),
         apkSha256: input.normalized.apkSha256,
         certificateSha256: input.normalized.certificateSha256
-      });
+      };
       await tx`
         insert into hub.release_validation_runs (release_id, stage, provider, status, expected, observed, completed_at, failure_codes)
         values (${release.id}, 'metadata', 'finalized_token_metadata_v0.4.0',
-          ${quarantineCode ? "failed" : "succeeded"}::hub.job_status, ${expectedJson}::jsonb, ${input.sourceSnapshotJson}::jsonb,
+          ${quarantineCode ? "failed" : "succeeded"}::hub.job_status, ${tx.json(expected)},
+          ${tx.json(parseJsonValue(input.sourceSnapshotJson))},
           now(), ${quarantineCode ? [quarantineCode] : []})
       `;
       await tx`
         update hub.apps set short_description = ${input.normalized.shortDescription}, description = ${input.normalized.description},
-          icon_uri = ${input.normalized.iconUri}, screenshots = ${JSON.stringify(input.normalized.screenshots)}::jsonb, updated_at = now()
+          icon_uri = ${input.normalized.iconUri}, screenshots = ${tx.json([...input.normalized.screenshots])}, updated_at = now()
         where id = ${input.app.id}
       `;
       return {

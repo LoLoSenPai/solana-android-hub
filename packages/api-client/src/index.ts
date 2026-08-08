@@ -46,6 +46,8 @@ export const catalogAppDtoSchema = z.object({
   description: z.string().nullable(),
   iconUrl: z.url().nullable(),
   screenshots: z.array(z.url()),
+  bannerUrl: z.url().nullable().default(null),
+  featureGraphicUrl: z.url().nullable().default(null),
   category: catalogCategorySchema.default("other"),
   releaseUpdatedAt: z.iso.datetime().nullable().default(null),
   latestRelease: releaseDtoSchema

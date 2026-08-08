@@ -124,6 +124,8 @@ export interface NormalizedReleaseMetadata {
   apkSize: number;
   apkSha256: string;
   screenshots: readonly string[];
+  bannerUri?: string;
+  featureGraphicUri?: string;
 }
 
 export function normalizeReleaseMetadata(input: unknown): NormalizedReleaseMetadata {
@@ -142,12 +144,24 @@ export function normalizeReleaseMetadata(input: unknown): NormalizedReleaseMetad
     throw new Error("target_sdk must not be lower than min_sdk");
   }
 
+  const mediaByPurpose = (purpose: string) => store.media.find(
+    (item) => normalizeMediaPurpose(item.purpose) === purpose
+  )?.uri;
+  const bannerUri = mediaByPurpose("banner");
+  const featureGraphicUri = mediaByPurpose("featuregraphic");
+  const localized = store.release_details.localized_resources;
+  const resolveLocalized = (value: string) => resolveLocalizedResource(
+    value,
+    parsed.extensions.i18n,
+    android.locales
+  );
+
   return {
     schemaVersion: parsed.schema_version,
-    name: parsed.name,
-    description: parsed.description,
+    name: resolveLocalized(localized.name),
+    description: resolveLocalized(localized.long_description),
     iconUri: parsed.image,
-    shortDescription: store.release_details.localized_resources.short_description,
+    shortDescription: resolveLocalized(localized.short_description),
     packageName: android.android_package,
     versionName: android.version,
     versionCode: BigInt(android.version_code),
@@ -161,8 +175,32 @@ export function normalizeReleaseMetadata(input: unknown): NormalizedReleaseMetad
     apkSha256: apk.sha256,
     screenshots: store.media
       .filter((item) => item.purpose.toLowerCase().includes("screenshot"))
-      .map((item) => item.uri)
+      .map((item) => item.uri),
+    ...(bannerUri === undefined ? {} : { bannerUri }),
+    ...(featureGraphicUri === undefined ? {} : { featureGraphicUri })
   };
+}
+
+function normalizeMediaPurpose(value: string): string {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+}
+
+function resolveLocalizedResource(
+  valueOrKey: string,
+  translations: Record<string, Record<string, string>>,
+  preferredLocales: readonly string[]
+): string {
+  for (const locale of preferredLocales) {
+    const translated = translations[locale]?.[valueOrKey];
+    if (translated !== undefined) return translated;
+  }
+
+  for (const localeTranslations of Object.values(translations)) {
+    const translated = localeTranslations[valueOrKey];
+    if (translated !== undefined) return translated;
+  }
+
+  return valueOrKey;
 }
 
 function normalizeSha256(value: string): string {

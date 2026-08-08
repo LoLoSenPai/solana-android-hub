@@ -3,6 +3,15 @@ import { appJsonMetadataSchema, normalizeReleaseMetadata, releaseJsonMetadataSch
 
 const digest = "AA:".repeat(31) + "AA";
 
+interface ReleaseMediaFixture {
+  mime: string;
+  purpose: string;
+  width: number;
+  height: number;
+  sha256: string;
+  uri: string;
+}
+
 function releaseFixture() {
   return {
     schema_version: "0.4.0",
@@ -30,7 +39,7 @@ function releaseFixture() {
             name: "Hub Test App"
           }
         },
-        media: [],
+        media: [] as ReleaseMediaFixture[],
         files: [{
           mime: "application/vnd.android.package-archive",
           purpose: "install",
@@ -81,6 +90,41 @@ describe("release metadata", () => {
     expect(release.apkSha256).toBe("aa".repeat(32));
     expect(release.certificateSha256).toBe("aa".repeat(32));
     expect(release.permissions).toEqual(["android.permission.INTERNET"]);
+  });
+
+  it("normalizes publisher screenshots, banner, and feature graphic", () => {
+    const fixture = releaseFixture();
+    fixture.extensions.solana_dapp_store.media = [
+      { mime: "image/png", purpose: "screenshot", width: 1080, height: 1920, sha256: digest, uri: "https://fixtures.example/shot.png" },
+      { mime: "image/png", purpose: "banner", width: 1200, height: 600, sha256: digest, uri: "https://fixtures.example/banner.png" },
+      { mime: "image/png", purpose: "featureGraphic", width: 1200, height: 1200, sha256: digest, uri: "https://fixtures.example/feature.png" }
+    ];
+
+    expect(normalizeReleaseMetadata(fixture)).toMatchObject({
+      screenshots: ["https://fixtures.example/shot.png"],
+      bannerUri: "https://fixtures.example/banner.png",
+      featureGraphicUri: "https://fixtures.example/feature.png"
+    });
+  });
+
+  it("resolves official localized resource identifiers through the preferred release locale", () => {
+    const fixture = releaseFixture();
+    fixture.extensions.solana_dapp_store.release_details.localized_resources = {
+      short_description: "5",
+      long_description: "1",
+      new_in_version: "2",
+      name: "4"
+    };
+    fixture.extensions.i18n = {
+      "fr-FR": { "1": "Description française", "4": "Nom français", "5": "Résumé français" },
+      "en-US": { "1": "Full English description", "4": "Localized app name", "5": "English summary" }
+    };
+
+    expect(normalizeReleaseMetadata(fixture)).toMatchObject({
+      name: "Localized app name",
+      description: "Full English description",
+      shortDescription: "English summary"
+    });
   });
 
   it("accepts the generic APK MIME type used by the official 0.4.0 example", () => {

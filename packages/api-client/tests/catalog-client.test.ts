@@ -10,6 +10,8 @@ const legacyItem = {
   description: null,
   iconUrl: null,
   screenshots: [],
+  bannerUrl: null,
+  featureGraphicUrl: null,
   latestRelease: {
     id: "20000000-0000-4000-8000-000000000001",
     releaseMint: "44444444444444444444444444444444",

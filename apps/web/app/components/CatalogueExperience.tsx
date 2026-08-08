@@ -81,18 +81,24 @@ export function CatalogueExperience({
     () => apps.toSorted(compareRecent)[0],
     [apps]
   );
+  const featuredArtwork = latestEligible
+    ? latestEligible.bannerUrl ?? latestEligible.featureGraphicUrl ?? latestEligible.screenshots[0]
+    : undefined;
 
   return (
     <>
       <section className="catalogue-hero" aria-labelledby="catalogue-title">
-        <Image className="catalogue-hero-art" src="/hub-hero.png" alt="" fill priority sizes="(max-width: 760px) 100vw, 1440px" />
+        {featuredArtwork
+          ? <img className="catalogue-hero-art" src={featuredArtwork} alt="" />
+          : <Image className="catalogue-hero-art" src="/hub-hero.png" alt="" fill priority sizes="(max-width: 760px) 100vw, 1440px" />}
+        <div className="catalogue-hero-scrim" aria-hidden="true" />
         <div className="catalogue-hero-copy">
-          <p className="eyebrow">Independent Android catalogue</p>
-          <h1 id="catalogue-title">Find your next Solana app.</h1>
-          <p className="hero-intro">Useful filters, proof-based trust, and a catalogue designed to stay easy to explore as it grows.</p>
+          <p className="eyebrow">{latestEligible ? `Featured · ${categoryLabel(latestEligible.category)}` : "Independent Android catalogue"}</p>
+          <h1 id="catalogue-title">{latestEligible?.name ?? "Find your next Solana app."}</h1>
+          <p className="hero-intro">{latestEligible?.shortDescription ?? "Useful filters, proof-based trust, and a catalogue designed to stay easy to explore as it grows."}</p>
           <div className="hero-actions">
-            <a className="primary-action" href="#discover">Explore the catalogue</a>
-            <a className="secondary-action" href="#trust-model">See how trust works</a>
+            {latestEligible ? <Link className="primary-action" href={`/apps/${latestEligible.slug}`}>Discover the app</Link> : null}
+            <a className="secondary-action" href="#discover">Browse all apps</a>
           </div>
         </div>
         <div className="hero-proof" aria-label="Core product principles">
@@ -226,12 +232,13 @@ export function CatalogueExperience({
 
 function AppCard({ app }: { app: CatalogAppDto }) {
   const approval = app.latestRelease.trust.solanaMobileApproval === "verified_approved";
+  const artwork = app.featureGraphicUrl ?? app.bannerUrl ?? app.screenshots[0];
   return (
     <article className="catalogue-card">
       <Link className="catalogue-card-art" href={`/apps/${app.slug}`} aria-label={`View ${app.name}`}>
-        {app.screenshots[0]
+        {artwork
           // Publisher screenshot hosts are metadata-driven, so they stay direct instead of enabling a broad Next image proxy allowlist.
-          ? <img src={app.screenshots[0]} alt="" />
+          ? <img src={artwork} alt="" />
           : <Image src="/hub-hero.png" alt="" fill sizes="(max-width: 760px) 100vw, 50vw" />}
         <span className="catalogue-card-category">{categoryLabel(classifyApp(app))}</span>
       </Link>

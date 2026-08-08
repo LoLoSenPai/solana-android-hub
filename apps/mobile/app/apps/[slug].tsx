@@ -67,13 +67,13 @@ export default function AppDetailScreen() {
   const isUpdate = installAction === "update";
   const addedPermissions = isUpdate ? release.permissions.filter((permission) => !installedPermissions.includes(permission)) : [];
   const removedPermissions = isUpdate ? installedPermissions.filter((permission) => !release.permissions.includes(permission)) : [];
-  const primaryScreenshot = app.screenshots[0];
+  const coverArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
 
   return (
     <View className="flex-1 bg-canvas">
       <ScrollView className="flex-1" contentContainerClassName="pb-14" showsVerticalScrollIndicator={false}>
-        {primaryScreenshot ? (
-          <ImageBackground source={{ uri: primaryScreenshot }} resizeMode="cover" style={{ height: 290 }}>
+        {coverArtwork ? (
+          <ImageBackground source={{ uri: coverArtwork }} resizeMode="cover" style={{ height: 290 }}>
             <View className="h-full justify-between px-4 pb-7 pt-12" style={{ backgroundColor: "rgba(0, 12, 11, 0.30)" }}>
               <DetailHeader onBack={() => router.back()} preview={release.previewOnly} />
               <View className="self-start rounded-full bg-canvas px-3 py-1.5">

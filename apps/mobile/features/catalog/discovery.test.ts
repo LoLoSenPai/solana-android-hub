@@ -93,6 +93,8 @@ function app(input: {
     description: null,
     iconUrl: null,
     screenshots: [],
+    bannerUrl: null,
+    featureGraphicUrl: null,
     category: input.category,
     releaseUpdatedAt: input.updatedAt,
     latestRelease: {
