@@ -9,3 +9,13 @@ export function classifyExternalDependencyFailure(error: unknown): ExternalDepen
   if (/rpc error/u.test(message)) return "rpc";
   return "unknown";
 }
+
+export function redactExternalDependencyMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "non_error_failure";
+  return error.message
+    .replace(/https?:\/\/\S+/giu, "<redacted-url>")
+    .replace(/[A-Za-z0-9_-]{20,}/gu, "<redacted-value>")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .slice(0, 200) || "empty_error_message";
+}

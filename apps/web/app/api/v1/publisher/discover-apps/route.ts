@@ -3,7 +3,7 @@ import { apiError, requestId } from "@/server/http";
 import { discoverPublisherApps } from "@/server/publisher-service";
 import { getCurrentSession } from "@/server/session-service";
 import { enforceRateLimit } from "@/server/security-service";
-import { classifyExternalDependencyFailure } from "@/server/dependency-errors";
+import { classifyExternalDependencyFailure, redactExternalDependencyMessage } from "@/server/dependency-errors";
 
 export async function GET(request: Request): Promise<NextResponse> {
   const id = requestId(request);
@@ -19,7 +19,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     console.error("publisher_discovery_failed", {
       requestId: id,
       dependency: "helius",
-      category: classifyExternalDependencyFailure(error)
+      category: classifyExternalDependencyFailure(error),
+      diagnostic: redactExternalDependencyMessage(error)
     });
     return apiError(503, "SOLANA_VERIFICATION_UNAVAILABLE", id, "Finalized Solana verification is unavailable.");
   }
