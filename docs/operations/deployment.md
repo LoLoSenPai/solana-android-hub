@@ -21,6 +21,7 @@
 - Configure an HTTPS `HUB_ORIGIN`, staging terms, staging signing, a Helius key, an admin allowlist, and GitHub validator dispatch.
 - Keep real App mints allowlisted while `device_only_preview` is in use.
 - Exercise the GitHub OIDC callback against the deployed origin before any external publisher is onboarded.
+- Vercel invokes `/api/v1/internal/cron/sync` every 15 minutes in the production deployment target. The route accepts Vercel's authenticated `GET` request and retains authenticated `POST` for manual operational runs; both require `CRON_SECRET`.
 
 ## Production startup requirements
 
