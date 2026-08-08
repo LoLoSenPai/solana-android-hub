@@ -165,6 +165,7 @@ Implementation evidence:
 - Vercel production deployment: READY; post-deploy error log scan returned no errors.
 - Supabase security advisors: 0 findings. Performance advisors contain only expected low-traffic unused-index informational notices.
 - Full repository `pnpm check`: passed. Android x86_64 release build and Pixel 9 API 36 installation: passed.
+- Physical-phone artifact: ARM64 release build passed from the same locked commit; APK Signature Scheme v2, 16 KiB zip alignment, min SDK 26, target SDK 36, and `QUERY_ALL_PACKAGES` absence were verified.
 
 ## Iterations
 
