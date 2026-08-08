@@ -37,8 +37,7 @@ export async function syncPublisherApp(
     const verifier = new FinalizedMetadataVerifier(createHeliusFinalizedAccountReader(hubConfig.heliusApiKey));
     const authority = await verifier.verifyAppAuthority({
       wallet: session.walletAddress,
-      appMint: app.appMint,
-      publisherMint: app.publisherMint
+      appMint: app.appMint
     });
     const discovery = createHeliusReleaseDiscovery(hubConfig.heliusApiKey);
     const discovered = await discovery.discoverReleases(app.appMint);
@@ -110,7 +109,8 @@ export async function syncPublisherApp(
 const authorityLossCodes = new Set([
   "WALLET_NOT_APP_AUTHORITY",
   "APP_PUBLISHER_COLLECTION_NOT_VERIFIED",
-  "INVALID_APP_PUBLISHER_TOKEN_STANDARD",
+  "APP_MUST_BE_COLLECTION_NFT",
+  "INVALID_PUBLISHER_COLLECTION_TOKEN_STANDARD",
   "TOKEN_METADATA_MINT_MISMATCH"
 ]);
 

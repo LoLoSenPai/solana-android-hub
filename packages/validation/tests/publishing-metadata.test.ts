@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { normalizeReleaseMetadata, releaseJsonMetadataSchema } from "../src/index.js";
+import { appJsonMetadataSchema, normalizeReleaseMetadata, releaseJsonMetadataSchema } from "../src/index.js";
 
 const digest = "AA:".repeat(31) + "AA";
 
 function releaseFixture() {
   return {
-    schema_version: "v0.4.0",
+    schema_version: "0.4.0",
     name: "Hub Test App",
     description: "Fixture",
     image: "https://fixtures.example/icon.png",
@@ -55,6 +55,26 @@ function releaseFixture() {
 }
 
 describe("release metadata", () => {
+  it("accepts the current portal App NFT metadata shape", () => {
+    expect(appJsonMetadataSchema.parse({
+      schema_version: "0.4.0",
+      name: "DegenMerge",
+      description: "DegenMerge - A Solana Mobile dApp",
+      image: "https://r2.solanamobiledappstore.com/icon.png",
+      attributes: [
+        { trait_type: "Type", value: "App" },
+        { trait_type: "Publisher", value: "D2FDh5vdxdnnTXaZcHjF3sqoAKt5xTxACgRSVqfZbdrw" }
+      ],
+      properties: {
+        category: "dApp",
+        creators: [{ address: "D2FDh5vdxdnnTXaZcHjF3sqoAKt5xTxACgRSVqfZbdrw", share: 100 }]
+      },
+      extensions: {
+        solana_dapp_store: { android_package: "com.loicd.degenmerge.seeker" }
+      }
+    }).name).toBe("DegenMerge");
+  });
+
   it("normalizes the one install APK and canonical hashes", () => {
     const release = normalizeReleaseMetadata(releaseFixture());
     expect(release.versionCode).toBe(1n);
@@ -63,7 +83,7 @@ describe("release metadata", () => {
     expect(release.permissions).toEqual(["android.permission.INTERNET"]);
   });
 
-  it("accepts the generic APK MIME type used by the official v0.4.0 example", () => {
+  it("accepts the generic APK MIME type used by the official 0.4.0 example", () => {
     const fixture = releaseFixture();
     fixture.extensions.solana_dapp_store.files[0]!.mime = "application/octet-stream";
     expect(normalizeReleaseMetadata(fixture).apkUri).toBe("https://fixtures.example/app.apk");
@@ -87,7 +107,7 @@ describe("release metadata", () => {
 
   it("rejects unpinned schema revisions", () => {
     const fixture = releaseFixture();
-    fixture.schema_version = "v0.5.0";
+    fixture.schema_version = "0.5.0";
     expect(releaseJsonMetadataSchema.safeParse(fixture).success).toBe(false);
   });
 });

@@ -12,7 +12,7 @@ type ReleasePolicy = "automatic" | "manual";
 
 interface DiscoveredApp {
   appMint: string;
-  publisherMint: string;
+  publisherCollectionMint: string | null;
   name: string;
   packageName: string;
   authorityPath: string;
@@ -131,7 +131,7 @@ export function PublisherClient() {
   const claimMint = async () => {
     const mint = manualMint.trim();
     if (!mint) return;
-    await claim({ appMint: mint, publisherMint: "", name: `App ${shortAddress(mint)}`, packageName: "Pending finalized verification", authorityPath: "finalized verification" });
+    await claim({ appMint: mint, publisherCollectionMint: null, name: `App ${shortAddress(mint)}`, packageName: "Pending finalized verification", authorityPath: "finalized verification" });
   };
 
   const consent = (candidate: ClaimedApp) => run(async () => {

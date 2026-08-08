@@ -2,7 +2,7 @@ import type { ApprovalStatus } from "./types";
 
 export interface VerifiedAppReference {
   appMint: string;
-  publisherMint: string;
+  publisherCollectionMint: string | null;
   packageName: string;
 }
 

@@ -10,7 +10,7 @@ values (
 );
 
 insert into hub.apps (
-  id, publisher_id, app_mint, publisher_mint, package_name, slug, name, short_description, description,
+  id, publisher_id, app_mint, publisher_collection_mint, package_name, slug, name, short_description, description,
   metadata_uri, source_snapshot, source_snapshot_hash, claim_status, release_policy, distribution_enabled,
   authority_path, authority_address, authority_last_verified_slot, authority_last_verified_at
 ) values (

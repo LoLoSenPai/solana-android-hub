@@ -54,7 +54,7 @@ insert into hub.apps (
   id,
   publisher_id,
   app_mint,
-  publisher_mint,
+  publisher_collection_mint,
   package_name,
   slug,
   name,
@@ -94,7 +94,7 @@ insert into hub.apps (
 on conflict (id) do update set
   publisher_id = excluded.publisher_id,
   app_mint = excluded.app_mint,
-  publisher_mint = excluded.publisher_mint,
+  publisher_collection_mint = excluded.publisher_collection_mint,
   package_name = excluded.package_name,
   slug = excluded.slug,
   name = excluded.name,

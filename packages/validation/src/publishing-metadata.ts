@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PUBLISHING_SCHEMA_VERSION = "v0.4.0" as const;
+export const PUBLISHING_SCHEMA_VERSION = "0.4.0" as const;
 export const MAX_APK_BYTES = 500 * 1024 * 1024;
 const INSTALL_APK_MIME_TYPES = new Set([
   "application/octet-stream",

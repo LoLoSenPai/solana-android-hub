@@ -16,7 +16,7 @@ const authRepository = new AuthRepository(database);
 
 export interface DiscoveredPublisherApp {
   appMint: string;
-  publisherMint: string;
+  publisherCollectionMint: string | null;
   name: string;
   packageName: string;
   iconUrl: string;
@@ -30,20 +30,14 @@ export async function discoverPublisherApps(session: SessionRecord): Promise<rea
   for (const candidate of candidates.slice(0, 50)) {
     try {
       if (candidate.burnt || candidate.compression !== "uncompressed") continue;
-      const appEvidence = await verifier.readMetadata(candidate.mint);
-      const publisherMint = appEvidence.collection?.verified === true ? appEvidence.collection.key : null;
-      if (!publisherMint) continue;
-      const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint: candidate.mint, publisherMint });
-      const [appJson, publisherEvidence] = await Promise.all([
-        fetchHardenedJson(appEvidence.metadataUri),
-        verifier.readMetadata(publisherMint)
-      ]);
-      const publisherJson = await fetchHardenedJson(publisherEvidence.metadataUri);
-      const app = appJsonMetadataSchema.parse(appJson);
-      publisherJsonMetadataSchema.parse(publisherJson);
+      const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint: candidate.mint });
+      const app = appJsonMetadataSchema.parse(await fetchHardenedJson(proof.appMetadata.metadataUri));
+      if (proof.publisherMetadata !== null) {
+        publisherJsonMetadataSchema.parse(await fetchHardenedJson(proof.publisherMetadata.metadataUri));
+      }
       output.push({
         appMint: candidate.mint,
-        publisherMint,
+        publisherCollectionMint: proof.publisherCollectionMint,
         name: app.name,
         packageName: app.extensions.solana_dapp_store.android_package,
         iconUrl: app.image,
@@ -58,21 +52,16 @@ export async function discoverPublisherApps(session: SessionRecord): Promise<rea
 
 export async function claimPublisherApp(session: SessionRecord, appMint: string): Promise<PublisherAppRecord> {
   const { verifier } = solanaServices();
-  const appEvidence = await verifier.readMetadata(appMint);
-  const publisherMint = appEvidence.collection?.verified === true ? appEvidence.collection.key : null;
-  if (!publisherMint) throw new Error("APP_PUBLISHER_COLLECTION_NOT_VERIFIED");
-  const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint, publisherMint });
-  const [appJsonRaw, publisherJsonRaw] = await Promise.all([
-    fetchHardenedJson(proof.appMetadata.metadataUri),
-    fetchHardenedJson(proof.publisherMetadata.metadataUri)
-  ]);
-  const appJson = appJsonMetadataSchema.parse(appJsonRaw);
-  const publisherJson = publisherJsonMetadataSchema.parse(publisherJsonRaw);
+  const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint });
+  const appJson = appJsonMetadataSchema.parse(await fetchHardenedJson(proof.appMetadata.metadataUri));
+  const publisherJson = proof.publisherMetadata === null
+    ? null
+    : publisherJsonMetadataSchema.parse(await fetchHardenedJson(proof.publisherMetadata.metadataUri));
   const packageName = appJson.extensions.solana_dapp_store.android_package;
   const sourceSnapshot = {
     schemaRevision: appJson.schema_version,
     appMetadata: appJson,
-    publisherMetadata: publisherJson,
+    ...(publisherJson === null ? {} : { publisherMetadata: publisherJson }),
     authority: { ...proof, finalizedSlot: proof.finalizedSlot.toString() }
   };
   const sourceSnapshotJson = canonicalJson(sourceSnapshot);
@@ -164,8 +153,7 @@ async function requirePublisherApp(session: SessionRecord, appId: string): Promi
 async function reverifyAuthority(session: SessionRecord, app: PublisherAppRecord): Promise<void> {
   await solanaServices().verifier.verifyAppAuthority({
     wallet: session.walletAddress,
-    appMint: app.appMint,
-    publisherMint: app.publisherMint
+    appMint: app.appMint
   });
 }
 
