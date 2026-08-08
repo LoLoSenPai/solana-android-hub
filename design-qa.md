@@ -123,3 +123,55 @@ Focused comparison was needed because the source only contains the publisher-aut
 Residual P3: the external wallet extension's own approval window is controlled by each wallet and was not automated in this visual QA pass. The Hub still uses the same Wallet Standard connect and exact-message-signature APIs that were already exercised by the real publisher flow.
 
 final result: passed
+
+# Publisher storefront media — design QA
+
+## Scope and evidence
+
+This pass verifies the consumer storefront path from official Solana Mobile Release NFT metadata through Supabase, the public catalogue API, the production website, and the standalone Android Hub. Publisher media is used as supplied; Hub fallback art appears only when a release has no suitable artwork.
+
+Source visual truth:
+
+- Solana Mobile Store home: `C:/Users/loicd/Pictures/store/Screenshot_20260807-214837.png`
+- Solana Mobile Store app detail: `C:/Users/loicd/Pictures/store/Screenshot_20260807-214915.png`
+- DegenMerge Release metadata: official icon, four screenshots, 1200 × 600 banner, and 1200 × 1200 feature graphic from the Release NFT metadata.
+
+Implementation evidence:
+
+- Web production home, 1440 × 1000 CSS pixels: `.artifacts/design-qa/web-storefront-home-production-final.png`
+- Web production detail, 1440 × 1000 CSS pixels: `.artifacts/design-qa/web-storefront-detail-production-final.png`
+- Web production detail, 390 × 844 CSS pixels: `.artifacts/design-qa/web-storefront-detail-production-mobile-final.png`
+- Android production-data home, Pixel 9 API 36 at 1080 × 2424 device pixels: `.artifacts/design-qa/mobile-storefront-home-production-final.png`
+- Android production-data detail: `.artifacts/design-qa/mobile-storefront-detail-production-final.png`
+- Android production-data screenshot gallery: `.artifacts/design-qa/mobile-storefront-gallery-production-final.png`
+
+## Visible comparison
+
+- Typography: passed. The large editorial app title, concise store summary, and section hierarchy follow the supplied store references while retaining the Hub identity.
+- Layout and spacing: passed. Real banner art leads both web and Android detail pages, the app icon overlaps the cover, the primary action remains visible, and four portrait screenshots form a scannable gallery.
+- Color and artwork: passed. DegenMerge artwork now defines each feature surface; no generic Hub hero is shown when official release media exists. Dark scrims keep text readable without obscuring the source art.
+- Content: passed. Official localized resource identifiers are resolved through the preferred release locale, so the UI displays the real short and long descriptions instead of the raw `5`/`1` keys.
+- Trust language: passed. Development preview, publisher control, consent, binary authenticity, and Solana Mobile approval remain distinct and visible. The consumer presentation does not turn preview status into an approval claim.
+- Responsive behavior: passed after correcting the mobile web app-title wrapping and hero sizing. No horizontal overflow remains at 390 × 844.
+
+## Data and interaction verification
+
+- Production API returns one DegenMerge record with the official icon, banner, feature graphic, four screenshots, full localized summary, and `previewOnly: true`.
+- Home → app detail navigation works on the production website and Android emulator.
+- Catalogue search for `Degen` returns exactly DegenMerge with the real summary and artwork.
+- Web detail renders four accessible preview images and the localized long description.
+- Android detail renders the banner, icon, four-image gallery, trust facts, permissions, and secure install entry.
+- Browser console: 0 errors, 0 warnings.
+- Vercel production deployment: READY; post-deploy error log scan returned no errors.
+- Supabase security advisors: 0 findings. Performance advisors contain only expected low-traffic unused-index informational notices.
+- Full repository `pnpm check`: passed. Android x86_64 release build and Pixel 9 API 36 installation: passed.
+
+## Iterations
+
+1. P0 data correctness — JSONB values written through postgres.js were encoded as JSON string scalars, causing the API to discard screenshots. Added typed JSON writes, a repair migration, and backfilled release media columns.
+2. P1 content correctness — official `localized_resources` values are translation identifiers. Added locale resolution through `extensions.i18n`, then corrected the existing DegenMerge record.
+3. P1 consumer presentation — replaced generic feature art with the publisher banner/feature graphic on home, cards, and app detail; added the complete screenshot gallery to web and Android.
+4. P2 responsive polish — corrected mobile title wrapping and cover proportions after source/implementation comparison.
+5. P2 production verification — deployed the exact tested commit, exercised search and detail navigation, reloaded Android against the production API, and confirmed the repaired data remains an object after deployment.
+
+final result: passed
