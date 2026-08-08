@@ -1,37 +1,37 @@
-# Quiet Orbit — Solana Android Hub
+# Open Orbit — Solana Android Hub
 
 ## Product character
 
-A premium, modern Android storefront with a native mobile rhythm. It is Solana-adjacent without looking like a generic neon crypto dashboard and without copying Solana Mobile. App artwork and screenshots lead; trust information is calm, precise, and legible.
+A premium, editorial Android storefront with a native mobile rhythm. It borrows the clarity, artwork-first hierarchy, and generous spacing people value in the Solana Mobile store, while remaining visibly independent. Discovery is the differentiator: category pages always expose search, filters, sorting, result counts, and installation state instead of becoming undifferentiated lists.
 
 ## Colour
 
-- Background: `#F6F7FB`
-- Surface: `#FFFFFF`
-- Raised surface: `#FBFBFE`
-- Primary text: `#171925`
-- Secondary text: `#65697A`
-- Border: `#E4E6EE`
-- Primary violet: `#6D5EF7`
-- Dark violet: `#4D3ED1`
-- Mint accent: `#23C7A1`
-- Success: `#167C63`
-- Warning: `#B86B12`
-- Danger: `#C43D4B`
-- Preview: `#7652B5`
+- Background ink: `#071411`
+- Surface: `#10201C`
+- Raised surface: `#172923`
+- Primary text: `#F5F8F6`
+- Secondary text: `#9AAEA7`
+- Border: `#29433B`
+- Discovery mint: `#58EBC5`
+- Deep mint: `#25B894`
+- Warm coral: `#FF765C`
+- Amber accent: `#FFB23F`
+- Warning/preview: `#FFD07A`
+- Danger: `#FF7D78`
 
-Use gradients sparingly and only over artwork or hero surfaces. Do not use giant neon blobs.
+The mint/coral orbital mark is the Hub signature. Use generated artwork for editorial moments and real publisher imagery when available. Do not recreate artwork with CSS shapes or imply official Solana Mobile affiliation.
 
 ## Typography
 
-Use Roboto for Android and Geist/Arial-compatible system typography on web. Headings are compact and confident. Body copy uses generous line height. Integrity details use a readable monospace style only for hashes and identifiers.
+Use the native Android sans family and Geist/Arial-compatible system typography on web. Headings are oversized, compact, and confident. Body copy uses generous line height. Integrity details use a readable monospace style only for hashes and identifiers.
 
 ## Shape and elevation
 
-- App cards: 20 px corners, subtle cool shadow, generous internal spacing.
-- Buttons and selectors: 14 px corners, minimum 48 px touch height.
+- Editorial cards: 28–36 px corners, artwork-led, generous internal spacing.
+- App rows: quiet dividers or compact raised surfaces; the icon and name lead.
+- Buttons and selectors: 18 px corners, minimum 48 px touch height.
 - Pills: fully rounded, always include readable text.
-- Sheets: 24 px top corners.
+- Sheets: 28 px top corners.
 - Prefer borders and restrained elevation over glass effects.
 
 ## Trust language
@@ -47,11 +47,12 @@ Trust is never encoded by colour alone.
 
 Design these connected screens first:
 
-1. Discover with search, current source selector, featured artwork, and compact app cards.
-2. App detail with artwork, publisher, description, screenshots, selected release, permissions, integrity details, and install action.
-3. Download/validation/install progress with explicit stages for hash, package, version, certificate, and Android confirmation.
-4. Permission-change sheet with additions and removals.
-5. Install result and update-available state.
+1. Discover with search, featured artwork, category cards, and compact app rows.
+2. Category results with query, installation-status filter, trust filter, sorting, and a live result count.
+3. App detail with artwork, publisher, description, screenshots, selected release, permissions, integrity details, and install action.
+4. Download/validation/install progress with explicit stages for hash, package, version, certificate, and Android confirmation.
+5. Permission-change sheet with additions and removals.
+6. Install result and update-available state.
 
 ## Publisher vertical slice
 
@@ -59,4 +60,4 @@ Design wallet connection, discovered App claim, canonical consent review, releas
 
 ## Accessibility
 
-Use WCAG AA contrast, 48 px touch targets, clear focus states, readable error copy, and icons paired with text. Avoid tiny badges and horizontal scrolling for core information.
+Use WCAG AA contrast, 48 px touch targets, visible focus states, readable error copy, and icons paired with text. Avoid tiny badges and horizontal scrolling for core information.

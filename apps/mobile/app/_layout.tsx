@@ -7,13 +7,15 @@ export default function RootLayout() {
     <>
       <StatusBar style="light" />
       <Stack screenOptions={{
-        headerStyle: { backgroundColor: "#080b0e" },
-        headerTintColor: "#f2f6f7",
-        contentStyle: { backgroundColor: "#080b0e" }
+        headerStyle: { backgroundColor: "#061311" },
+        headerTintColor: "#F5F7F2",
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: "#061311" }
       }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="apps/[slug]" options={{ title: "App details" }} />
-        <Stack.Screen name="install/[slug]" options={{ title: "Install securely", presentation: "modal" }} />
+        <Stack.Screen name="categories/[category]" options={{ headerShown: false }} />
+        <Stack.Screen name="apps/[slug]" options={{ headerShown: false }} />
+        <Stack.Screen name="install/[slug]" options={{ title: "Secure install", presentation: "modal" }} />
       </Stack>
     </>
   );

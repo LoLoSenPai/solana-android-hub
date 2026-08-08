@@ -1,4 +1,21 @@
 export type CatalogChannel = "approved" | "trusted";
+export const CATALOG_CATEGORIES = [
+  "ai-agents",
+  "content-streaming",
+  "defi",
+  "depin",
+  "games",
+  "lifestyle",
+  "nfts",
+  "privacy-security",
+  "productivity",
+  "social-identity",
+  "wallets",
+  "other"
+] as const;
+export type CatalogCategory = typeof CATALOG_CATEGORIES[number];
+export const CATALOG_SORTS = ["name", "recently_updated"] as const;
+export type CatalogSort = typeof CATALOG_SORTS[number];
 export type AppEnvironment = "local" | "staging" | "production";
 export type ReleasePolicy = "automatic" | "manual";
 export type ApprovalStatus = "unknown" | "verified_approved" | "rejected";

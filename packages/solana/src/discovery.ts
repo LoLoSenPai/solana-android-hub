@@ -14,13 +14,7 @@ export interface DiscoveryAsset {
 }
 
 export interface DasDiscoveryClient {
-  searchAssets(parameters: {
-    authorityAddress?: string;
-    ownerAddress?: string;
-    tokenType: "nonFungible";
-    page: number;
-    limit: number;
-  }): Promise<{ items: readonly Asset[]; total: number }>;
+  searchAssets(parameters: DasSearchParameters): Promise<{ items: readonly Asset[]; total: number }>;
   getAssetsByGroup(parameters: {
     groupKey: "collection";
     groupValue: string;
@@ -29,12 +23,26 @@ export interface DasDiscoveryClient {
   }): Promise<{ items: readonly Asset[]; total: number }>;
 }
 
+export type DasSearchParameters = {
+  authorityAddress: string;
+  ownerAddress?: never;
+  tokenType?: never;
+  page: number;
+  limit: number;
+} | {
+  ownerAddress: string;
+  authorityAddress?: never;
+  tokenType: "nonFungible";
+  page: number;
+  limit: number;
+};
+
 export class HeliusReleaseDiscovery {
   public constructor(private readonly das: DasDiscoveryClient) {}
 
   public async discoverWalletCandidates(wallet: string): Promise<readonly DiscoveryAsset[]> {
     const [authorityAssets, ownerAssets] = await Promise.all([
-      this.paginate((page) => this.das.searchAssets({ authorityAddress: wallet, tokenType: "nonFungible", page, limit: PAGE_SIZE })),
+      this.paginate((page) => this.das.searchAssets({ authorityAddress: wallet, page, limit: PAGE_SIZE })),
       this.paginate((page) => this.das.searchAssets({ ownerAddress: wallet, tokenType: "nonFungible", page, limit: PAGE_SIZE }))
     ]);
     return dedupe([...authorityAssets, ...ownerAssets]).map(mapAsset);

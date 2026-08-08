@@ -1,5 +1,12 @@
 # Deployment and launch gates
 
+## Canonical origin
+
+- Reserved public web/API origin: `https://solana-hub.lololabs.xyz`.
+- Configure both `HUB_ORIGIN` and `EXPO_PUBLIC_HUB_ORIGIN` to that exact HTTPS origin for production web and Android builds.
+- The domain may host a visibly labeled staging showcase before launch, but that does not make staging consent promotable or open production publisher onboarding.
+- `.env.production.example` intentionally contains a blocked development terms version and blank secrets so an incomplete production configuration fails closed.
+
 ## Local
 
 - Start local Supabase with `pnpm supabase start`, then reset with `pnpm supabase db reset`.
@@ -14,6 +21,7 @@
 - Configure an HTTPS `HUB_ORIGIN`, staging terms, staging signing, a Helius key, an admin allowlist, and GitHub validator dispatch.
 - Keep real App mints allowlisted while `device_only_preview` is in use.
 - Exercise the GitHub OIDC callback against the deployed origin before any external publisher is onboarded.
+- Vercel invokes `/api/v1/internal/cron/sync` every 15 minutes in the production deployment target. The route accepts Vercel's authenticated `GET` request and retains authenticated `POST` for manual operational runs; both require `CRON_SECRET`.
 
 ## Production startup requirements
 

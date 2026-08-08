@@ -1,4 +1,17 @@
 import { z } from "zod";
+import {
+  CATALOG_CATEGORIES,
+  CATALOG_SORTS,
+  type CatalogCategory,
+  type CatalogChannel,
+  type CatalogSort
+} from "@hub/domain";
+
+export { CATALOG_CATEGORIES, CATALOG_SORTS };
+export type { CatalogCategory, CatalogChannel, CatalogSort };
+
+export const catalogCategorySchema = z.enum(CATALOG_CATEGORIES);
+export const catalogSortSchema = z.enum(CATALOG_SORTS);
 
 export const trustFactsDtoSchema = z.object({
   publisherControl: z.literal("verified"),
@@ -33,6 +46,8 @@ export const catalogAppDtoSchema = z.object({
   description: z.string().nullable(),
   iconUrl: z.url().nullable(),
   screenshots: z.array(z.url()),
+  category: catalogCategorySchema.default("other"),
+  releaseUpdatedAt: z.iso.datetime().nullable().default(null),
   latestRelease: releaseDtoSchema
 });
 
@@ -62,10 +77,19 @@ export class HubApiClient {
     return publicConfigDtoSchema.parse(await this.getJson("/api/v1/config"));
   }
 
-  public async getCatalog(input: { channel?: "trusted" | "approved"; query?: string } = {}): Promise<CatalogResponse> {
+  public async getCatalog(input: {
+    channel?: CatalogChannel;
+    query?: string;
+    category?: CatalogCategory;
+    sort?: CatalogSort;
+    androidSdk?: number;
+  } = {}): Promise<CatalogResponse> {
     const url = new URL("/api/v1/catalog", this.origin);
     if (input.channel) url.searchParams.set("channel", input.channel);
     if (input.query) url.searchParams.set("query", input.query);
+    if (input.category) url.searchParams.set("category", input.category);
+    if (input.sort) url.searchParams.set("sort", input.sort);
+    if (input.androidSdk !== undefined) url.searchParams.set("androidSdk", input.androidSdk.toString());
     return catalogResponseSchema.parse(await this.getJson(url));
   }
 

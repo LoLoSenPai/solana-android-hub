@@ -4,7 +4,15 @@ import { apiError, requestId } from "@/server/http";
 import { syncDuePublisherApps } from "@/server/release-sync-service";
 import { hubConfig } from "@/server/runtime";
 
+export async function GET(request: Request): Promise<NextResponse> {
+  return runSync(request);
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
+  return runSync(request);
+}
+
+async function runSync(request: Request): Promise<NextResponse> {
   const id = requestId(request);
   if (!validCronSecret(request)) return apiError(401, "CRON_AUTH_REJECTED", id, "Cron authentication was rejected.");
   if (!hubConfig.heliusApiKey) return apiError(503, "HELIUS_NOT_CONFIGURED", id, "Release synchronization is not configured.");

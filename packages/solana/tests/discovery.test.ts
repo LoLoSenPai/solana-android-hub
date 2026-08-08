@@ -1,6 +1,6 @@
 import type { Asset } from "helius-sdk/types/das";
 import { describe, expect, it } from "vitest";
-import { HeliusReleaseDiscovery, type DasDiscoveryClient } from "../src/index.js";
+import { HeliusReleaseDiscovery, type DasDiscoveryClient, type DasSearchParameters } from "../src/index.js";
 
 function asset(id: string): Asset {
   return {
@@ -15,12 +15,20 @@ function asset(id: string): Asset {
 
 describe("DAS discovery", () => {
   it("deduplicates authority and ownership candidates without treating either as proof", async () => {
+    const searches: DasSearchParameters[] = [];
     const das: DasDiscoveryClient = {
-      searchAssets: (query) => Promise.resolve({ items: query.authorityAddress ? [asset("one")] : [asset("one"), asset("two")], total: query.authorityAddress ? 1 : 2 }),
+      searchAssets: (query) => {
+        searches.push(query);
+        return Promise.resolve({ items: query.authorityAddress ? [asset("one")] : [asset("one"), asset("two")], total: query.authorityAddress ? 1 : 2 });
+      },
       getAssetsByGroup: () => Promise.resolve({ items: [], total: 0 })
     };
     const result = await new HeliusReleaseDiscovery(das).discoverWalletCandidates("wallet");
     expect(result.map((candidate) => candidate.mint)).toEqual(["one", "two"]);
+    expect(searches).toEqual(expect.arrayContaining([
+      { authorityAddress: "wallet", page: 1, limit: 1000 },
+      { ownerAddress: "wallet", tokenType: "nonFungible", page: 1, limit: 1000 }
+    ]));
   });
 
   it("starts group pagination at page one", async () => {

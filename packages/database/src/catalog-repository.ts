@@ -1,4 +1,11 @@
-import type { AppEligibility, AppEnvironment, ApprovalStatus, ReleaseCandidate } from "@hub/domain";
+import {
+  normalizeCatalogCategory,
+  type AppEligibility,
+  type AppEnvironment,
+  type ApprovalStatus,
+  type CatalogCategory,
+  type ReleaseCandidate
+} from "@hub/domain";
 import type { HubSql } from "./client";
 
 export interface CatalogAppRecord {
@@ -11,6 +18,7 @@ export interface CatalogAppRecord {
   description: string | null;
   iconUri: string | null;
   screenshots: readonly string[];
+  category: CatalogCategory;
   eligibility: AppEligibility;
   release: ReleaseCandidate;
   binary: {
@@ -33,6 +41,7 @@ interface CatalogRow {
   description: string | null;
   icon_uri: string | null;
   screenshots: unknown;
+  source_category: string | null;
   claim_status: AppEligibility["claimStatus"];
   authority_address: string | null;
   distribution_enabled: boolean;
@@ -70,6 +79,10 @@ export class CatalogRepository {
         a.description,
         a.icon_uri,
         a.screenshots,
+        coalesce(
+          nullif(a.source_snapshot #>> '{appMetadata,properties,category}', ''),
+          nullif(r.source_snapshot #>> '{releaseMetadata,properties,category}', '')
+        ) as source_category,
         a.claim_status,
         a.authority_address,
         a.distribution_enabled,
@@ -133,6 +146,7 @@ function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
     description: row.description,
     iconUri: row.icon_uri,
     screenshots: Array.isArray(row.screenshots) ? row.screenshots.filter((value): value is string => typeof value === "string") : [],
+    category: normalizeCatalogCategory(row.source_category),
     eligibility: {
       appMint: row.app_mint,
       claimStatus: row.claim_status,

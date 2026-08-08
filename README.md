@@ -2,6 +2,8 @@
 
 An independent, opt-in Android distribution hub for apps published through the public Solana Mobile publishing format.
 
+The reserved public web and API origin is `https://solana-hub.lololabs.xyz`. Local development deliberately keeps using the emulator/localhost values from `.env.example`; production builds use the fail-closed `.env.production.example` contract and the corresponding Vercel/EAS environment variables.
+
 The project keeps four facts separate: publisher control, Release/APK authenticity, distribution consent, and independently verified Solana Mobile approval.
 
 ## Development
@@ -36,6 +38,8 @@ Set-Location apps/mobile/android
 The checked-in v1/v2 and negative APK fixtures live in `fixtures/apks/hub-test-app/artifacts`. Their immutable hashes, package, versions, permissions, and signer fingerprints are recorded in the adjacent manifest. A completed API 36 install/update run is documented in [docs/testing/android-vertical-slice.md](docs/testing/android-vertical-slice.md).
 
 Local and staging builds may expose explicitly allowlisted releases as `development_preview`. Production refuses preview mode and requires both server-side and on-device APK validation.
+
+The public origin is not a signal that publisher onboarding is open. Until production terms, signing, secrets, admin wallets, and the server validation gate are finalized, any deployed catalogue must remain visibly staging/development preview and must not collect production consent.
 
 ## Publication boundary
 
