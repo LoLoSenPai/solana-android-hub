@@ -68,7 +68,9 @@ export function PublisherClient() {
   const discover = () => run(async () => {
     const response = await api<{ apps: readonly DiscoveredApp[] }>("/api/v1/publisher/discover-apps");
     setApps(response.apps);
-    setStatus(response.apps.length === 0 ? "No currently authorized App NFTs were discovered." : `Discovered ${response.apps.length} authorized App NFT(s).`);
+    setStatus(response.apps.length === 0
+      ? "No authorized App NFT was found yet. If you just minted one in the Solana Mobile Publisher Portal, wait a few seconds and retry."
+      : `Discovered ${response.apps.length} authorized App NFT(s).`);
   });
 
   const claim = (candidate: DiscoveredApp) => run(async () => {
@@ -111,6 +113,14 @@ export function PublisherClient() {
   const claimList = Object.values(claims);
   return (
     <section className="publisher-workspace" aria-busy={busy}>
+      <details className="panel publisher-first-app">
+        <summary>Publishing your first App NFT?</summary>
+        <p>Use the official Solana Mobile Publisher Portal, then return here with the same publisher wallet. A generic NFT or ownership alone cannot qualify as publisher authority.</p>
+        <div className="publisher-resource-links">
+          <a href="https://publish.solanamobile.com" target="_blank" rel="noreferrer">Open Publisher Portal</a>
+          <a href="https://docs.solanamobile.com/dapp-store/submit-new-app" target="_blank" rel="noreferrer">Read the official walkthrough</a>
+        </div>
+      </details>
       <div className="panel">
         <p className="step-label">1 · Publisher authentication</p>
         <div className="control-row">
