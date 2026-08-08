@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { compareObserved, isPublicAddress, validateManifestShape } from "../src/validate.mjs";
 
@@ -46,5 +47,16 @@ describe("ephemeral APK validator", () => {
       "APK_CERTIFICATE_MISMATCH",
       "APK_PERMISSIONS_MISMATCH"
     ]);
+  });
+
+  it("pins the GitHub runner to the audited Android 36 inspection tools", async () => {
+    const workflow = await readFile(
+      new URL("../../../.github/workflows/apk-validator.yml", import.meta.url),
+      "utf8"
+    );
+
+    expect(workflow).toContain('sdkmanager "build-tools;36.0.0"');
+    expect(workflow).toContain('build_tools="$ANDROID_HOME/build-tools/36.0.0"');
+    expect(workflow).not.toContain("sort -V | tail -1");
   });
 });

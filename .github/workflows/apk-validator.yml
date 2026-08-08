@@ -30,11 +30,14 @@ jobs:
         with:
           node-version: 22.17.1
       - uses: android-actions/setup-android@v3
+      - name: Install pinned Android inspection tools
+        shell: bash
+        run: sdkmanager "build-tools;36.0.0"
       - name: Resolve Android inspection tools
         shell: bash
         run: |
           set -euo pipefail
-          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          build_tools="$ANDROID_HOME/build-tools/36.0.0"
           test -x "$build_tools/apksigner"
           test -x "$build_tools/aapt2"
           echo "APKSIGNER=$build_tools/apksigner" >> "$GITHUB_ENV"
