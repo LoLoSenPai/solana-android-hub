@@ -42,8 +42,17 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <p>{app.shortDescription ?? "An independently published Android app for the Solana ecosystem."}</p>
           </div>
           <div className="detail-primary-action">
-            <a className="primary-action" href="#release">Review Android release</a>
-            <small>Installation continues in the Android Hub after full on-device validation.</small>
+            <Link className="primary-action" href="/download">Install with Android Hub</Link>
+            <a
+              className="secondary-action"
+              href={app.latestRelease.apkUrl}
+              target="_blank"
+              rel="noreferrer nofollow"
+              referrerPolicy="no-referrer"
+            >
+              Download APK directly
+            </a>
+            <small>The Hub checks this release on your phone. Direct download is an advanced option that skips those final device checks.</small>
           </div>
         </section>
 
@@ -101,6 +110,26 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <div><dt>APK SHA-256</dt><dd>{shortHash(app.latestRelease.apkSha256)}</dd></div>
             <div><dt>Certificate</dt><dd>{shortHash(app.latestRelease.certificateSha256)}</dd></div>
           </dl>
+        </section>
+
+        <section className="direct-download-note" aria-labelledby="direct-download-heading">
+          <div>
+            <p className="eyebrow">Desktop transfer</p>
+            <h2 id="direct-download-heading">Need the APK file itself?</h2>
+          </div>
+          <div>
+            <p>You can download the publisher-hosted APK from a computer and transfer it to Android. This does not run the Hub's installed-package, downgrade, or signer-conflict checks.</p>
+            <a
+              className="secondary-action"
+              href={app.latestRelease.apkUrl}
+              target="_blank"
+              rel="noreferrer nofollow"
+              referrerPolicy="no-referrer"
+            >
+              Download {app.name} APK
+            </a>
+            <p className="download-hash"><span>Expected SHA-256</span><code>{app.latestRelease.apkSha256}</code></p>
+          </div>
         </section>
 
         <section className="permission-section" aria-labelledby="permissions-heading">

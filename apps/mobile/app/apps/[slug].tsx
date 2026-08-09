@@ -73,8 +73,12 @@ export default function AppDetailScreen() {
     <View className="flex-1 bg-canvas">
       <ScrollView className="flex-1" contentContainerClassName="pb-14" showsVerticalScrollIndicator={false}>
         {coverArtwork ? (
-          <ImageBackground source={{ uri: coverArtwork }} resizeMode="cover" style={{ height: 290 }}>
-            <View className="h-full justify-between px-4 pb-7 pt-12" style={{ backgroundColor: "rgba(0, 12, 11, 0.30)" }}>
+          <ImageBackground
+            source={{ uri: coverArtwork }}
+            resizeMode="cover"
+            style={{ width: "100%", aspectRatio: app.bannerUrl ? 2 : 16 / 9 }}
+          >
+            <View className="h-full justify-between px-4 pb-4 pt-12" style={{ backgroundColor: "rgba(0, 12, 11, 0.24)" }}>
               <DetailHeader onBack={() => router.back()} preview={release.previewOnly} />
               <View className="self-start rounded-full bg-canvas px-3 py-1.5">
                 <Text className="text-xs font-bold text-ink">{category.label}</Text>

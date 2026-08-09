@@ -21,7 +21,11 @@ const config: ExpoConfig = {
   userInterfaceStyle: "dark",
   android: {
     package: production ? "com.lololabs.solanaandroidhub" : "com.lololabs.solanaandroidhub.dev",
-    versionCode: 1
+    versionCode: 1,
+    adaptiveIcon: {
+      foregroundImage: "./assets/icon.png",
+      backgroundColor: "#001512"
+    }
   },
   plugins: [
     "expo-router",

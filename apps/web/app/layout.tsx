@@ -38,6 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <nav aria-label="Primary navigation">
               <Link href="/#discover">Discover</Link>
               <Link href="/#trust-model">Trust model</Link>
+              <Link className="hub-download-link" href="/download">Get the Hub</Link>
               <Link className="publisher-link" href="/publisher">{onboardingEnabled ? "For publishers" : "Publisher onboarding"}</Link>
             </nav>
           </div>
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           </div>
           <div className="footer-links">
             <Link href="/">Catalogue</Link>
+            <Link href="/download">Get Android Hub</Link>
             <Link href="/publisher">{onboardingEnabled ? "Publisher workspace" : "Publisher onboarding status"}</Link>
           </div>
           <p>Independent catalogue. Not affiliated with or endorsed by Solana Mobile.</p>

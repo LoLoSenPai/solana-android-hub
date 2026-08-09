@@ -176,3 +176,65 @@ Implementation evidence:
 5. P2 production verification — deployed the exact tested commit, exercised search and detail navigation, reloaded Android against the production API, and confirmed the repaired data remains an object after deployment.
 
 final result: passed
+
+# Hub download, Android banner, and launcher icon — design QA
+
+## Scope and source visual truth
+
+This pass covers three connected consumer-facing issues: making Android Hub discoverable from the website, allowing an explicitly less-trusted direct APK download for desktop transfer, matching the publisher banner's intended proportion on Android, and removing the launcher's legacy white icon wrapper.
+
+Source visual truth:
+
+- User-reported Android Hub detail before correction: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-14f29c78-fb43-4538-a171-f20e2bb7d0b1.png`
+- Solana Mobile Store DegenMerge reference: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-9d60f313-bf37-4e95-a25b-f27f3b17098a.png`
+- User-reported launcher icon before correction: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-9892b1c0-17f5-4c9a-a31d-1799decd0027.png`
+
+Implementation evidence:
+
+- Android detail after correction: `.artifacts/design-qa/mobile-detail-banner-final.png`
+- Android launcher after correction: `.artifacts/design-qa/mobile-launcher-icon-final.png`
+- Web Hub-download page at 390 × 844 CSS pixels: `.artifacts/design-qa/web-download-mobile-final.png`
+- Web Hub-download page at 1440 × 1000 CSS pixels: `.artifacts/design-qa/web-download-desktop-final.png`
+- Web app detail with both install paths at 390 × 844 CSS pixels: `.artifacts/design-qa/web-app-detail-download-mobile.png`
+
+## Capture normalization and state
+
+- Solana Mobile reference file: 280 × 622 pixels. Android implementation: Pixel 9 API 36 at 1080 × 2424 device pixels. Both have effectively the same tall-screen aspect ratio; comparison is based on relative cover/body proportions rather than unscaled pixel measurements.
+- Launcher source file: 263 × 281 pixels. Final launcher evidence: 1080 × 2424 device pixels. A focused icon-region comparison was used because the surrounding launcher layouts differ.
+- Web screenshots use explicit 390 × 844 and 1440 × 1000 CSS-pixel browser viewports. No density normalization was needed for the web captures.
+- State: DegenMerge development preview loaded from the real production catalogue; Android Hub 0.1.0 early-access download enabled; app-detail direct publisher APK link visible.
+
+## Full-view and focused comparison
+
+- Typography: passed. The existing Hub display hierarchy remains intact, the new download page uses the same optical weights, and long explanatory copy stays readable at 390 CSS pixels.
+- Spacing and layout rhythm: passed after correction. The Android publisher banner now uses its native 2:1 slot rather than a fixed 290dp crop; the icon/body overlap remains deliberate and the secure-install CTA stays above the fold.
+- Colors and visual tokens: passed. The new web route reuses the existing ink, surface, mint, line, radius, and action tokens. The early-access status is informational and does not imitate a verification badge.
+- Image quality and asset fidelity: passed. The publisher's banner, icon, and screenshots remain untouched. Android adaptive-icon configuration removes the launcher-generated white wrapper while preserving the supplied Hub artwork and mask behavior.
+- Copy and content: passed. “Install with Android Hub” is the recommended path; “Download APK directly” is clearly advanced and explicitly states which local checks it skips. The Hub download page explains why browser-only validation cannot inspect installed package, signer, or downgrade state.
+- Responsive behavior: passed. At 390 × 844, navigation remains usable, both primary actions fit without overflow, and the download page preserves the editorial hierarchy.
+- Accessibility and interaction: passed for the implemented scope. Download links are semantic anchors with stable accessible names; the current Hub APK link resolves to the public ARM64 artifact; app-detail links expose distinct actions instead of one ambiguous CTA.
+
+Focused comparison was required for the Android cover and launcher icon. The post-fix cover shows the complete 2:1 publisher composition at the same relative height as the supplied store reference. The launcher comparison shows the mark filling Android's circular mask with no legacy white container or undersized nested square.
+
+## Comparison history
+
+1. P1 imagery — the Android detail used a fixed 290dp cover height, forcing a strong crop of a 1200 × 600 publisher banner. Replaced it with a width-bound 2:1 slot and recaptured DegenMerge on Pixel 9.
+2. P1 launcher identity — Android treated the single legacy icon as a nested icon and added a large white adaptive wrapper. Added an explicit adaptive foreground and matching Hub background color, rebuilt the native app, and verified the launcher result on Pixel 9.
+3. P1 product discovery — the website referred to Android Hub without a route or download. Added persistent “Get the Hub” navigation, a dedicated explanation/install page, a real ARM64 early-access artifact, and a separate advanced direct-download path on app pages.
+4. P2 trust copy — the initial website CTA implied all installation validation happened elsewhere without explaining why. Added exact on-device responsibilities and made the reduced guarantees of direct desktop transfer visible beside both download surfaces.
+5. P2 mobile navigation — the first responsive label workaround duplicated the link's accessible name. Replaced it with one stable “Get the Hub” label and rechecked the browser accessibility snapshot.
+
+## Verification
+
+- Web production build, typecheck, lint, and 12 tests: passed.
+- Mobile x86_64 release build, emulator installation, typecheck, lint, and 10 tests: passed.
+- ARM64 early-access release build: passed from a short Windows build path.
+- ARM64 APK: 47,772,515 bytes; SHA-256 `5E331F154CBC3C2E23C2486B189DA1CF44397083750F87F1267D4C6BF8CAD431`; APK Signature Scheme v2 verified; min SDK 26; target SDK 36; arm64-v8a only.
+- APK permissions: `REQUEST_INSTALL_PACKAGES` present; `QUERY_ALL_PACKAGES` absent.
+- Public APK endpoint: HTTP 200 with Android package MIME type, attachment disposition, and exact 47,772,515-byte content length.
+- Browser console: 0 errors on the final responsive download page.
+- Primary interactions checked: global Hub navigation, catalogue fallback, Hub APK href, direct publisher APK href, and app-detail route.
+
+Residual P3: the current Hub APK intentionally uses the development signer. The page labels it early access; the first permanently signed stable build may require reinstalling this test edition.
+
+final result: passed
