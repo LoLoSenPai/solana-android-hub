@@ -30,12 +30,20 @@ export const CATEGORY_DEFINITIONS: readonly CategoryDefinition[] = [
   { id: "nfts", label: "NFTs", description: "Create and collect", icon: "token", accent: "#F7A8FF" },
   { id: "content-streaming", label: "Content", description: "Watch, listen, publish", icon: "play_circle", accent: "#FF9F80" },
   { id: "productivity", label: "Productivity", description: "Tools that get work done", icon: "home_repair_service", accent: "#8FD3FF" },
-  { id: "lifestyle", label: "Lifestyle", description: "Everyday onchain apps", icon: "explore", accent: "#FFD580" },
-  { id: "other", label: "More", description: "Everything else", icon: "category", accent: "#95A5B7" }
+  { id: "lifestyle", label: "Lifestyle", description: "Everyday onchain apps", icon: "explore", accent: "#FFD580" }
 ];
 
+const OTHER_CATEGORY_DEFINITION: CategoryDefinition = {
+  id: "other",
+  label: "Other apps",
+  description: "Uncategorized Android apps",
+  icon: "category",
+  accent: "#95A5B7"
+};
+
 export function categoryDefinition(category: string | undefined): CategoryDefinition {
-  return CATEGORY_DEFINITIONS.find((candidate) => candidate.id === category) ?? CATEGORY_DEFINITIONS[0]!;
+  return CATEGORY_DEFINITIONS.find((candidate) => candidate.id === category)
+    ?? (category === "other" ? OTHER_CATEGORY_DEFINITION : CATEGORY_DEFINITIONS[0]!);
 }
 
 export function localStatusForApp(

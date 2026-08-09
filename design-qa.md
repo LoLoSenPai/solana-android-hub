@@ -124,6 +124,53 @@ Residual P3: the external wallet extension's own approval window is controlled b
 
 final result: passed
 
+# App detail navigation and preview rail - design QA
+
+## Scope and source visual truth
+
+This pass corrects the public app-detail rhythm and gallery behavior without changing publisher media. It also makes the selected navigation destination visible, removes the vague public `More` category, and withdraws the non-promotable Hub fixture from the live catalogue.
+
+Source references:
+
+- User-reported preview rail before correction: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-6245e482-11d2-430f-a721-a48d03771533.png` (1404 x 767 pixels).
+- User-reported detail intro before correction: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-6cdd15e9-b8a3-4f65-98d5-8bf72c566904.png` (1419 x 312 pixels).
+
+Implementation evidence at a 1404 x 900 CSS-pixel browser viewport:
+
+- Production detail intro and active navigation: `.artifacts/design-audit/nav-preview-fixes/06-production-top-after.png`.
+- Production preview rail after a real mouse drag: `.artifacts/design-audit/nav-preview-fixes/07-production-preview-after-drag.png`.
+- Production before captures: `.artifacts/design-audit/nav-preview-fixes/01-production-top-before.png` and `02-production-full-before.png`.
+
+## Visible comparison
+
+- Navigation: passed. The current route is now a clearly selected blue-grey pill with `aria-current="page"`; catalogue remains selected on app-detail routes.
+- Intro spacing: passed. The install action block has a 32 CSS-pixel desktop separation from the banner and no longer appears glued to the artwork.
+- Screenshot proportions: passed. Portrait screenshots keep their intrinsic ratio with `object-fit: contain`, use a taller responsive height, and no longer crop their lower content.
+- Gallery presentation: passed. The native scrollbar is hidden, grab/grabbing affordances are visible, and the rail retains the source art without stretching.
+- Public taxonomy: passed. `More` is absent from web and Android category navigation; unclassified records remain discoverable through All apps under the internal `other` fallback.
+
+## Interaction and data verification
+
+- Mouse swipe: passed on the production domain. Dragging the rail moved `scrollLeft` from 0 to 292 CSS pixels.
+- No reordering: passed. The exact ordered screenshot URL array was identical before and after the drag; the interaction only changes horizontal scroll position.
+- Touch and keyboard: the rail uses pointer events with horizontal touch handling and retains left/right keyboard scrolling when focused.
+- Fixture isolation: passed. Production `hub.apps.distribution_enabled` is false for `com.lololabs.hubfixture`; the public catalogue returns DegenMerge only and no `hub-install-demo` record.
+- Public categories: passed. Discover exposes All apps, Games, DeFi & trading, Wallets, DePIN, NFTs, Privacy & security, Content & streaming, Productivity, Social & identity, AI & agents, and Lifestyle; no `More` tile is rendered.
+- Browser console: 0 errors on the final production app detail.
+- Vercel deployment `dpl_ChM7Mjw5TRVMSYQJ74UnfkaumQ9N`: READY and aliased to `https://solana-hub.lololabs.xyz`.
+- Repository `pnpm check`: passed across lint, typecheck, tests, and builds for all 12 packages.
+
+## Comparison history
+
+1. P1 image fidelity - replaced fixed-size cropped cards with intrinsic-ratio portrait previews.
+2. P1 interaction - added a swipe-like pointer rail for mouse and touch; source order is immutable and never enters a drag-and-drop workflow.
+3. P2 layout rhythm - added vertical breathing between publisher artwork and the install actions.
+4. P2 orientation - replaced the visually neutral navigation with an explicit active state.
+5. P2 taxonomy - removed the vague public `More` category while preserving safe fallback discoverability.
+6. P1 catalogue truth - removed the non-promotable test fixture from production instead of presenting it as a real Productivity app.
+
+final result: passed
+
 # Blue Orbit catalogue and adaptive game filters - design QA
 
 ## Scope and visual direction

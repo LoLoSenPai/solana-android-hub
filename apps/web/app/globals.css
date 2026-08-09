@@ -37,11 +37,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .wordmark img { width: 2.35rem; height: 2.35rem; border-radius: .75rem; }
 .wordmark span { display: grid; line-height: 1.05; }
 .wordmark small { color: var(--muted); font-size: .68rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; margin-top: .2rem; }
-.site-header nav { display: flex; align-items: center; gap: 1.8rem; color: var(--muted); font-size: .9rem; font-weight: 650; }
-.site-header nav a { transition: color .2s ease, background .2s ease; }
-.site-header nav a:hover { color: var(--text); }
-.hub-download-link { color: var(--text) !important; }
-.publisher-link { color: var(--ink) !important; background: var(--text); border-radius: 999px; padding: .72rem 1rem; }
+.site-header nav { display: flex; align-items: center; gap: .25rem; padding: .32rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(17, 27, 39, .72); font-size: .86rem; font-weight: 680; }
+.site-header nav a { min-height: 2.55rem; display: inline-flex; align-items: center; border-radius: 999px; padding: 0 .9rem; transition: color .2s ease, background .2s ease, box-shadow .2s ease; }
+.site-header nav a:hover { color: var(--text); background: rgba(119, 167, 255, .08); }
+.site-header nav a[aria-current="page"] { color: var(--text); background: rgba(119, 167, 255, .16); box-shadow: inset 0 0 0 1px rgba(119, 167, 255, .34); }
+.publisher-link { color: var(--ink) !important; background: var(--text); }
+.publisher-link[aria-current="page"] { color: var(--ink) !important; background: var(--mint); box-shadow: none; }
 
 main { width: min(72rem, calc(100% - 3rem)); margin: 0 auto; }
 .catalogue-page { width: min(90rem, calc(100% - 3rem)); }
@@ -178,7 +179,7 @@ h3 { font-size: 1.35rem; line-height: 1.05; }
 .detail-title-copy h1 { font-size: clamp(3.3rem, 6vw, 6.5rem); }
 .detail-title-copy { min-width: 0; }
 .detail-title-copy > p:last-child { color: var(--muted); font-size: 1.05rem; margin: .8rem 0 0; }
-.detail-primary-action { display: grid; gap: .65rem; justify-items: stretch; text-align: center; }
+.detail-primary-action { align-self: start; display: grid; gap: .65rem; justify-items: stretch; margin-top: 2rem; text-align: center; }
 .detail-primary-action small { color: var(--muted); line-height: 1.45; }
 .detail-primary-action .secondary-action { min-height: 3rem; }
 .editorial-split { display: grid; grid-template-columns: minmax(18rem, .8fr) minmax(22rem, 1.2fr); gap: 5rem; align-items: start; padding: 5rem 0; border-top: 1px solid var(--line); }
@@ -188,8 +189,11 @@ h3 { font-size: 1.35rem; line-height: 1.05; }
 .screenshot-section, .detail-trust, .release-section, .permission-section { padding: 5rem 0; border-top: 1px solid var(--line); }
 .section-title-row { display: flex; align-items: end; justify-content: space-between; gap: 3rem; margin-bottom: 2rem; }
 .section-title-row > span, .section-title-row > p { color: var(--muted); margin: 0; max-width: 31rem; line-height: 1.55; }
-.screenshot-rail { display: flex; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: .75rem; }
-.screenshot-rail img { flex: 0 0 min(24rem, 78vw); height: 34rem; object-fit: cover; border-radius: 1.6rem; scroll-snap-align: start; background: var(--surface); }
+.screenshot-rail { display: flex; gap: 1rem; overflow-x: auto; padding: .15rem .15rem 1rem; cursor: grab; overscroll-behavior-inline: contain; scrollbar-width: none; touch-action: pan-y; }
+.screenshot-rail::-webkit-scrollbar { display: none; }
+.screenshot-rail:focus-visible { border-radius: 1.7rem; outline-offset: .2rem; }
+.screenshot-rail.is-dragging { cursor: grabbing; }
+.screenshot-rail img { width: auto; height: clamp(38rem, 75vh, 48rem); flex: 0 0 auto; object-fit: contain; border-radius: 1.6rem; background: var(--surface); user-select: none; pointer-events: none; }
 .detail-editorial-card { min-height: 32rem; position: relative; display: flex; align-items: flex-end; overflow: hidden; margin: 1rem 0 5rem; border-radius: var(--radius-large); background: var(--surface); }
 .detail-editorial-card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .detail-editorial-card > div { position: relative; width: min(35rem, calc(100% - 3rem)); margin: 1.5rem; padding: 1.6rem; border: 1px solid var(--line); border-radius: 1.5rem; background: rgba(9, 16, 24, .88); backdrop-filter: blur(16px); }
@@ -342,9 +346,8 @@ h3 { font-size: 1.35rem; line-height: 1.05; }
   .site-header-inner, .catalogue-page, .catalog-page, .app-detail-page, main, .site-footer { width: min(100% - 2rem, 90rem); }
   .site-header-inner { min-height: 4.5rem; }
   .wordmark span { display: none; }
-  .site-header nav { gap: .8rem; font-size: .78rem; }
-  .site-header nav a:nth-child(2) { display: none; }
-  .publisher-link { padding: .65rem .8rem; }
+  .site-header nav { gap: .12rem; padding: .24rem; font-size: .75rem; }
+  .site-header nav a { min-height: 2.4rem; padding: 0 .68rem; }
   .catalogue-hero { min-height: 52rem; margin-top: 1rem; border-radius: 2rem; }
   .catalogue-hero-art { object-position: 62% center; opacity: .78; }
   .catalogue-hero-copy { top: 7%; left: 1.3rem; width: calc(100% - 2.6rem); }
@@ -371,7 +374,8 @@ h3 { font-size: 1.35rem; line-height: 1.05; }
   .detail-intro { grid-template-columns: 6rem minmax(0, 1fr); padding: 0 .5rem 4rem; }
   .detail-app-icon { width: 6rem; height: 6rem; margin-top: -3rem; border-width: .4rem; border-radius: 1.55rem; }
   .detail-title-copy h1 { font-size: clamp(2.7rem, 12vw, 4.5rem); }
-  .detail-primary-action { grid-column: 1 / -1; width: 100%; }
+  .detail-primary-action { grid-column: 1 / -1; width: 100%; margin-top: 1.25rem; }
+  .screenshot-rail img { height: clamp(34rem, 74vh, 42rem); }
   .section-title-row { align-items: flex-start; flex-direction: column; gap: 1rem; }
   .detail-editorial-card { min-height: 29rem; border-radius: 2rem; }
   .release-section { gap: 2rem; }
@@ -384,7 +388,7 @@ h3 { font-size: 1.35rem; line-height: 1.05; }
 }
 
 @media (max-width: 520px) {
-  .site-header nav > a:first-child, .site-header nav > a:nth-child(2) { display: none; }
+  .site-header nav > a:first-child { display: none; }
   .hero-actions { display: grid; }
   .hero-proof { grid-template-columns: 1fr; }
   .hero-proof div { grid-template-columns: 2rem 1fr; align-items: center; border-right: 0; border-bottom: 1px solid var(--line); padding: .6rem .8rem; }

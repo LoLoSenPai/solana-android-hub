@@ -433,7 +433,7 @@ function categoryLabel(category: CatalogCategory): string {
     productivity: "Productivity",
     "social-identity": "Social & identity",
     wallets: "Wallets",
-    other: "More"
+    other: "Other"
   };
   return labels[category];
 }

@@ -1,6 +1,7 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import { describe, expect, it } from "vitest";
 import { filterCatalogApps } from "../app/catalog/catalog-filters";
+import { CATEGORIES } from "../app/components/catalog-config";
 
 const puzzle = app("puzzle", "games", ["puzzle"], "2026-08-09T00:00:00.000Z");
 const strategy = app("strategy", "games", ["strategy"], "2026-08-08T00:00:00.000Z");
@@ -25,6 +26,10 @@ describe("web catalogue filters", () => {
       sort: "recent",
       query: ""
     }).map((item) => item.slug)).toEqual(["wallet"]);
+  });
+
+  it("keeps uncategorized apps in All apps without exposing a vague More category", () => {
+    expect(CATEGORIES.some((category) => category.id === "other")).toBe(false);
   });
 });
 

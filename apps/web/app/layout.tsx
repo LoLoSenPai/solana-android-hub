@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { isPublisherOnboardingEnabled } from "@/server/publisher-availability";
+import { SiteNavigation } from "./components/SiteNavigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,12 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
               <Image src="/hub-mark.png" alt="" width={48} height={48} priority />
               <span>Solana <small>Android Hub</small></span>
             </Link>
-            <nav aria-label="Primary navigation">
-              <Link href="/catalog">Catalogue</Link>
-              <Link href="/#trust-model">Trust model</Link>
-              <Link className="hub-download-link" href="/download">Get the Hub</Link>
-              <Link className="publisher-link" href="/publisher">{onboardingEnabled ? "For publishers" : "Publisher onboarding"}</Link>
-            </nav>
+            <SiteNavigation onboardingEnabled={onboardingEnabled} />
           </div>
         </header>
         {children}

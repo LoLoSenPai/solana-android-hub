@@ -1,6 +1,6 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import { describe, expect, it } from "vitest";
-import { filterAndSortApps, localStatusForApp } from "./discovery";
+import { CATEGORY_DEFINITIONS, filterAndSortApps, localStatusForApp } from "./discovery";
 import type { LocalInstallRecord } from "@/storage/database";
 
 const installed: LocalInstallRecord = {
@@ -96,6 +96,10 @@ describe("mobile catalogue discovery", () => {
 
     expect(games.map((candidate) => candidate.id)).toEqual(["game"]);
     expect(wallets.map((candidate) => candidate.id)).toEqual(["wallet"]);
+  });
+
+  it("does not expose a vague More category in discovery", () => {
+    expect(CATEGORY_DEFINITIONS.some((category) => category.id === "other")).toBe(false);
   });
 });
 

@@ -1,0 +1,15 @@
+.artifacts/
+.gradle/
+.turbo/
+**/.next/
+**/node_modules/
+apps/mobile/android/
+apps/mobile/ios/
+apps/web/.qa/
+coverage/
+*.aab
+*.apk
+*.jks
+*.keystore
+*.log
+*.tsbuildinfo

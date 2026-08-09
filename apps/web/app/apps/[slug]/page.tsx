@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ScreenshotRail } from "../../components/ScreenshotRail";
 import { getCatalogApp } from "../../../server/catalog-service";
 
 export const dynamic = "force-dynamic";
@@ -69,13 +70,12 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
         {app.screenshots.length > 0 ? (
           <section className="screenshot-section" aria-labelledby="screenshots-heading">
-            <div className="section-title-row"><h2 id="screenshots-heading">Preview</h2><span>{app.screenshots.length} images</span></div>
-            <div className="screenshot-rail">
-              {/* Publisher screenshot hosts are validated metadata, but remain direct to avoid a broad image-proxy allowlist. */}
-              {app.screenshots.map((screenshot, index) => (
-                <img key={screenshot} src={screenshot} alt={`${app.name} screenshot ${index + 1}`} />
-              ))}
+            <div className="section-title-row">
+              <h2 id="screenshots-heading">Preview</h2>
+              <span>{app.screenshots.length} images · drag to explore</span>
             </div>
+            {/* Publisher screenshot hosts are validated metadata, but remain direct to avoid a broad image-proxy allowlist. */}
+            <ScreenshotRail appName={app.name} screenshots={app.screenshots} />
           </section>
         ) : (
           <section className="detail-editorial-card" aria-label="Android Hub installation promise">
@@ -175,7 +175,7 @@ function categoryFromApp(category: string): string {
     "social-identity": "Social & identity",
     wallets: "Wallets"
   };
-  return labels[category] ?? "More tools";
+  return labels[category] ?? "Other apps";
 }
 
 function androidVersion(minSdk: number): string {
