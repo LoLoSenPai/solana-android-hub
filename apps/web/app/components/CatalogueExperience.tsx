@@ -87,10 +87,7 @@ export function CatalogueExperience({
             <p className="eyebrow">Explore categories</p>
             <h2 id="category-heading">Find your next favorite.</h2>
           </div>
-          <div className="category-heading-visual">
-            <Image src="/hub-category-orbit.webp" alt="" width={480} height={320} sizes="(max-width: 760px) 45vw, 240px" />
-            <p>Jump straight into a category. Games open with genre filters; focused categories stay deliberately simple.</p>
-          </div>
+          <p>Jump straight into a category. Games open with genre filters; focused categories stay deliberately simple.</p>
         </div>
         <CategoryCarousel counts={Object.fromEntries(categoryCounts)} />
       </section>

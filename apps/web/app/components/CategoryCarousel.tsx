@@ -2,18 +2,7 @@
 
 import { ArrowLeft } from "@phosphor-icons/react/dist/csr/ArrowLeft";
 import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
-import { Broadcast } from "@phosphor-icons/react/dist/csr/Broadcast";
-import { ChartLineUp } from "@phosphor-icons/react/dist/csr/ChartLineUp";
-import { Diamond } from "@phosphor-icons/react/dist/csr/Diamond";
-import { GameController } from "@phosphor-icons/react/dist/csr/GameController";
-import { Heart } from "@phosphor-icons/react/dist/csr/Heart";
-import { Lightning } from "@phosphor-icons/react/dist/csr/Lightning";
-import { Play } from "@phosphor-icons/react/dist/csr/Play";
-import { ShieldCheck } from "@phosphor-icons/react/dist/csr/ShieldCheck";
-import { Sparkle } from "@phosphor-icons/react/dist/csr/Sparkle";
-import { SquaresFour } from "@phosphor-icons/react/dist/csr/SquaresFour";
-import { UsersThree } from "@phosphor-icons/react/dist/csr/UsersThree";
-import { Wallet } from "@phosphor-icons/react/dist/csr/Wallet";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CATEGORIES } from "./catalog-config";
@@ -105,30 +94,20 @@ export function CategoryCarousel({ counts }: Readonly<{ counts: Readonly<Record<
       >
         {CATEGORIES.map((item, index) => (
           <Link className={`category-card category-${item.tone}`} key={item.id} href={item.id === "all" ? "/catalog" : `/catalog?category=${item.id}`}>
-            <span className="category-glyph" aria-hidden="true">{categoryGlyph(item.id)}</span>
-            <span className="category-count">{counts[item.id] ?? 0} available</span>
-            <strong>{item.label}</strong>
-            <span>{item.caption}</span>
-            <span className="category-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+            <span className="category-card-media" aria-hidden="true">
+              <span className="category-glyph">
+                <Image src={`/category-icons/${item.id}.webp`} alt="" width={256} height={256} sizes="104px" />
+              </span>
+              <span className="category-index">{String(index + 1).padStart(2, "0")}</span>
+            </span>
+            <span className="category-card-body">
+              <span className="category-count">{counts[item.id] ?? 0} available</span>
+              <strong>{item.label}</strong>
+              <span className="category-caption">{item.caption}</span>
+            </span>
           </Link>
         ))}
       </div>
     </div>
   );
-}
-
-function categoryGlyph(category: string) {
-  const props = { size: 30, weight: "duotone" as const };
-  if (category === "games") return <GameController {...props} />;
-  if (category === "defi") return <ChartLineUp {...props} />;
-  if (category === "wallets") return <Wallet {...props} />;
-  if (category === "depin") return <Broadcast {...props} />;
-  if (category === "nfts") return <Diamond {...props} />;
-  if (category === "privacy-security") return <ShieldCheck {...props} />;
-  if (category === "content-streaming") return <Play {...props} />;
-  if (category === "productivity") return <Lightning {...props} />;
-  if (category === "social-identity") return <UsersThree {...props} />;
-  if (category === "ai-agents") return <Sparkle {...props} />;
-  if (category === "lifestyle") return <Heart {...props} />;
-  return <SquaresFour {...props} />;
 }
