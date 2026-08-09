@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     default: "Solana Android Hub",
     template: "%s · Solana Android Hub"
   },
-  description: "An independent, consent-based catalogue for verifiable Android releases in the Solana ecosystem.",
+  description: "Discover Solana apps on the web, then install and manage them on the Android phone you already own.",
   icons: {
     icon: "/hub-mark.png",
     apple: "/hub-mark.png"
@@ -26,13 +26,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const onboardingEnabled = isPublisherOnboardingEnabled(process.env.HELIUS_API_KEY);
+  const currentYear = new Date().getFullYear();
 
   return (
     <html lang="en">
       <body>
         <header className="site-header">
           <div className="site-header-inner">
-            <Link className="wordmark" href="/" aria-label="Solana Android Hub home">
+            <Link className="wordmark" href="/#discover" aria-label="Solana Android Hub home">
               <Image src="/hub-mark.png" alt="" width={48} height={48} priority />
               <span>Solana <small>Android Hub</small></span>
             </Link>
@@ -47,10 +48,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           </div>
           <div className="footer-links">
             <Link href="/catalog">Catalogue</Link>
+            <Link href="/#trust-model">Trust model</Link>
             <Link href="/download">Get Android Hub</Link>
             <Link href="/publisher">{onboardingEnabled ? "Publisher workspace" : "Publisher onboarding status"}</Link>
           </div>
-          <p>Independent catalogue. Not affiliated with or endorsed by Solana Mobile.</p>
+          <p>© {currentYear} Solana Android Hub. Independent catalogue, not affiliated with or endorsed by Solana Mobile.</p>
         </footer>
       </body>
     </html>

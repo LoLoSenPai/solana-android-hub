@@ -1,3 +1,7 @@
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
+import { Compass } from "@phosphor-icons/react/dist/ssr/Compass";
+import { DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
+import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -19,20 +23,11 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
     <main className="app-detail-page">
       <article>
         <div className="detail-back-row">
-          <Link className="text-link" href="/">Back to catalogue</Link>
+          <Link className="text-link" href="/catalog">Back to catalogue</Link>
           <span>{app.latestRelease.packageName}</span>
         </div>
 
-        <section className="detail-hero" aria-labelledby="app-title">
-          {heroArtwork
-            // Publisher screenshot hosts are metadata-driven, so they stay direct instead of enabling a broad Next image proxy allowlist.
-            ? <img className="detail-hero-image" src={heroArtwork} alt={`${app.name} cover artwork`} />
-            : <Image className="detail-hero-image" src="/hub-hero.png" alt="" fill priority sizes="(max-width: 760px) 100vw, 1280px" />}
-          <span className="detail-hero-scrim" aria-hidden="true" />
-          <span className="detail-state">{authenticity}</span>
-        </section>
-
-        <section className="detail-intro">
+        <section className="detail-intro" aria-labelledby="app-title">
           {app.iconUrl
             // Publisher icon hosts are metadata-driven, so they stay direct instead of enabling a broad Next image proxy allowlist.
             ? <img className="detail-app-icon" src={app.iconUrl} alt={`${app.name} icon`} />
@@ -57,15 +52,38 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
           </div>
         </section>
 
+        <section className="detail-showcase" aria-label={`${app.name} artwork and installation overview`}>
+          <div className="detail-hero">
+            {heroArtwork ? (
+              <>
+                <img className="detail-hero-backdrop" src={heroArtwork} alt="" aria-hidden="true" />
+                <img className="detail-hero-image" src={heroArtwork} alt={`${app.name} cover artwork`} />
+              </>
+            ) : <Image className="detail-hero-image" src="/hub-hero-chromatic.webp" alt="" fill priority sizes="(max-width: 760px) 100vw, 900px" />}
+            <span className="detail-hero-scrim" aria-hidden="true" />
+            <span className="detail-state">{authenticity}</span>
+          </div>
+          <aside className="detail-flow-card">
+            <div><p className="eyebrow">Install & manage with the Hub</p><h2>A simple 3-step flow.</h2><p>Discover on the web. Install and manage on Android.</p></div>
+            <ol>
+              <li><Compass aria-hidden="true" weight="duotone" /><span><strong>Browse on the web</strong><small>Choose the app and release that fits you.</small></span></li>
+              <li><DeviceMobile aria-hidden="true" weight="duotone" /><span><strong>Continue on Android</strong><small>Open the Hub companion app and run device checks.</small></span></li>
+              <li><ArrowsClockwise aria-hidden="true" weight="duotone" /><span><strong>Manage updates</strong><small>Keep Hub-installed apps current.</small></span></li>
+            </ol>
+            <dl>
+              <div><dt>Category</dt><dd>{categoryFromApp(app.category)}</dd></div>
+              <div><dt>Compatibility</dt><dd>Android {androidVersion(app.latestRelease.minSdk)}+</dd></div>
+              <div><dt>Version</dt><dd>{app.latestRelease.versionName}</dd></div>
+            </dl>
+          </aside>
+        </section>
+
         <section className={`detail-description editorial-split${app.featureGraphicUrl ? " has-feature-art" : ""}`} aria-labelledby="about-heading">
           <div>
             <p className="eyebrow">About this app</p>
             <h2 id="about-heading">A clear view before you install.</h2>
           </div>
-          <div className="detail-about-copy">
-            <p>{app.description ?? app.shortDescription ?? "The publisher has not provided a longer description for this release yet."}</p>
-            {app.featureGraphicUrl ? <img src={app.featureGraphicUrl} alt={`${app.name} feature artwork`} /> : null}
-          </div>
+          <div className="detail-about-copy"><p>{app.description ?? app.shortDescription ?? "The publisher has not provided a longer description for this release yet."}</p></div>
         </section>
 
         {app.screenshots.length > 0 ? (
@@ -79,7 +97,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
           </section>
         ) : (
           <section className="detail-editorial-card" aria-label="Android Hub installation promise">
-            <Image src="/hub-hero.png" alt="" fill sizes="(max-width: 760px) 100vw, 1280px" />
+            <Image src="/hub-hero-chromatic.webp" alt="" fill sizes="(max-width: 760px) 100vw, 1280px" />
             <div><p className="eyebrow">A safer hand-off</p><h2>The APK is checked before Android ever sees it.</h2><p>Hash, package, version, minimum SDK, permissions, and signing certificate must all match the published release.</p></div>
           </section>
         )}
@@ -87,7 +105,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
         <section className="detail-trust" aria-labelledby="trust-facts-heading">
           <div className="section-title-row">
             <div><p className="eyebrow">Visible evidence</p><h2 id="trust-facts-heading">Trust facts</h2></div>
-            <p>These checks answer different questions and never collapse into a generic verified claim.</p>
+            <p>These checks answer different questions. None of them becomes a vague “safe” badge.</p>
           </div>
           <dl className="detail-trust-grid">
             <div><span>01</span><dt>Publisher control</dt><dd>Verified from current finalized authority evidence.</dd><strong>Verified</strong></div>
@@ -147,7 +165,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
         </section>
 
         <aside className="independence-note">
-          <Image src="/hub-mark.png" alt="" width={64} height={64} />
+          <ShieldCheck aria-hidden="true" weight="duotone" />
           <div><strong>Independent by design.</strong><p>Solana Android Hub is an independent catalogue and is not affiliated with or endorsed by Solana Mobile.</p></div>
         </aside>
       </article>
