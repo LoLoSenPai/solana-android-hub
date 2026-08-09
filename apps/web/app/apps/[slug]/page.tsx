@@ -1,7 +1,11 @@
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
 import { Compass } from "@phosphor-icons/react/dist/ssr/Compass";
 import { DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
+import { Fingerprint } from "@phosphor-icons/react/dist/ssr/Fingerprint";
+import { SealCheck } from "@phosphor-icons/react/dist/ssr/SealCheck";
 import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
+import { Signature } from "@phosphor-icons/react/dist/ssr/Signature";
+import { UserFocus } from "@phosphor-icons/react/dist/ssr/UserFocus";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -108,10 +112,10 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <p>These checks answer different questions. None of them becomes a vague “safe” badge.</p>
           </div>
           <dl className="detail-trust-grid">
-            <div><span>01</span><dt>Publisher control</dt><dd>Verified from current finalized authority evidence.</dd><strong>Verified</strong></div>
-            <div><span>02</span><dt>Distribution consent</dt><dd>A separate, environment-bound consent is active.</dd><strong>Active</strong></div>
-            <div><span>03</span><dt>Release authenticity</dt><dd>The APK must match its published identity and certificate.</dd><strong>{authenticity}</strong></div>
-            <div><span>04</span><dt>Independent approval</dt><dd>Approval cannot be asserted by the publisher.</dd><strong>{approval}</strong></div>
+            <div><UserFocus aria-hidden="true" weight="duotone" /><dt>Publisher control</dt><dd>Verified from current finalized authority evidence.</dd><strong>Verified</strong></div>
+            <div><Signature aria-hidden="true" weight="duotone" /><dt>Distribution consent</dt><dd>A separate, environment-bound consent is active.</dd><strong>Active</strong></div>
+            <div><Fingerprint aria-hidden="true" weight="duotone" /><dt>Release authenticity</dt><dd>The APK must match its published identity and certificate.</dd><strong>{authenticity}</strong></div>
+            <div><SealCheck aria-hidden="true" weight="duotone" /><dt>Independent approval</dt><dd>Approval cannot be asserted by the publisher.</dd><strong>{approval}</strong></div>
           </dl>
         </section>
 

@@ -78,7 +78,7 @@ export default function AppDetailScreen() {
             resizeMode="cover"
             style={{ width: "100%", aspectRatio: app.bannerUrl ? 2 : 16 / 9 }}
           >
-            <View className="h-full justify-between px-4 pb-4 pt-12" style={{ backgroundColor: "rgba(0, 12, 11, 0.24)" }}>
+            <View className="h-full justify-between px-4 pb-4 pt-12" style={{ backgroundColor: "rgba(5, 12, 21, 0.5)" }}>
               <DetailHeader onBack={() => router.back()} preview={release.previewOnly} />
               <View className="self-start rounded-full bg-canvas px-3 py-1.5">
                 <Text className="text-xs font-bold text-ink">{category.label}</Text>

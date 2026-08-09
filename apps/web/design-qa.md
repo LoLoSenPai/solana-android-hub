@@ -76,6 +76,22 @@
 - Comparison history: the first mobile full-page capture revealed that below-the-fold images could remain unloaded during an instantaneous automated full-page capture. The three lightweight assets were switched to eager loading; the revised capture shows all artwork and the runtime confirms six of six image instances loaded.
 - Findings: no actionable P0, P1, or P2 differences remain. The selected source was an intentionally sparse before-state, so the richer imagery and process treatment are the requested improvement rather than fidelity drift.
 
+## App-detail trust-facts iteration
+
+- Source visual truth: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-dc06e889-c7f5-4fb7-99ef-acb72176e604.png` (1640 x 468 px).
+- Browser-rendered implementation evidence: `apps/web/.qa/app-trust-icons-final.png` (1265 x 712 px at the in-app browser's 1280 px viewport).
+- Focused normalized comparison: `apps/web/.qa/compare-app-trust-icons.png`; the implementation trust region is cropped from the browser capture and scaled to the source's 1640 px width beneath the source image.
+- State: local DegenMerge app detail (`/apps/hub-install-fixture`) with four visible trust facts and a development-preview release.
+- Earlier finding: each trust card used a tiny `01-04` label and left the upper half visually empty, repeating the sparse treatment already removed from the process and installation cards.
+- Fix applied: the labels are replaced by four Phosphor duotone symbols that directly represent publisher authority, signed consent, binary identity, and independent approval. A restrained blue radial light gives the cards depth without inventing a generic “safe” badge.
+- Fonts and typography: headings, card titles, explanatory copy, and status weights are unchanged; icons no longer compete with text hierarchy.
+- Spacing and layout rhythm: all four cards preserve equal tracks and bottom-aligned copy while the 42 px icon occupies the previously unused visual zone.
+- Colors and visual tokens: symbols use the established cobalt accent and a low-opacity blue glow; no green-dominant treatment is introduced.
+- Image quality and asset fidelity: standard interface semantics use the project's existing Phosphor icon library, rendered as vectors at native sharpness; publisher artwork remains untouched.
+- Copy and content: all four independent trust claims and their statuses remain exactly as before.
+- Runtime checks: four cards, four icons, zero legacy number spans, no horizontal overflow, and zero browser-console errors.
+- Findings: no actionable P0, P1, or P2 differences remain.
+
 ## Final result
 
 final result: passed
