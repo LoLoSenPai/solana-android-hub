@@ -57,6 +57,25 @@
 - Copy and content: all existing process titles and explanatory copy remain unchanged.
 - Post-fix result: no actionable P0, P1, or P2 findings. Both connectors render, all three image assets load, the category carousel still drags from `scrollLeft: 0` to `854`, and the browser console reports zero warnings or errors.
 
+## Get the Hub installation-flow iteration
+
+- Source visual truth: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-5c57e9e5-5da3-46cd-8ecf-0ebe484ddffb.png` and `codex-clipboard-6f229a4b-ee74-4a1e-a1f9-7f045a463975.png`.
+- Browser-rendered implementation evidence: `apps/web/.qa/download-steps-final.png`, `download-device-card-final.png`, and `download-page-mobile-final.png`.
+- Side-by-side focused comparisons: `apps/web/.qa/download-steps-compare.png` and `download-device-card-compare.png`; each sheet contains the source and final implementation in one normalized canvas.
+- Desktop viewport: 1440 x 1100 CSS px at density 1. Source pixels: 1383 x 469 and 548 x 568. Focused implementation pixels: 1281 x 658 and 487 x 487. Mobile viewport: 393 x 852 CSS px at density 1; the captured document is 378 x 4497 px because the app shell reserves 15 px outside the content width.
+- State: unauthenticated Get the Hub page with the public Hub APK unavailable, matching the supplied screenshots' informational installation state.
+- Earlier findings: both three-step regions used tiny numbers, generic empty cards, and repeated row containers. The hierarchy did not match the richer visual language established on Discover, and the two sections looked like duplicated versions of the same simplistic component.
+- Fix applied: the hero device card is now a connected vertical journey with a branded heading, three transparent installation illustrations, concise supporting copy, a luminous route line, and large low-contrast sequence numbers. The lower installation section uses three equal illustrated cards, oversized background numbers, and real arrow connectors; mobile rotates those connectors downward.
+- Post-fix evidence: all six rendered image instances load at their intended 64 px and 180 px widths, the desktop page has no horizontal overflow, the mobile document and viewport both measure 393 px, and the browser console reports zero warnings or errors.
+- Fonts and typography: the established display and body families remain unchanged; the new hierarchy uses the same optical weights and restrained uppercase eyebrow treatment. The ghost numbers are large enough to fill space without competing with the step titles.
+- Spacing and layout rhythm: artwork, number, copy, and connectors occupy consistent zones. The device card no longer has repeated bordered rows; the lower cards align their illustrations and copy across equal tracks and stack cleanly on mobile.
+- Colors and visual tokens: navy, cobalt, cyan, and violet remain aligned with the OLED/chromatic system. Borders and glows are controlled and do not introduce the former green-dominant visual language.
+- Image quality and asset fidelity: three project-owned transparent WebP cutouts were generated from the existing process-icon style reference. Alpha edges, transparent corners, scaling, and sharpness were inspected; no tile backgrounds, placeholder symbols, or CSS-drawn illustrations remain.
+- Copy and content: the installation requirements and Android security meaning remain intact. The compact device copy is shorter by design, while the detailed cards preserve the complete instructions.
+- Interaction and responsiveness: navigation remains active on Get the Hub, the download and catalogue CTAs are unchanged, arrows indicate order without becoming controls, and reduced-motion behavior remains inherited from the global motion rule.
+- Comparison history: the first mobile full-page capture revealed that below-the-fold images could remain unloaded during an instantaneous automated full-page capture. The three lightweight assets were switched to eager loading; the revised capture shows all artwork and the runtime confirms six of six image instances loaded.
+- Findings: no actionable P0, P1, or P2 differences remain. The selected source was an intentionally sparse before-state, so the richer imagery and process treatment are the requested improvement rather than fidelity drift.
+
 ## Final result
 
 final result: passed

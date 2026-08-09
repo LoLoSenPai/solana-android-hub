@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +34,20 @@ export default function DownloadPage() {
             {apkUrl ? " · Android 8 or newer" : " · The public file will appear here after its permanent Android signing identity is fixed."}
           </p>
         </div>
-        <div className="download-device-card" aria-hidden="true">
-          <Image src="/hub-mark.png" alt="" width={180} height={180} priority />
-          <div><span>01</span><strong>Choose an app</strong></div>
-          <div><span>02</span><strong>Verify on device</strong></div>
-          <div><span>03</span><strong>Open Android installer</strong></div>
+        <div className="download-device-card">
+          <div className="download-device-heading">
+            <Image src="/hub-mark.png" alt="Solana Android Hub" width={180} height={180} priority />
+            <div><span>Install on Android</span><strong>From discovery to confirmation</strong></div>
+          </div>
+          <ol className="download-device-flow" aria-label="Android Hub installation flow">
+            {INSTALL_STEPS.map((step) => (
+              <li key={step.number}>
+                <Image src={step.icon} alt="" width={512} height={512} sizes="64px" loading="eager" aria-hidden="true" />
+                <span className="device-step-number" aria-hidden="true">{step.number}</span>
+                <span className="device-step-copy"><strong>{step.deviceTitle}</strong><small>{step.deviceCopy}</small></span>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
@@ -62,9 +72,14 @@ export default function DownloadPage() {
           <p>You only need to allow installs from the browser or file manager you use for this first Hub APK.</p>
         </div>
         <ol>
-          <li><span>1</span><strong>Download Android Hub</strong><p>Open this page on your Android phone, or transfer the downloaded APK from your computer.</p></li>
-          <li><span>2</span><strong>Approve this source</strong><p>Android may open “Install unknown apps”. Allow only the browser or file manager you are using.</p></li>
-          <li><span>3</span><strong>Open the Hub</strong><p>Browse a release, review its trust facts, and let the Hub verify it before Android installs it.</p></li>
+          {INSTALL_STEPS.map((step, index) => (
+            <li key={step.number}>
+              <span className="download-step-number" aria-hidden="true">{step.number}</span>
+              <span className="download-step-art" aria-hidden="true"><Image src={step.icon} alt="" width={512} height={512} sizes="180px" loading="eager" /></span>
+              <div className="download-step-copy"><strong>{step.title}</strong><p>{step.copy}</p></div>
+              {index < INSTALL_STEPS.length - 1 ? <ArrowRight className="download-step-arrow" aria-hidden="true" /> : null}
+            </li>
+          ))}
         </ol>
       </section>
 
@@ -77,6 +92,33 @@ export default function DownloadPage() {
     </main>
   );
 }
+
+const INSTALL_STEPS = [
+  {
+    number: "01",
+    icon: "/download-icons/download-hub.webp",
+    title: "Download Android Hub",
+    copy: "Open this page on your Android phone, or transfer the downloaded APK from your computer.",
+    deviceTitle: "Choose a release",
+    deviceCopy: "Start from the catalogue."
+  },
+  {
+    number: "02",
+    icon: "/download-icons/approve-source.webp",
+    title: "Approve this source",
+    copy: "Android may open “Install unknown apps”. Allow only the browser or file manager you are using.",
+    deviceTitle: "Verify on device",
+    deviceCopy: "The Hub checks the APK locally."
+  },
+  {
+    number: "03",
+    icon: "/download-icons/open-hub.webp",
+    title: "Open the Hub",
+    copy: "Browse a release, review its trust facts, and let the Hub verify it before Android installs it.",
+    deviceTitle: "Confirm with Android",
+    deviceCopy: "The system installer stays in control."
+  }
+] as const;
 
 function optionalUrl(value: string | undefined): string | null {
   if (!value) return null;
