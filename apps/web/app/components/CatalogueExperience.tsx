@@ -1,5 +1,5 @@
 import type { CatalogAppDto } from "@hub/api-client";
-import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight";
 import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { Compass } from "@phosphor-icons/react/dist/ssr/Compass";
 import { DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
@@ -107,9 +107,23 @@ export function CatalogueExperience({
           <p>The website helps you choose. The Hub companion app performs the final checks and hands the release to Android.</p>
         </div>
         <ol>
-          <li><span>01</span><Compass aria-hidden="true" /><strong>Browse on the web</strong><p>Explore apps, artwork and categories without installing anything first.</p></li>
-          <li><span>02</span><DeviceMobile aria-hidden="true" /><strong>Send to Android</strong><p>Open the release with the Hub and validate it on your device.</p></li>
-          <li><span>03</span><ArrowsClockwise aria-hidden="true" /><strong>Manage updates</strong><p>Keep Hub-installed apps current without uploading your app inventory.</p></li>
+          <li>
+            <span className="flow-number" aria-hidden="true">01</span>
+            <span className="flow-art" aria-hidden="true"><Image src="/process-icons/browse-web.webp" alt="" width={512} height={512} sizes="180px" /></span>
+            <span className="flow-copy"><strong>Browse on the web</strong><p>Explore apps, artwork and categories without installing anything first.</p></span>
+            <ArrowRight className="flow-arrow" aria-hidden="true" />
+          </li>
+          <li>
+            <span className="flow-number" aria-hidden="true">02</span>
+            <span className="flow-art" aria-hidden="true"><Image src="/process-icons/send-android.webp" alt="" width={512} height={512} sizes="180px" /></span>
+            <span className="flow-copy"><strong>Send to Android</strong><p>Open the release with the Hub and validate it on your device.</p></span>
+            <ArrowRight className="flow-arrow" aria-hidden="true" />
+          </li>
+          <li>
+            <span className="flow-number" aria-hidden="true">03</span>
+            <span className="flow-art" aria-hidden="true"><Image src="/process-icons/manage-updates.webp" alt="" width={512} height={512} sizes="180px" /></span>
+            <span className="flow-copy"><strong>Manage updates</strong><p>Keep Hub-installed apps current without uploading your app inventory.</p></span>
+          </li>
         </ol>
       </section>
 

@@ -92,13 +92,12 @@ export function CategoryCarousel({ counts }: Readonly<{ counts: Readonly<Record<
           pointerRef.current.moved = false;
         }}
       >
-        {CATEGORIES.map((item, index) => (
+        {CATEGORIES.map((item) => (
           <Link className={`category-card category-${item.tone}`} key={item.id} href={item.id === "all" ? "/catalog" : `/catalog?category=${item.id}`}>
             <span className="category-card-media" aria-hidden="true">
               <span className="category-glyph">
                 <Image src={`/category-icons/${item.id}.webp`} alt="" width={256} height={256} sizes="104px" />
               </span>
-              <span className="category-index">{String(index + 1).padStart(2, "0")}</span>
             </span>
             <span className="category-card-body">
               <span className="category-count">{counts[item.id] ?? 0} available</span>

@@ -40,6 +40,23 @@
 - Browser console verification returned zero errors and zero warnings.
 - TypeScript, ESLint, Vitest, and the optimized Next.js production build pass.
 
+## Process flow and category-index iteration
+
+- Source visual truth: `C:/Users/loicd/AppData/Local/Temp/codex-clipboard-d671b465-cea3-4c36-a1c6-0f12da699868.png` and `codex-clipboard-6b8668fc-418b-47c4-9e7a-8ba350bd8a97.png`.
+- Browser-rendered implementation evidence: `apps/web/.qa/flow-process-desktop-final.png`, `flow-process-mobile-final.png`, and `category-no-index-final.png`.
+- Full focused comparison: `apps/web/.qa/compare-flow-process.png`, containing the source and final implementation in one normalized comparison image.
+- Desktop comparison viewport: 1465 x 800 CSS px at density 1. Source pixels: 1465 x 379. The focused implementation region keeps the same 1465 px width; surrounding navigation and the following trust section are excluded from visual judgment.
+- Responsive verification viewport: 393 x 852 CSS px at density 1. The document and content widths both measured 378 px, with no page-level horizontal overflow.
+- Earlier finding: the three process cards had large unused areas, tiny step numbers, and generic library icons, so their relationship read as three unrelated facts rather than a sequence.
+- Fix applied: each card now uses a large low-contrast number, a standalone transparent 3D process illustration, a consistent bottom-aligned copy block, and a real arrow icon between adjacent steps. On mobile the arrows rotate downward to preserve the sequence.
+- Category correction: the decorative `01-12` corner indexes were removed from every carousel card. Availability badges, artwork, titles, and descriptions retain their shared alignment grid.
+- Fonts and typography: the existing display hierarchy, weights, wrapping, and body line heights remain consistent; the new large numbers are deliberately subordinate through low opacity.
+- Spacing and layout rhythm: the three equal tracks, fixed visual zones, bottom-aligned copy, connector placement, and mobile stacking remain balanced at desktop and mobile widths.
+- Colors and visual tokens: the new assets use the existing OLED navy, blue, and violet palette; arrows and numbers use existing border and accent tokens.
+- Image quality and asset fidelity: the three custom assets are transparent WebP cutouts generated in one material family, with transparent corners validated and no containing tiles or placeholder graphics.
+- Copy and content: all existing process titles and explanatory copy remain unchanged.
+- Post-fix result: no actionable P0, P1, or P2 findings. Both connectors render, all three image assets load, the category carousel still drags from `scrollLeft: 0` to `854`, and the browser console reports zero warnings or errors.
+
 ## Final result
 
 final result: passed
