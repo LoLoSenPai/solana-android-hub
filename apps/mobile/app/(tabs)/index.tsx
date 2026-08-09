@@ -84,7 +84,7 @@ export default function DiscoverScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
         <Image source={HUB_ICON} style={{ width: 72, height: 72, borderRadius: 22 }} />
-        <ActivityIndicator className="mt-5" color="#72F0C6" />
+        <ActivityIndicator className="mt-5" color="#77A7FF" />
       </View>
     );
   }
@@ -96,7 +96,7 @@ export default function DiscoverScreen() {
         contentContainerClassName="px-4 pb-36"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh(true)} tintColor="#72F0C6" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh(true)} tintColor="#77A7FF" />}
       >
         <View className="mb-5 mt-3 flex-row items-center justify-between">
           <View className="flex-row items-center">
@@ -120,24 +120,24 @@ export default function DiscoverScreen() {
           Find the app that fits.
         </Text>
         <Text className="mt-3 max-w-[350px] text-base leading-6 text-muted">
-          Browse by category, trust signal, install state, or update availability.
+          Browse by category, find the right game, and keep every update in one place.
         </Text>
 
         <View className="mt-6 flex-row items-center rounded-[22px] border border-line bg-surface px-4 py-1">
-          <HubSymbol name="search" size={22} color="#93A7A2" />
+          <HubSymbol name="search" size={22} color="#95A5B7" />
           <TextInput
             accessibilityLabel="Search the app catalogue"
             className="ml-3 h-14 flex-1 text-base text-ink"
-            placeholder="Search apps, packages, or use cases"
-            placeholderTextColor="#71847F"
-            selectionColor="#72F0C6"
+            placeholder="Search apps or what you want to do"
+            placeholderTextColor="#718399"
+            selectionColor="#77A7FF"
             value={query}
             onChangeText={setQuery}
             returnKeyType="search"
           />
           {query ? (
             <Pressable accessibilityLabel="Clear search" className="p-2" onPress={() => setQuery("")}>
-              <HubSymbol name="close" size={20} color="#93A7A2" />
+              <HubSymbol name="close" size={20} color="#95A5B7" />
             </Pressable>
           ) : null}
         </View>
@@ -156,7 +156,7 @@ export default function DiscoverScreen() {
               onPress={() => availableNow ? router.push(`/apps/${availableNow.slug}` as Href) : openCategory("all")}
             >
               <ImageBackground source={featuredArtwork ? { uri: featuredArtwork } : HUB_HERO} resizeMode="cover" style={{ minHeight: 340 }}>
-                <View className="min-h-[340px] justify-between p-6" style={{ backgroundColor: "rgba(1, 12, 12, 0.48)" }}>
+                <View className="min-h-[340px] justify-between p-6" style={{ backgroundColor: "rgba(5, 12, 21, 0.5)" }}>
                   <View className="self-start rounded-full bg-ink px-3 py-1.5">
                     <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-canvas">{availableNow ? "Featured on the Hub" : "Built for discovery"}</Text>
                   </View>
@@ -212,15 +212,15 @@ export default function DiscoverScreen() {
                     <View className="ml-4 flex-1">
                       <Text className="text-xs font-semibold uppercase tracking-[1.4px] text-mint">{categoryDefinition(availableNow.category).label}</Text>
                       <Text className="mt-1 text-xl font-bold text-ink">{availableNow.name}</Text>
-                      <Text className="mt-1 text-sm leading-5 text-muted" numberOfLines={2}>{availableNow.shortDescription ?? availableNow.latestRelease.packageName}</Text>
+                      <Text className="mt-1 text-sm leading-5 text-muted" numberOfLines={2}>{availableNow.shortDescription ?? "Discover this Solana app"}</Text>
                     </View>
                   </View>
                   <View className="mt-5 flex-row items-center justify-between border-t border-line pt-4">
                     <View className="flex-row items-center">
-                      <HubSymbol name={availableNow.latestRelease.previewOnly ? "science" : "verified"} size={18} color={availableNow.latestRelease.previewOnly ? "#FFC857" : "#72F0C6"} />
-                      <Text className="ml-2 text-xs text-muted">{availableNow.latestRelease.previewOnly ? "Development preview" : "Server and device checked"}</Text>
+                      <HubSymbol name={availableNow.latestRelease.previewOnly ? "science" : "verified"} size={18} color={availableNow.latestRelease.previewOnly ? "#FFC857" : "#77A7FF"} />
+                      <Text className="ml-2 text-xs text-muted">{availableNow.latestRelease.previewOnly ? "Early access" : "Checked release"}</Text>
                     </View>
-                    <HubSymbol name="chevron_right" size={20} color="#F5F7F2" />
+                    <HubSymbol name="chevron_right" size={20} color="#F4F7FB" />
                   </View>
                 </Pressable>
               </>
@@ -228,7 +228,7 @@ export default function DiscoverScreen() {
 
             <View className="mt-8 flex-row rounded-[24px] border border-line bg-surface p-5">
               <View className="h-11 w-11 items-center justify-center rounded-2xl bg-raised">
-                <HubSymbol name="shield_lock" size={24} color="#72F0C6" />
+                <HubSymbol name="shield_lock" size={24} color="#77A7FF" />
               </View>
               <View className="ml-4 flex-1">
                 <Text className="text-base font-bold text-ink">The final check happens here.</Text>
@@ -247,9 +247,9 @@ export default function DiscoverScreen() {
             ))}
             {visibleApps.length === 0 ? (
               <View className="items-center rounded-[24px] border border-dashed border-line bg-surface px-6 py-12">
-                <HubSymbol name="search_off" size={36} color="#93A7A2" />
+                <HubSymbol name="search_off" size={36} color="#95A5B7" />
                 <Text className="mt-4 text-lg font-bold text-ink">No matching apps</Text>
-                <Text className="mt-2 text-center leading-5 text-muted">Try a broader name, package, or use case.</Text>
+                <Text className="mt-2 text-center leading-5 text-muted">Try a broader app name or use case.</Text>
               </View>
             ) : null}
           </View>
@@ -265,7 +265,7 @@ function SectionHeader({ title, action, onPress }: { title: string; action: stri
       <Text className="text-[25px] font-bold tracking-[-0.5px] text-ink">{title}</Text>
       <Pressable className="flex-row items-center py-2" onPress={onPress}>
         <Text className="text-sm font-semibold text-mint">{action}</Text>
-        <HubSymbol name="chevron_right" size={18} color="#72F0C6" style={{ marginLeft: 2 }} />
+        <HubSymbol name="chevron_right" size={18} color="#77A7FF" style={{ marginLeft: 2 }} />
       </Pressable>
     </View>
   );

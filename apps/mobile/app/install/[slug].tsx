@@ -79,7 +79,7 @@ export default function InstallScreen() {
   return (
     <ScrollView className="flex-1 bg-canvas" contentContainerClassName="p-5 pb-14" showsVerticalScrollIndicator={false}>
       <View className="mt-2 h-14 w-14 items-center justify-center rounded-[20px] bg-raised">
-        <HubSymbol name="shield_lock" size={29} color="#72F0C6" />
+        <HubSymbol name="shield_lock" size={29} color="#77A7FF" />
       </View>
       <Text className="mt-5 text-xs font-bold uppercase tracking-[1.8px] text-mint">On-device security boundary</Text>
       <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">{app?.name ?? "Secure install"}</Text>
@@ -91,10 +91,10 @@ export default function InstallScreen() {
         <StageRow label="Android PackageInstaller confirmation" active={stage === "submitted"} done={stage === "complete"} last />
       </View>
       <View className={stage === "error" ? "flex-row rounded-[22px] border border-warning bg-surface p-4" : "flex-row rounded-[22px] border border-line bg-raised p-4"}>
-        <HubSymbol name={stage === "error" ? "error" : stage === "complete" ? "check_circle" : "info"} size={22} color={stage === "error" ? "#FFC857" : stage === "complete" ? "#72F0C6" : "#93A7A2"} />
+        <HubSymbol name={stage === "error" ? "error" : stage === "complete" ? "check_circle" : "info"} size={22} color={stage === "error" ? "#FFC857" : stage === "complete" ? "#77A7FF" : "#95A5B7"} />
         <Text className={stage === "error" ? "ml-3 flex-1 leading-6 text-warning" : "ml-3 flex-1 leading-6 text-muted"}>{detail}</Text>
       </View>
-      {stage === "loading" || stage === "validating" || stage === "submitted" ? <ActivityIndicator className="mt-6" color="#72F0C6" /> : null}
+      {stage === "loading" || stage === "validating" || stage === "submitted" ? <ActivityIndicator className="mt-6" color="#77A7FF" /> : null}
       {stage === "permission" && (
         <Pressable className="mt-7 rounded-[18px] bg-mint p-4 active:opacity-80" onPress={() => void AppInstaller.openUnknownSourcesSettings()}>
           <Text className="text-center font-bold text-canvas">Open Android settings</Text>
@@ -115,7 +115,7 @@ function StageRow({ label, active, done, last = false }: { label: string; active
       <HubSymbol
         name={done ? "check_circle" : active ? "progress_activity" : "radio_button_unchecked"}
         size={21}
-        color={done ? "#72F0C6" : active ? "#F5F7F2" : "#71847F"}
+        color={done ? "#77A7FF" : active ? "#F4F7FB" : "#718399"}
       />
       <Text className={done ? "ml-3 flex-1 text-sm font-semibold text-mint" : active ? "ml-3 flex-1 text-sm font-semibold text-ink" : "ml-3 flex-1 text-sm text-muted"}>{label}</Text>
     </View>

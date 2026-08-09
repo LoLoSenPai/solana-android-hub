@@ -15,14 +15,14 @@ export default function TabLayout() {
           borderRadius: 26,
           borderTopWidth: 1,
           borderWidth: 1,
-          borderColor: "#243A36",
-          backgroundColor: "#0C1B19",
+          borderColor: "#26384D",
+          backgroundColor: "#111B27",
           paddingTop: 8,
           paddingBottom: 9,
           elevation: 10
         },
-        tabBarActiveTintColor: "#72F0C6",
-        tabBarInactiveTintColor: "#71847F",
+        tabBarActiveTintColor: "#77A7FF",
+        tabBarInactiveTintColor: "#718399",
         tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
         tabBarItemStyle: { borderRadius: 20 },
         tabBarHideOnKeyboard: true

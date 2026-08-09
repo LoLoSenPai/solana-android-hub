@@ -124,6 +124,48 @@ Residual P3: the external wallet extension's own approval window is controlled b
 
 final result: passed
 
+# Blue Orbit catalogue and adaptive game filters - design QA
+
+## Scope and visual direction
+
+This pass turns the public experience into a consumer app store rather than a publisher-facing technical surface. It introduces a dedicated catalogue route, adaptive category filters, curated Hub classifications, and a blue / blue-grey visual system inspired by the user's Solana Mobile references without copying their brand assets.
+
+Source and implementation evidence:
+
+- User-provided Solana Mobile category and app-detail screenshots in the current project thread.
+- Stitch Games reference: `.artifacts/design-qa/blue-orbit/stitch-games-reference.png`.
+- Web home: `.artifacts/design-qa/blue-orbit/web-home-desktop.png`.
+- Web Games catalogue: `.artifacts/design-qa/blue-orbit/web-catalog-games-desktop.png` and `.artifacts/design-qa/blue-orbit/web-catalog-games-mobile.png`.
+- Production Puzzle result: `.artifacts/design-qa/blue-orbit/web-live-games-puzzle-mobile.png`.
+- Android home, Games, filters, and Puzzle state: `.artifacts/design-qa/blue-orbit/mobile-home-final.png`, `mobile-games-final.png`, `mobile-games-filters-final.png`, and `mobile-games-puzzle-live-final.png`.
+
+## Comparison and product checks
+
+- Visual hierarchy: passed. The Blue Orbit palette replaces the previous dominant mint with deep ink, blue-grey surfaces, periwinkle actions, and restrained cyan highlights.
+- Store positioning: passed. Consumer discovery, artwork, categories, and app cards lead; technical trust details remain available where they help an installation decision.
+- Category navigation: passed. Homepage category tiles navigate to the dedicated `/catalog` page instead of silently changing content below the fold.
+- Adaptive filtering: passed. Games exposes genre, search, trust, installation status, and sorting. Simple categories such as Wallets omit genre controls.
+- Classification correctness: passed. DegenMerge is curated as Games / Casual / Puzzle and no longer falls back to Other tools. Publishers can submit their own category and game genres, while Hub curation remains an explicit source.
+- Empty and loading states: passed. Counts are scoped to the active category, active filters are visible, and zero-result copy only offers reset actions when a filter is actually active.
+- Responsive behavior: passed on desktop web, narrow web, and Pixel 9 API 36.
+- Accessibility and interaction: passed for category links, filter chips, selects, search, filter sheet, and catalogue cards.
+
+## Verification
+
+- Repository `pnpm check`: passed across all 12 packages.
+- Supabase production migration: applied; RLS and security advisors clean.
+- Production catalogue: Games + Puzzle returns DegenMerge with real artwork and metadata.
+- Android Pixel 9 API 36: Home, Games, Puzzle, filter sheet, and Wallets verified against the production API.
+- Android Hub 0.2.0 ARM64 APK: 47,777,435 bytes; SHA-256 `625D4529AC3229DBF38B6EE7695647A006AFA9C91DBE09055490FA3C8F22D1C4`.
+- APK configuration: min SDK 26, target SDK 36, arm64-v8a, APK Signature Scheme v2, `REQUEST_INSTALL_PACKAGES` present, and `QUERY_ALL_PACKAGES` absent.
+- Public APK endpoint: HTTP 200, Android package MIME type, attachment disposition, and byte-for-byte matching SHA-256.
+- Vercel production deployment: READY; `/download` displays version 0.2.0, the matching hash, and the new public APK URL.
+- Production browser console and Vercel error log check: no errors found.
+
+Residual P3: version 0.2.0 is intentionally labeled early access and still uses the development Android signer. A future permanently signed stable build can require uninstalling this test edition once.
+
+final result: passed
+
 # Publisher storefront media — design QA
 
 ## Scope and evidence
@@ -202,7 +244,7 @@ Implementation evidence:
 - Solana Mobile reference file: 280 × 622 pixels. Android implementation: Pixel 9 API 36 at 1080 × 2424 device pixels. Both have effectively the same tall-screen aspect ratio; comparison is based on relative cover/body proportions rather than unscaled pixel measurements.
 - Launcher source file: 263 × 281 pixels. Final launcher evidence: 1080 × 2424 device pixels. A focused icon-region comparison was used because the surrounding launcher layouts differ.
 - Web screenshots use explicit 390 × 844 and 1440 × 1000 CSS-pixel browser viewports. No density normalization was needed for the web captures.
-- State: DegenMerge development preview loaded from the real production catalogue; Android Hub 0.1.0 early-access download enabled; app-detail direct publisher APK link visible.
+- State: DegenMerge development preview loaded from the real production catalogue; Android Hub 0.2.0 early-access download enabled; app-detail direct publisher APK link visible.
 
 ## Full-view and focused comparison
 
@@ -229,9 +271,9 @@ Focused comparison was required for the Android cover and launcher icon. The pos
 - Web production build, typecheck, lint, and 12 tests: passed.
 - Mobile x86_64 release build, emulator installation, typecheck, lint, and 10 tests: passed.
 - ARM64 early-access release build: passed from a short Windows build path.
-- ARM64 APK: 47,772,515 bytes; SHA-256 `5E331F154CBC3C2E23C2486B189DA1CF44397083750F87F1267D4C6BF8CAD431`; APK Signature Scheme v2 verified; min SDK 26; target SDK 36; arm64-v8a only.
+- ARM64 APK: 47,777,435 bytes; SHA-256 `625D4529AC3229DBF38B6EE7695647A006AFA9C91DBE09055490FA3C8F22D1C4`; APK Signature Scheme v2 verified; min SDK 26; target SDK 36; arm64-v8a only.
 - APK permissions: `REQUEST_INSTALL_PACKAGES` present; `QUERY_ALL_PACKAGES` absent.
-- Public APK endpoint: HTTP 200 with Android package MIME type, attachment disposition, and exact 47,772,515-byte content length.
+- Public APK endpoint: HTTP 200 with Android package MIME type, attachment disposition, and exact 47,777,435-byte content length.
 - Browser console: 0 errors on the final responsive download page.
 - Primary interactions checked: global Hub navigation, catalogue fallback, Hub APK href, direct publisher APK href, and app-detail route.
 

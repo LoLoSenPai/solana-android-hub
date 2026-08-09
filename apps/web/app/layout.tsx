@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07110f",
+  themeColor: "#091018",
   colorScheme: "dark"
 };
 
@@ -36,7 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
               <span>Solana <small>Android Hub</small></span>
             </Link>
             <nav aria-label="Primary navigation">
-              <Link href="/#discover">Discover</Link>
+              <Link href="/catalog">Catalogue</Link>
               <Link href="/#trust-model">Trust model</Link>
               <Link className="hub-download-link" href="/download">Get the Hub</Link>
               <Link className="publisher-link" href="/publisher">{onboardingEnabled ? "For publishers" : "Publisher onboarding"}</Link>
@@ -50,7 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <div><strong>Solana Android Hub</strong><span>A clearer way to discover independent Android apps.</span></div>
           </div>
           <div className="footer-links">
-            <Link href="/">Catalogue</Link>
+            <Link href="/catalog">Catalogue</Link>
             <Link href="/download">Get Android Hub</Link>
             <Link href="/publisher">{onboardingEnabled ? "Publisher workspace" : "Publisher onboarding status"}</Link>
           </div>

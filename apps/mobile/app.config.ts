@@ -14,17 +14,17 @@ if (production) {
 const config: ExpoConfig = {
   name: production ? "Solana Android Hub" : "Solana Android Hub Dev",
   slug: "solana-android-hub",
-  version: "0.1.0",
+  version: "0.2.0",
   icon: "./assets/icon.png",
   orientation: "portrait",
   scheme: "solanaandroidhub",
   userInterfaceStyle: "dark",
   android: {
     package: production ? "com.lololabs.solanaandroidhub" : "com.lololabs.solanaandroidhub.dev",
-    versionCode: 1,
+    versionCode: 2,
     adaptiveIcon: {
       foregroundImage: "./assets/icon.png",
-      backgroundColor: "#001512"
+      backgroundColor: "#091018"
     }
   },
   plugins: [

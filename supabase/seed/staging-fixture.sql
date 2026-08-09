@@ -115,6 +115,20 @@ on conflict (id) do update set
   revoked_at = null,
   updated_at = now();
 
+insert into hub.app_classifications (app_id, primary_category, tags, source)
+values (
+  '30000000-0000-4000-8000-000000000003',
+  'games',
+  array['casual', 'puzzle'],
+  'hub_curated'
+)
+on conflict (app_id) do update set
+  primary_category = excluded.primary_category,
+  tags = excluded.tags,
+  source = excluded.source,
+  updated_by_wallet = null,
+  updated_at = now();
+
 insert into hub.app_claims (
   id,
   app_id,

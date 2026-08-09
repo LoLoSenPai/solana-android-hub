@@ -6,7 +6,8 @@ import {
   selectLatestRelease,
   type CatalogCategory,
   type CatalogChannel,
-  type CatalogSort
+  type CatalogSort,
+  type GameGenre
 } from "@hub/domain";
 import { database, hubConfig } from "./runtime";
 
@@ -18,6 +19,7 @@ export async function listCatalog(input: {
   category?: CatalogCategory;
   sort?: CatalogSort;
   androidSdk?: number;
+  genre?: GameGenre;
 }): Promise<readonly CatalogAppDto[]> {
   const records = await repository.listReleaseCandidates(hubConfig.appEnvironment, input.query);
   const grouped = new Map<string, CatalogAppRecord[]>();
@@ -39,6 +41,7 @@ export async function listCatalog(input: {
     if (!selectedRecord || !selected) continue;
     if (input.category !== undefined && selectedRecord.category !== input.category) continue;
     if (input.androidSdk !== undefined && selectedRecord.binary.minSdk > input.androidSdk) continue;
+    if (input.genre !== undefined && !selectedRecord.genres.includes(input.genre)) continue;
     results.push(toDto(selectedRecord));
   }
   return results.toSorted((left, right) => {
@@ -88,6 +91,7 @@ function toDto(record: CatalogAppRecord): CatalogAppDto {
     bannerUrl: record.bannerUri,
     featureGraphicUrl: record.featureGraphicUri,
     category: record.category,
+    genres: [...record.genres],
     releaseUpdatedAt: record.releaseUpdatedAt.toISOString(),
     latestRelease: {
       id: record.release.id,

@@ -1,9 +1,11 @@
 import {
   normalizeCatalogCategory,
+  normalizeGameGenres,
   type AppEligibility,
   type AppEnvironment,
   type ApprovalStatus,
   type CatalogCategory,
+  type GameGenre,
   type ReleaseCandidate
 } from "@hub/domain";
 import type { HubSql } from "./client";
@@ -21,6 +23,7 @@ export interface CatalogAppRecord {
   bannerUri: string | null;
   featureGraphicUri: string | null;
   category: CatalogCategory;
+  genres: readonly GameGenre[];
   eligibility: AppEligibility;
   release: ReleaseCandidate;
   binary: {
@@ -46,6 +49,8 @@ interface CatalogRow {
   banner_uri: string | null;
   feature_graphic_uri: string | null;
   source_category: string | null;
+  hub_category: string | null;
+  hub_tags: unknown;
   claim_status: AppEligibility["claimStatus"];
   authority_address: string | null;
   distribution_enabled: boolean;
@@ -85,6 +90,8 @@ export class CatalogRepository {
         case when jsonb_array_length(r.screenshots) > 0 then r.screenshots else a.screenshots end as screenshots,
         r.banner_uri,
         r.feature_graphic_uri,
+        classification.primary_category as hub_category,
+        classification.tags as hub_tags,
         coalesce(
           nullif(r.source_snapshot #>> '{releaseMetadata,properties,category}', ''),
           nullif(a.source_snapshot #>> '{appMetadata,properties,category}', '')
@@ -128,6 +135,7 @@ export class CatalogRepository {
         order by ra.created_at desc
         limit 1
       ) approval on true
+      left join hub.app_classifications classification on classification.app_id = a.id
       where a.claim_status = 'verified'
         and a.distribution_enabled = true
         and a.revoked_at is null
@@ -154,7 +162,8 @@ function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
     screenshots: Array.isArray(row.screenshots) ? row.screenshots.filter((value): value is string => typeof value === "string") : [],
     bannerUri: row.banner_uri,
     featureGraphicUri: row.feature_graphic_uri,
-    category: normalizeCatalogCategory(row.source_category),
+    category: normalizeCatalogCategory(row.hub_category ?? row.source_category),
+    genres: normalizeGameGenres(row.hub_tags),
     eligibility: {
       appMint: row.app_mint,
       claimStatus: row.claim_status,

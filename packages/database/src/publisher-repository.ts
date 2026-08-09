@@ -1,4 +1,4 @@
-import type { AppEnvironment, ReleasePolicy } from "@hub/domain";
+import type { AppEnvironment, CatalogCategory, GameGenre, ReleasePolicy } from "@hub/domain";
 import type { AuthorityProofEvidence } from "@hub/solana";
 import type { HubSql } from "./client";
 import { parseJsonValue } from "./json";
@@ -163,6 +163,29 @@ export class PublisherRepository {
       `;
       return consent.id;
     });
+  }
+
+  public async saveClassification(input: {
+    appId: string;
+    publisherId: string;
+    walletAddress: string;
+    category: CatalogCategory;
+    genres: readonly GameGenre[];
+  }): Promise<boolean> {
+    const [classification] = await this.sql<{ app_id: string }[]>`
+      insert into hub.app_classifications (app_id, primary_category, tags, source, updated_by_wallet)
+      select id, ${input.category}, ${input.genres}, 'publisher', ${input.walletAddress}
+      from hub.apps
+      where id = ${input.appId} and publisher_id = ${input.publisherId} and claim_status = 'verified'
+      on conflict (app_id) do update set
+        primary_category = excluded.primary_category,
+        tags = excluded.tags,
+        source = excluded.source,
+        updated_by_wallet = excluded.updated_by_wallet,
+        updated_at = now()
+      returning app_id
+    `;
+    return Boolean(classification);
   }
 }
 

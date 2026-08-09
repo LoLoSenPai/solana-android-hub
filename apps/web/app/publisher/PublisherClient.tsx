@@ -1,5 +1,6 @@
 "use client";
 
+import { CATALOG_CATEGORIES, GAME_GENRES, type CatalogCategory, type GameGenre } from "@hub/api-client";
 import { SolanaSignMessage, type SolanaSignMessageFeature } from "@solana/wallet-standard-features";
 import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount, WalletWithFeatures } from "@wallet-standard/base";
@@ -21,6 +22,8 @@ interface DiscoveredApp {
 interface ClaimedApp extends DiscoveredApp {
   id: string;
   consented?: boolean;
+  category?: CatalogCategory;
+  genres?: readonly GameGenre[];
 }
 
 export function PublisherClient() {
@@ -91,9 +94,29 @@ export function PublisherClient() {
       method: "POST",
       body: JSON.stringify({ challengeId: challenge.challengeId, signature })
     });
+    const existing = await api<{ apps: readonly {
+      id: string;
+      appMint: string;
+      name: string;
+      packageName: string;
+      consentStatus: string | null;
+      category: CatalogCategory;
+      genres: readonly GameGenre[];
+    }[] }>("/api/v1/publisher/apps");
+    setClaims(Object.fromEntries(existing.apps.map((app) => [app.appMint, {
+      id: app.id,
+      appMint: app.appMint,
+      publisherCollectionMint: null,
+      name: app.name,
+      packageName: app.packageName,
+      authorityPath: "finalized verification",
+      consented: app.consentStatus === "active",
+      category: app.category,
+      genres: app.genres
+    }])));
     setActiveWallet(wallet);
     setAccount(nextAccount);
-    setStatus(`Authenticated with ${wallet.name} as ${shortAddress(nextAccount.address)}. Authentication is not distribution consent.`);
+    setStatus(`Authenticated with ${wallet.name} as ${shortAddress(nextAccount.address)}. ${existing.apps.length} claimed app${existing.apps.length === 1 ? "" : "s"} loaded.`);
   });
 
   const requestConnection = () => {
@@ -150,6 +173,12 @@ export function PublisherClient() {
   const sync = (candidate: ClaimedApp) => run(async () => {
     const result = await api<{ releases: readonly { releaseMint: string }[] }>(`/api/v1/publisher/apps/${candidate.id}/sync`, mutation());
     setStatus(`Release synchronization completed with ${result.releases.length} normalized Release NFT(s).`);
+  });
+
+  const classify = (candidate: ClaimedApp, category: CatalogCategory, genres: readonly GameGenre[]) => run(async () => {
+    await api(`/api/v1/publisher/apps/${candidate.id}/classification`, mutation({ category, genres }));
+    setClaims((current) => ({ ...current, [candidate.appMint]: { ...candidate, category, genres } }));
+    setStatus(`${candidate.name} will appear in ${categoryLabel(category)}${genres.length ? ` · ${genres.map(genreLabel).join(", ")}` : ""}.`);
   });
 
   function run(action: () => Promise<void>): Promise<void> {
@@ -266,8 +295,76 @@ export function PublisherClient() {
           {claimList.length === 0 && <p className="muted">Claim an App before consent can be created.</p>}
         </div>
       </div>
+      <div className="panel">
+        <p className="step-label">4 · Storefront classification</p>
+        <p className="muted">The NFT standard identifies a dApp, but does not carry the consumer category used by the store. Choose how people should discover your app here.</p>
+        <div className="operation-list">
+          {claimList.map((candidate) => (
+            <ClassificationEditor
+              key={candidate.id}
+              app={candidate}
+              disabled={busy}
+              onSave={(category, genres) => void classify(candidate, category, genres)}
+            />
+          ))}
+          {claimList.length === 0 && <p className="muted">Claim an App before choosing its category.</p>}
+        </div>
+      </div>
       <p className="status-line" role="status">{busy ? "Waiting for verified operation…" : status}</p>
     </section>
+  );
+}
+
+function ClassificationEditor({
+  app,
+  disabled,
+  onSave
+}: {
+  app: ClaimedApp;
+  disabled: boolean;
+  onSave: (category: CatalogCategory, genres: readonly GameGenre[]) => void;
+}) {
+  const [category, setCategory] = useState<CatalogCategory>(app.category ?? "other");
+  const [genres, setGenres] = useState<readonly GameGenre[]>(app.genres ?? []);
+  const toggleGenre = (genre: GameGenre) => setGenres((current) => current.includes(genre)
+    ? current.filter((item) => item !== genre)
+    : current.length < 4 ? [...current, genre] : current);
+
+  return (
+    <div className="classification-editor">
+      <div><strong>{app.name}</strong><small>{app.packageName}</small></div>
+      <label>Primary category
+        <select
+          value={category}
+          disabled={disabled}
+          onChange={(event) => {
+            const next = event.target.value as CatalogCategory;
+            setCategory(next);
+            if (next !== "games") setGenres([]);
+          }}
+        >
+          {CATALOG_CATEGORIES.map((item) => <option value={item} key={item}>{categoryLabel(item)}</option>)}
+        </select>
+      </label>
+      {category === "games" ? (
+        <fieldset className="genre-picker">
+          <legend>Game genres · choose up to 4</legend>
+          <div>
+            {GAME_GENRES.map((genre) => (
+              <button
+                type="button"
+                className={genres.includes(genre) ? "is-selected" : "secondary"}
+                aria-pressed={genres.includes(genre)}
+                disabled={disabled || (!genres.includes(genre) && genres.length >= 4)}
+                onClick={() => toggleGenre(genre)}
+                key={genre}
+              >{genreLabel(genre)}</button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+      <button type="button" onClick={() => onSave(category, genres)} disabled={disabled}>Save storefront</button>
+    </div>
   );
 }
 
@@ -321,6 +418,28 @@ function base64Url(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+}
+
+function categoryLabel(category: CatalogCategory): string {
+  const labels: Record<CatalogCategory, string> = {
+    "ai-agents": "AI & agents",
+    "content-streaming": "Content & streaming",
+    defi: "DeFi & trading",
+    depin: "DePIN",
+    games: "Games",
+    lifestyle: "Lifestyle",
+    nfts: "NFTs",
+    "privacy-security": "Privacy & security",
+    productivity: "Productivity",
+    "social-identity": "Social & identity",
+    wallets: "Wallets",
+    other: "More"
+  };
+  return labels[category];
+}
+
+function genreLabel(genre: GameGenre): string {
+  return genre === "rpg" ? "RPG" : `${genre.charAt(0).toUpperCase()}${genre.slice(1)}`;
 }
 
 function shortAddress(address: string): string {

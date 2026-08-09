@@ -5,6 +5,7 @@ import {
   computeUpdateDecision,
   diffPermissions,
   normalizeCatalogCategory,
+  normalizeGameGenres,
   quarantineReason,
   selectLatestRelease,
   type ReleaseCandidate
@@ -20,6 +21,10 @@ describe("catalog categories", () => {
   it("keeps missing and unrecognized categories visible under other", () => {
     expect(normalizeCatalogCategory(undefined)).toBe("other");
     expect(normalizeCatalogCategory("Experimental category")).toBe("other");
+  });
+
+  it("keeps only stable game genres and removes duplicates", () => {
+    expect(normalizeGameGenres(["Puzzle", "puzzle", "RPG", "unknown", 7])).toEqual(["puzzle", "rpg"]);
   });
 });
 

@@ -48,7 +48,7 @@ export default function SettingsScreen() {
         <Text className="mb-3 mt-8 text-xs font-bold uppercase tracking-[1.6px] text-muted">Independence</Text>
         <View className="rounded-[24px] border border-line bg-surface p-5">
           <View className="flex-row items-start">
-            <HubSymbol name="info" size={22} color="#93A7A2" />
+            <HubSymbol name="info" size={22} color="#95A5B7" />
             <Text className="ml-3 flex-1 text-sm leading-6 text-muted">This independent catalogue is not affiliated with Solana Mobile. Approval appears only as a separate evidence fact.</Text>
           </View>
         </View>
@@ -78,12 +78,12 @@ function ChannelButton({
       onPress={onPress}
     >
       <View className="h-11 w-11 items-center justify-center rounded-2xl bg-canvas">
-        <HubSymbol name={icon} size={23} color={selected ? "#72F0C6" : "#93A7A2"} />
+        <HubSymbol name={icon} size={23} color={selected ? "#77A7FF" : "#95A5B7"} />
       </View>
       <View className="ml-4 flex-1">
         <View className="flex-row items-center justify-between">
           <Text className="text-base font-bold text-ink">{label}</Text>
-          <HubSymbol name={selected ? "radio_button_checked" : "radio_button_unchecked"} size={21} color={selected ? "#72F0C6" : "#71847F"} />
+          <HubSymbol name={selected ? "radio_button_checked" : "radio_button_unchecked"} size={21} color={selected ? "#77A7FF" : "#718399"} />
         </View>
         <Text className="mt-2 text-sm leading-5 text-muted">{description}</Text>
       </View>
@@ -100,7 +100,7 @@ function SettingsFact({ icon, title, detail, selectable = false }: {
   return (
     <View className="mb-3 flex-row rounded-[24px] border border-line bg-surface p-5">
       <View className="h-11 w-11 items-center justify-center rounded-2xl bg-raised">
-        <HubSymbol name={icon} size={23} color="#72F0C6" />
+        <HubSymbol name={icon} size={23} color="#77A7FF" />
       </View>
       <View className="ml-4 flex-1">
         <Text className="text-base font-bold text-ink">{title}</Text>

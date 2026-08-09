@@ -23,7 +23,7 @@ export function AppArtwork({ app, size = 64, radius = 18 }: AppArtworkProps) {
         source={{ uri: app.iconUrl }}
         onError={() => setRemoteFailed(true)}
         resizeMode="cover"
-        style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#132320" }}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#172536" }}
       />
     );
   }
@@ -33,7 +33,7 @@ export function AppArtwork({ app, size = 64, radius = 18 }: AppArtworkProps) {
       accessibilityIgnoresInvertColors
       source={FALLBACK_ARTWORK}
       resizeMode="cover"
-      style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#132320" }}
+      style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#172536" }}
     />
   );
 }

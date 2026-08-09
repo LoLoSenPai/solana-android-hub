@@ -1,12 +1,14 @@
 import type {
   AppEligibility,
   CatalogCategory,
+  GameGenre,
   InstalledPackageState,
   PermissionDiff,
   ReleaseCandidate,
   SelectionContext,
   UpdateDecision
 } from "./types";
+import { GAME_GENRES } from "./types";
 
 const CATEGORY_ALIASES: Readonly<Record<string, CatalogCategory>> = {
   ai: "ai-agents",
@@ -55,6 +57,17 @@ export function normalizeCatalogCategory(value: unknown): CatalogCategory {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   return CATEGORY_ALIASES[normalized] ?? "other";
+}
+
+/** Keeps editorial game genres stable even when publisher input is free-form. */
+export function normalizeGameGenres(value: unknown): readonly GameGenre[] {
+  if (!Array.isArray(value)) return [];
+  const allowed = new Set<string>(GAME_GENRES);
+  return [...new Set(value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))
+    .filter((item): item is GameGenre => allowed.has(item)))]
+    .toSorted();
 }
 
 export function isAppEligible(app: AppEligibility, environment: SelectionContext["environment"]): boolean {

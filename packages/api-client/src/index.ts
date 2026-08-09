@@ -2,16 +2,19 @@ import { z } from "zod";
 import {
   CATALOG_CATEGORIES,
   CATALOG_SORTS,
+  GAME_GENRES,
   type CatalogCategory,
   type CatalogChannel,
-  type CatalogSort
+  type CatalogSort,
+  type GameGenre
 } from "@hub/domain";
 
-export { CATALOG_CATEGORIES, CATALOG_SORTS };
-export type { CatalogCategory, CatalogChannel, CatalogSort };
+export { CATALOG_CATEGORIES, CATALOG_SORTS, GAME_GENRES };
+export type { CatalogCategory, CatalogChannel, CatalogSort, GameGenre };
 
 export const catalogCategorySchema = z.enum(CATALOG_CATEGORIES);
 export const catalogSortSchema = z.enum(CATALOG_SORTS);
+export const gameGenreSchema = z.enum(GAME_GENRES);
 
 export const trustFactsDtoSchema = z.object({
   publisherControl: z.literal("verified"),
@@ -49,6 +52,7 @@ export const catalogAppDtoSchema = z.object({
   bannerUrl: z.url().nullable().default(null),
   featureGraphicUrl: z.url().nullable().default(null),
   category: catalogCategorySchema.default("other"),
+  genres: z.array(gameGenreSchema).default([]),
   releaseUpdatedAt: z.iso.datetime().nullable().default(null),
   latestRelease: releaseDtoSchema
 });
@@ -85,6 +89,7 @@ export class HubApiClient {
     category?: CatalogCategory;
     sort?: CatalogSort;
     androidSdk?: number;
+    genre?: GameGenre;
   } = {}): Promise<CatalogResponse> {
     const url = new URL("/api/v1/catalog", this.origin);
     if (input.channel) url.searchParams.set("channel", input.channel);
@@ -92,6 +97,7 @@ export class HubApiClient {
     if (input.category) url.searchParams.set("category", input.category);
     if (input.sort) url.searchParams.set("sort", input.sort);
     if (input.androidSdk !== undefined) url.searchParams.set("androidSdk", input.androidSdk.toString());
+    if (input.genre) url.searchParams.set("genre", input.genre);
     return catalogResponseSchema.parse(await this.getJson(url));
   }
 

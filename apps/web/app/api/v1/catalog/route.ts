@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { catalogCategorySchema, catalogSortSchema } from "@hub/api-client";
+import { catalogCategorySchema, catalogSortSchema, gameGenreSchema } from "@hub/api-client";
 import { listCatalog } from "../../../../server/catalog-service";
 import { apiError, requestId } from "../../../../server/http";
 import { hubConfig } from "../../../../server/runtime";
@@ -10,7 +10,8 @@ const querySchema = z.object({
   query: z.string().trim().min(1).max(100).optional(),
   category: catalogCategorySchema.optional(),
   sort: catalogSortSchema.default("name"),
-  androidSdk: z.coerce.number().int().min(1).max(100).optional()
+  androidSdk: z.coerce.number().int().min(1).max(100).optional(),
+  genre: gameGenreSchema.optional()
 });
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -21,7 +22,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     query: url.searchParams.get("query") ?? undefined,
     category: url.searchParams.get("category") ?? undefined,
     sort: url.searchParams.get("sort") ?? undefined,
-    androidSdk: url.searchParams.get("androidSdk") ?? undefined
+    androidSdk: url.searchParams.get("androidSdk") ?? undefined,
+    genre: url.searchParams.get("genre") ?? undefined
   });
   if (!parsed.success) return apiError(400, "INVALID_QUERY", id, "The catalogue query is invalid.");
 
@@ -31,7 +33,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       sort: parsed.data.sort,
       ...(parsed.data.query === undefined ? {} : { query: parsed.data.query }),
       ...(parsed.data.category === undefined ? {} : { category: parsed.data.category }),
-      ...(parsed.data.androidSdk === undefined ? {} : { androidSdk: parsed.data.androidSdk })
+      ...(parsed.data.androidSdk === undefined ? {} : { androidSdk: parsed.data.androidSdk }),
+      ...(parsed.data.genre === undefined ? {} : { genre: parsed.data.genre })
     });
     return NextResponse.json({ items, nextCursor: null, requestId: id }, {
       headers: {

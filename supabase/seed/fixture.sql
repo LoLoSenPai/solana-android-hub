@@ -35,6 +35,14 @@ insert into hub.apps (
   now()
 );
 
+insert into hub.app_classifications (app_id, primary_category, tags, source)
+values (
+  '10000000-0000-4000-8000-000000000003',
+  'games',
+  array['casual', 'puzzle'],
+  'hub_curated'
+);
+
 insert into hub.app_claims (
   id, app_id, publisher_wallet_id, status, authority_path, finalized_slot, evidence_hash, evidence_snapshot, verified_at
 ) values (

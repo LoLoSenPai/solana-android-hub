@@ -1,26 +1,56 @@
-import type { AppEnvironment } from "@hub/domain";
+import type { AppEnvironment, CatalogCategory, GameGenre } from "@hub/domain";
 import type { HubSql } from "./client";
+
+export interface PublisherAppSummary {
+  id: string;
+  appMint: string;
+  name: string;
+  packageName: string;
+  claimStatus: string;
+  distributionEnabled: boolean;
+  releasePolicy: string;
+  consentStatus: string | null;
+  releaseCount: string;
+  category: CatalogCategory;
+  genres: readonly GameGenre[];
+}
 
 export class PublisherOperationsRepository {
   public constructor(private readonly sql: HubSql) {}
 
-  public async listApps(publisherId: string, environment: AppEnvironment) {
-    return this.sql<{
+  public async listApps(publisherId: string, environment: AppEnvironment): Promise<readonly PublisherAppSummary[]> {
+    const rows = await this.sql<{
       id: string; app_mint: string; name: string; package_name: string; claim_status: string;
       distribution_enabled: boolean; release_policy: string; consent_status: string | null; release_count: string;
+      primary_category: CatalogCategory | null; tags: GameGenre[] | null;
     }[]>`
       select a.id, a.app_mint, a.name, a.package_name, a.claim_status, a.distribution_enabled, a.release_policy,
-        consent.status as consent_status, count(r.id)::text as release_count
+        consent.status as consent_status, count(r.id)::text as release_count,
+        classification.primary_category, classification.tags
       from hub.apps a
       left join hub.releases r on r.app_id = a.id
+      left join hub.app_classifications classification on classification.app_id = a.id
       left join lateral (
         select status from hub.distribution_consents where app_id = a.id
           and environment = ${environment}::hub.app_environment and superseded_at is null
         order by created_at desc limit 1
       ) consent on true
       where a.publisher_id = ${publisherId}
-      group by a.id, consent.status order by a.updated_at desc
+      group by a.id, consent.status, classification.primary_category, classification.tags order by a.updated_at desc
     `;
+    return rows.map((row) => ({
+      id: row.id,
+      appMint: row.app_mint,
+      name: row.name,
+      packageName: row.package_name,
+      claimStatus: row.claim_status,
+      distributionEnabled: row.distribution_enabled,
+      releasePolicy: row.release_policy,
+      consentStatus: row.consent_status,
+      releaseCount: row.release_count,
+      category: row.primary_category ?? "other",
+      genres: row.tags ?? []
+    }));
   }
 
   public async listReleases(appId: string, publisherId: string) {

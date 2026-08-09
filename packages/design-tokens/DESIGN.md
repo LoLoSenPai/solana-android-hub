@@ -6,20 +6,20 @@ A premium, editorial Android storefront with a native mobile rhythm. It borrows 
 
 ## Colour
 
-- Background ink: `#071411`
-- Surface: `#10201C`
-- Raised surface: `#172923`
-- Primary text: `#F5F8F6`
-- Secondary text: `#9AAEA7`
-- Border: `#29433B`
-- Discovery mint: `#58EBC5`
-- Deep mint: `#25B894`
-- Warm coral: `#FF765C`
-- Amber accent: `#FFB23F`
-- Warning/preview: `#FFD07A`
+- Background ink: `#091018`
+- Surface: `#111B27`
+- Raised surface: `#172536`
+- Primary text: `#F4F7FB`
+- Secondary text: `#95A5B7`
+- Border: `#26384D`
+- Discovery blue: `#77A7FF`
+- Deep blue: `#4F7FEA`
+- Warm coral: `#F49A8A`
+- Amber accent: `#E6C994`
+- Warning/preview: `#FFD58A`
 - Danger: `#FF7D78`
 
-The mint/coral orbital mark is the Hub signature. Use generated artwork for editorial moments and real publisher imagery when available. Do not recreate artwork with CSS shapes or imply official Solana Mobile affiliation.
+The mint/coral orbital mark remains the Hub signature, but the product chrome uses blue-night and blue-grey tones. Use generated artwork for editorial moments and real publisher imagery when available. Do not recreate artwork with CSS shapes or imply official Solana Mobile affiliation.
 
 ## Typography
 
@@ -48,7 +48,7 @@ Trust is never encoded by colour alone.
 Design these connected screens first:
 
 1. Discover with search, featured artwork, category cards, and compact app rows.
-2. Category results with query, installation-status filter, trust filter, sorting, and a live result count.
+2. Category results with search and adaptive filters. Games exposes genre, installation state, approval, and sorting in a compact sheet; simpler categories omit genre.
 3. App detail with artwork, publisher, description, screenshots, selected release, permissions, integrity details, and install action.
 4. Download/validation/install progress with explicit stages for hash, package, version, certificate, and Android confirmation.
 5. Permission-change sheet with additions and removals.
