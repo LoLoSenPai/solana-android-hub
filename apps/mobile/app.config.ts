@@ -30,6 +30,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-sqlite",
+    "./plugins/with-release-signing",
     ["expo-build-properties", { android: { compileSdkVersion: 36, targetSdkVersion: 36, minSdkVersion: 26 } }]
   ],
   experiments: { typedRoutes: true },
