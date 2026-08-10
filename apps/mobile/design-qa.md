@@ -40,6 +40,22 @@
 
 final result: passed
 
+## Production-signed release candidate 0.3.0
+
+- Artifact: `.artifacts/android-production/Solana-Android-Hub-v0.3.0.apk`.
+- Package: `com.lololabs.solanaandroidhub`, version `0.3.0` / versionCode `3`.
+- APK SHA-256: `FE8328FA15E691C5EF293E9AF54B942CF96FB829A27164BFD4E88362E72BA768`.
+- Signing certificate SHA-256: `02F204B9CBED11E59F85B2A6DBCB34AD6F0A4658C639D58B2C27FB3BE2AD0E09`.
+- The signer DN is `CN=Solana Android Hub, OU=Android Release, O=Lolo Labs, C=FR`; the DegenMerge and Android debug keys are not used.
+- APK Signature Scheme v2 and 16 KiB zip alignment verification pass.
+- Min SDK 26, target/compile SDK 36, and native ABIs `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+- `REQUEST_INSTALL_PACKAGES` is present and `QUERY_ALL_PACKAGES` is absent.
+- Installed as a separate application beside `.dev` on a Pixel 9 API 36 emulator; cold launch, production API loading, deep linking, and the DegenMerge detail page pass with no fatal exception.
+- Screenshots: `.artifacts/design-qa/mobile-production-home-0.3.0.png` and `.artifacts/design-qa/mobile-production-detail-0.3.0.png`.
+- Publication remains intentionally withheld while the live config endpoint reports `staging` with previews enabled.
+
+final result: passed as a signed release candidate; public production gate pending
+
 ## Consumer app-detail pass - release 0.3.0
 
 ### Evidence
