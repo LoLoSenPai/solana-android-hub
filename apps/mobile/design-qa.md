@@ -39,3 +39,30 @@
 ## Final result
 
 final result: passed
+
+## Consumer app-detail pass - release 0.3.0
+
+### Evidence
+
+- App detail: `.artifacts/design-qa/mobile-app-detail-0.3.0.png`.
+- Collapsed lower detail: `.artifacts/design-qa/mobile-app-detail-bottom-0.3.0.png`.
+- Expanded permissions: `.artifacts/design-qa/mobile-permissions-open-0.3.0.png`.
+- Pixel 9 emulator, Android API 36, production catalogue data from `https://solana-hub.lololabs.xyz`.
+
+### Verified experience
+
+- App identity, publisher artwork, screenshots, description, and consumer tags appear before technical information.
+- The primary action is the familiar `Install` label; the preview state is disclosed separately as `Preview release`.
+- `Data & permissions` and `Verification details` are collapsed by default and remain available on demand.
+- Permission labels are consumer-readable. Raw Android permission identifiers are hidden behind a secondary technical disclosure.
+- The APK updated in place, launched without a fatal exception, and retained the blue product palette.
+
+### Release checks
+
+- Package `com.lololabs.solanaandroidhub.dev`, version `0.3.0` / versionCode `3`.
+- APK SHA-256: `7636FF75F9A690BDB344086747966959B3FBE6593945F2CD1D146E7BE60F686A`.
+- Min SDK 26, target/compile SDK 36, ABIs `arm64-v8a` and `x86_64`.
+- `REQUEST_INSTALL_PACKAGES` is present and `QUERY_ALL_PACKAGES` is absent.
+- APK signature verification and zip alignment pass.
+
+final result: passed
