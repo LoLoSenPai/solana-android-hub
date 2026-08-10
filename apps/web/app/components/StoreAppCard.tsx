@@ -25,7 +25,7 @@ export function StoreAppCard({ app }: { app: CatalogAppDto }) {
         <div className="catalogue-card-meta">
           {app.genres.map((genre) => <span key={genre}>{genreLabel(genre)}</span>)}
           {approval ? <span>Approved</span> : null}
-          <span>{app.latestRelease.previewOnly ? "Early access" : "Checked release"}</span>
+          <span>{app.latestRelease.previewOnly ? "Preview release" : "Checked release"}</span>
         </div>
         <div className="catalogue-card-footer">
           <span>Android {androidVersion(app.latestRelease.minSdk)}+ · v{app.latestRelease.versionName}</span>

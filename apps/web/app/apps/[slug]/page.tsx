@@ -6,17 +6,34 @@ import { SealCheck } from "@phosphor-icons/react/dist/ssr/SealCheck";
 import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 import { Signature } from "@phosphor-icons/react/dist/ssr/Signature";
 import { UserFocus } from "@phosphor-icons/react/dist/ssr/UserFocus";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { ScreenshotRail } from "../../components/ScreenshotRail";
+import { buildAppSocialMetadata } from "../../../server/app-social-metadata";
 import { getCatalogApp } from "../../../server/catalog-service";
 
 export const dynamic = "force-dynamic";
 
+const getTrustedCatalogApp = cache((slug: string) => getCatalogApp(slug, "trusted"));
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const app = await getTrustedCatalogApp(slug);
+  if (!app) {
+    return {
+      title: "App unavailable",
+      robots: { index: false, follow: false }
+    };
+  }
+  return buildAppSocialMetadata(app);
+}
+
 export default async function AppDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const app = await getCatalogApp(slug, "trusted");
+  const app = await getTrustedCatalogApp(slug);
   if (!app) notFound();
 
   const authenticity = app.latestRelease.previewOnly ? "Development preview" : "Server-validated release";

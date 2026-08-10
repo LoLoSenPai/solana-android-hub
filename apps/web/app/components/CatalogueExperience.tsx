@@ -54,7 +54,7 @@ export function CatalogueExperience({
           <strong>The catalogue is growing.</strong>
           <small>New publishers can bring their Android releases to the Hub.</small>
         </aside>
-        {previewEnvironment ? <span className="environment-badge">Early access catalogue</span> : null}
+        {previewEnvironment ? <span className="environment-badge">Preview catalogue</span> : null}
       </section>
 
       <form className="discovery-command" action="/catalog" aria-label="Search the catalogue">

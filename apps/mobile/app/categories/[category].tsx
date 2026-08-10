@@ -28,7 +28,7 @@ const TRUST_FILTERS: readonly { id: TrustFilter; label: string }[] = [
   { id: "all", label: "All available" },
   { id: "approved", label: "Approved" },
   { id: "server-checked", label: "Checked release" },
-  { id: "preview", label: "Early access" }
+  { id: "preview", label: "Preview releases" }
 ];
 
 const SORTS: readonly { id: BrowseSort; label: string }[] = [

@@ -84,7 +84,7 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
             <option value="all">All available apps</option>
             <option value="approved">Approved</option>
             <option value="checked">Checked releases</option>
-            {previewEnvironment ? <option value="preview">Early access</option> : null}
+            {previewEnvironment ? <option value="preview">Preview releases</option> : null}
           </select><CaretDown aria-hidden="true" /></span></label>
           <label className="select-control"><span>Sort</span><span className="select-shell"><select value={sort} onChange={(event) => update("sort", event.target.value)}>
             <option value="recent">Recently updated</option>

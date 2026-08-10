@@ -218,7 +218,7 @@ export default function DiscoverScreen() {
                   <View className="mt-5 flex-row items-center justify-between border-t border-line pt-4">
                     <View className="flex-row items-center">
                       <HubSymbol name={availableNow.latestRelease.previewOnly ? "science" : "verified"} size={18} color={availableNow.latestRelease.previewOnly ? "#FFC857" : "#77A7FF"} />
-                      <Text className="ml-2 text-xs text-muted">{availableNow.latestRelease.previewOnly ? "Early access" : "Checked release"}</Text>
+                      <Text className="ml-2 text-xs text-muted">{availableNow.latestRelease.previewOnly ? "Preview release" : "Checked release"}</Text>
                     </View>
                     <HubSymbol name="chevron_right" size={20} color="#F4F7FB" />
                   </View>

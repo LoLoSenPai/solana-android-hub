@@ -27,7 +27,7 @@ export function AppCard({ app, localStatus = "available", showCategory = true }:
           <View className="flex-row items-start justify-between gap-2">
             <Text className="min-w-0 flex-1 text-[17px] font-bold text-ink" numberOfLines={1}>{app.name}</Text>
             <Text className={preview ? "text-[11px] font-semibold text-warning" : "text-[11px] font-semibold text-mint"}>
-              {preview ? "Early access" : "Checked"}
+              {preview ? "Preview" : "Checked"}
             </Text>
           </View>
           <Text className="mt-1 text-sm leading-5 text-muted" numberOfLines={2}>
