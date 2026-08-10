@@ -35,6 +35,24 @@ Signing secrets must only be supplied through the process environment. They must
 
 Use the stable public filename `Solana-Android-Hub-v<version>.apk`. Before publishing it, verify the package, version, certificate, APK signature schemes, zip alignment, supported ABIs, permissions, SHA-256, installation, cold launch, and catalogue configuration.
 
-Release `0.3.0` is published as a production-signed public release in the dedicated
-[`solana-android-hub-releases`](https://github.com/LoLoSenPai/solana-android-hub-releases/releases/tag/v0.3.0)
-repository. Its stable public asset name is `Solana-Android-Hub-v0.3.0.apk`.
+Release `0.3.1` is published as a production-signed public release in the dedicated
+[`solana-android-hub-releases`](https://github.com/LoLoSenPai/solana-android-hub-releases/releases/tag/v0.3.1)
+repository. Its stable public asset name is `Solana-Android-Hub-v0.3.1.apk`.
+
+## Self-update release contract
+
+Starting with `0.3.1`, the Hub checks the same-origin
+`/api/v1/hub/releases/latest` manifest at most once every 24 hours and also exposes
+a manual check in Settings. A release must never be announced there until the
+production-signed APK is public and all of the checks above have passed.
+
+The manifest pins the permanent package and signing certificate as well as the
+version code, byte size, SHA-256, minimum SDK, permissions, release notes, and APK
+URL. The mobile client rejects a different package, signing identity, insecure or
+credential-bearing URL, malformed digest, or non-increasing version code. It then
+reuses the native APK verifier and Android `PackageInstaller`; the manifest is not
+an authorization to skip device validation.
+
+`0.3.0` and earlier do not contain the updater, so moving from `0.3.0` to `0.3.1`
+is the last manual Hub download. Future releases can be discovered and installed
+inside the Hub.

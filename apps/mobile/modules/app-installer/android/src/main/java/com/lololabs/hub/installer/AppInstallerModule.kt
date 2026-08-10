@@ -24,6 +24,12 @@ class AppInstallerModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("AppInstaller")
 
+    AsyncFunction("getCurrentAppInfo") {
+      val context = requireContext()
+      ApkInspector.installedPackageInfo(context.packageManager, context.packageName)
+        ?: throw InstallerException("CURRENT_APP_INFO_MISSING", "Android could not inspect the current Hub installation")
+    }
+
     AsyncFunction("getInstallCapability") {
       val context = requireContext()
       val canInstall = Build.VERSION.SDK_INT < 26 || context.packageManager.canRequestPackageInstalls()

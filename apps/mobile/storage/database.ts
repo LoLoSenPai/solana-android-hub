@@ -17,6 +17,11 @@ export interface LocalInstallRecord {
 
 export type CatalogChannel = "trusted" | "approved";
 
+export interface HubUpdateCache {
+  checkedAt: number;
+  manifest: unknown;
+}
+
 export async function initializeLocalDatabase(): Promise<void> {
   const database = await databasePromise;
   await database.execAsync(`
@@ -61,6 +66,22 @@ export async function setCatalogChannel(channel: CatalogChannel): Promise<void> 
     "INSERT INTO settings (key, value) VALUES ('catalog_channel', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     channel
   );
+}
+
+export async function getHubUpdateCache(): Promise<HubUpdateCache | null> {
+  const value = await getSetting("hub_update_cache");
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!isRecord(parsed) || typeof parsed.checkedAt !== "number" || !("manifest" in parsed)) return null;
+    return { checkedAt: parsed.checkedAt, manifest: parsed.manifest };
+  } catch {
+    return null;
+  }
+}
+
+export async function setHubUpdateCache(cache: HubUpdateCache): Promise<void> {
+  await setSetting("hub_update_cache", JSON.stringify(cache));
 }
 
 export async function saveInstalledApp(record: LocalInstallRecord): Promise<void> {
@@ -125,4 +146,25 @@ function parsePermissions(value: string): readonly string[] {
   } catch {
     return [];
   }
+}
+
+async function getSetting(key: string): Promise<string | null> {
+  const database = await databasePromise;
+  await initializeLocalDatabase();
+  const row = await database.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = ?", key);
+  return row?.value ?? null;
+}
+
+async function setSetting(key: string, value: string): Promise<void> {
+  const database = await databasePromise;
+  await initializeLocalDatabase();
+  await database.runAsync(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    key,
+    value
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

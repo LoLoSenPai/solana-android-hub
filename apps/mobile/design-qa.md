@@ -40,6 +40,35 @@
 
 final result: passed
 
+## Production self-update bridge - release 0.3.1
+
+### Verified behavior
+
+- The production-signed `0.3.0` APK was installed on a Pixel 9 API 36 emulator and
+  updated in place to `0.3.1` with `adb install -r`; no uninstall or package change
+  was required.
+- The app launched with `com.lololabs.solanaandroidhub/.MainActivity` focused and
+  no fatal Android runtime signal.
+- Discover checks for updates at most daily, Settings offers a manual check, and the
+  dedicated modal reports the installed and available versions.
+- A remote manifest cannot replace the embedded Hub package or permanent signing
+  certificate. The native download/hash/APK-signature/package/version validation
+  and `PackageInstaller` confirmation remain mandatory.
+
+### Release checks
+
+- Artifact: `.artifacts/android-production/Solana-Android-Hub-v0.3.1.apk`.
+- Package `com.lololabs.solanaandroidhub`, version `0.3.1` / versionCode `4`.
+- APK SHA-256: `064BF912E728493B61462083F4252886235AAB8602FBA34F574BD2CB2F8BFDCA`.
+- Signing certificate SHA-256: `02F204B9CBED11E59F85B2A6DBCB34AD6F0A4658C639D58B2C27FB3BE2AD0E09`.
+- Min SDK 26, target/compile SDK 36, universal native ABI coverage.
+- APK signature and 16 KiB zip alignment pass; `REQUEST_INSTALL_PACKAGES` is
+  present and `QUERY_ALL_PACKAGES` is absent.
+- Screenshot before manifest deployment:
+  `.artifacts/android-production/hub-update-v0.3.1-predeploy-valid.png`.
+
+final result: passed; `0.3.1` is the last manually acquired bridge release
+
 ## Production-signed release candidate 0.3.0
 
 - Artifact: `.artifacts/android-production/Solana-Android-Hub-v0.3.0.apk`.

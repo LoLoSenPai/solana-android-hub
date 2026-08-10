@@ -12,7 +12,7 @@ export const metadata = {
 export default function DownloadPage() {
   const apkUrl = optionalUrl(process.env.NEXT_PUBLIC_HUB_ANDROID_APK_URL);
   const apkSha256 = process.env.NEXT_PUBLIC_HUB_ANDROID_APK_SHA256?.trim();
-  const apkVersion = process.env.NEXT_PUBLIC_HUB_ANDROID_APK_VERSION?.trim() || "0.1.0 early access";
+  const apkVersion = process.env.NEXT_PUBLIC_HUB_ANDROID_APK_VERSION?.trim() || "Not configured";
 
   return (
     <main className="download-page">

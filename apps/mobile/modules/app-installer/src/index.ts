@@ -53,6 +53,7 @@ export interface InstallOperation {
 }
 
 interface NativeAppInstallerModule {
+  getCurrentAppInfo(): Promise<InstalledPackageInfo>;
   getInstallCapability(): Promise<InstallCapability>;
   openUnknownSourcesSettings(): Promise<void>;
   getInstalledPackageInfo(packageName: string): Promise<InstalledPackageInfo | { status: "not_installed" } | { status: "visibility_unknown" }>;

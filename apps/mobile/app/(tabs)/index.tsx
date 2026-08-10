@@ -26,6 +26,7 @@ import {
   type BrowseCategory
 } from "@/features/catalog/discovery";
 import { loadCatalog } from "@/features/catalog/api";
+import { checkForHubUpdate } from "@/features/hub-update/service";
 import { initializeLocalDatabase, listInstalledApps, type LocalInstallRecord } from "@/storage/database";
 
 const HOME_CATEGORIES: readonly BrowseCategory[] = ["games", "defi", "depin", "wallets", "social-identity", "ai-agents"];
@@ -38,6 +39,7 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hubUpdate, setHubUpdate] = useState<{ versionName: string; apkSize: number } | null>(null);
 
   const refresh = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -55,7 +57,14 @@ export default function DiscoverScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
+  useFocusEffect(useCallback(() => {
+    void refresh();
+    void checkForHubUpdate().then((result) => {
+      setHubUpdate(result.status === "available"
+        ? { versionName: result.manifest.versionName, apkSize: result.manifest.apkSize }
+        : null);
+    });
+  }, [refresh]));
 
   const installedByPackage = useMemo(
     () => new Map(installedApps.map((app) => [app.packageName, app])),
@@ -147,6 +156,24 @@ export default function DiscoverScreen() {
             <HubSymbol name="info" size={20} color="#FFC857" />
             <Text className="ml-3 flex-1 leading-5 text-warning">{error}</Text>
           </View>
+        ) : null}
+
+        {hubUpdate ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Update Solana Android Hub to version ${hubUpdate.versionName}`}
+            className="mt-4 flex-row items-center rounded-[22px] border border-mint bg-raised p-4 active:opacity-80"
+            onPress={() => router.push("/hub-update" as Href)}
+          >
+            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-canvas">
+              <HubSymbol name="system_update" size={23} color="#77A7FF" />
+            </View>
+            <View className="ml-3 flex-1">
+              <Text className="font-bold text-ink">Hub update available</Text>
+              <Text className="mt-1 text-sm text-muted">Version {hubUpdate.versionName} · {(hubUpdate.apkSize / 1024 / 1024).toFixed(1)} MB</Text>
+            </View>
+            <HubSymbol name="chevron_right" size={21} color="#95A5B7" />
+          </Pressable>
         ) : null}
 
         {!query ? (
