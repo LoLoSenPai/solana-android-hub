@@ -52,9 +52,9 @@ final result: passed
 - `REQUEST_INSTALL_PACKAGES` is present and `QUERY_ALL_PACKAGES` is absent.
 - Installed as a separate application beside `.dev` on a Pixel 9 API 36 emulator; cold launch, production API loading, deep linking, and the DegenMerge detail page pass with no fatal exception.
 - Screenshots: `.artifacts/design-qa/mobile-production-home-0.3.0.png` and `.artifacts/design-qa/mobile-production-detail-0.3.0.png`.
-- Publication remains intentionally withheld while the live config endpoint reports `staging` with previews enabled.
+- The signed APK is published as the public `v0.3.0` GitHub prerelease with the stable filename `Solana-Android-Hub-v0.3.0.apk`; the live backend remains staging with previews enabled.
 
-final result: passed as a signed release candidate; public production gate pending
+final result: passed and published as an early-access signed release; backend production gate pending
 
 ## Consumer app-detail pass - release 0.3.0
 

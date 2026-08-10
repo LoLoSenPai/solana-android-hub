@@ -35,5 +35,9 @@ Signing secrets must only be supplied through the process environment. They must
 
 Use the stable public filename `Solana-Android-Hub-v<version>.apk`. Before publishing it, verify the package, version, certificate, APK signature schemes, zip alignment, supported ABIs, permissions, SHA-256, installation, cold launch, and catalogue configuration.
 
-The current signed release candidate is intentionally not a public production release while `/api/v1/config` reports `staging` or permits preview releases.
-
+Release `0.3.0` is published as a public GitHub prerelease in the dedicated
+[`solana-android-hub-releases`](https://github.com/LoLoSenPai/solana-android-hub-releases/releases/tag/v0.3.0)
+repository. The release asset is intentionally labelled early access while
+`/api/v1/config` reports `staging` or permits preview releases; publishing the
+signed client does not promote staging catalogue consent or validation evidence
+into production.
