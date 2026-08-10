@@ -125,7 +125,7 @@ export default function HubUpdateScreen() {
               <Text className="ml-3 flex-1 leading-6 text-muted">{note}</Text>
             </View>
           ))}
-          <Text className="mt-4 text-xs text-subtle">Download size: {formatBytes(manifest.apkSize)}</Text>
+          <Text className="mt-4 text-xs text-muted">Download size: {formatBytes(manifest.apkSize)}</Text>
         </View>
       ) : null}
 

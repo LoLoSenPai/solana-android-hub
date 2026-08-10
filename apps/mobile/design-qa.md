@@ -59,7 +59,7 @@ final result: passed
 
 - Artifact: `.artifacts/android-production/Solana-Android-Hub-v0.3.1.apk`.
 - Package `com.lololabs.solanaandroidhub`, version `0.3.1` / versionCode `4`.
-- APK SHA-256: `064BF912E728493B61462083F4252886235AAB8602FBA34F574BD2CB2F8BFDCA`.
+- APK SHA-256: `D598F8B87D583269F385157D58A8B7FC4EBE7538B60A35FBD46DD028951DADF7`.
 - Signing certificate SHA-256: `02F204B9CBED11E59F85B2A6DBCB34AD6F0A4658C639D58B2C27FB3BE2AD0E09`.
 - Min SDK 26, target/compile SDK 36, universal native ABI coverage.
 - APK signature and 16 KiB zip alignment pass; `REQUEST_INSTALL_PACKAGES` is
