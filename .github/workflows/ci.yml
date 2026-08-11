@@ -63,3 +63,11 @@ jobs:
           grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' manifest.txt
           grep -q 'com.lololabs.hubfixture' manifest.txt
           test "$(grep -c 'E: package (' manifest.txt)" -eq 1
+      - name: Assert self-update native API is packaged
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+          rm -rf apk-dex
+          unzip -q "$apk" 'classes*.dex' -d apk-dex
+          grep -aR -q 'getCurrentAppInfo' apk-dex

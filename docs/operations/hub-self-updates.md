@@ -9,8 +9,9 @@
   download size before Android asks for confirmation.
 - The first Dapport install still comes from the website. Release `0.3.1` is the bridge
   release that adds in-app updates.
-- The Dapport rebrand is `0.4.0` / versionCode `5`; its manifest stays unpublished
-  until the production-signed `Dapport-v0.4.0.apk` is public and verified.
+- Release `0.4.1` / versionCode `6` repairs the native self-update bridge missing
+  from the `0.4.0` binary. Existing `0.4.0` installs require this one final manual
+  download; releases after `0.4.1` can be installed from inside Dapport.
 
 ## Security boundary
 
@@ -34,7 +35,8 @@ by the server, and never needs `QUERY_ALL_PACKAGES`.
 1. Increment both version name and monotonically increasing version code.
 2. Build with the permanent Dapport keystore and production configuration.
 3. Verify signature, certificate, package, version, SDKs, 16 KiB alignment, ABIs,
-   permissions, SHA-256, install/update behavior, and cold launch.
+   permissions, SHA-256, required native updater symbols, install/update behavior,
+   and cold launch.
 4. Publish the friendly `Dapport-v<version>.apk` asset in `solana-android-hub-releases`.
 5. Configure the manifest environment values with the exact verified artifact.
 6. Deploy the web app and verify the manifest plus direct APK URL publicly.

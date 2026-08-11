@@ -27,8 +27,8 @@ describe("standalone Android distribution configuration", () => {
     expect(config.android?.package).toBe("com.lololabs.solanaandroidhub");
     expect(config.android?.adaptiveIcon?.foregroundImage).toBe("./assets/adaptive-icon.png");
     expect(config.android?.adaptiveIcon?.monochromeImage).toBe("./assets/monochrome-icon.png");
-    expect(config.version).toBe("0.4.0");
-    expect(config.android?.versionCode).toBe(5);
+    expect(config.version).toBe("0.4.1");
+    expect(config.android?.versionCode).toBe(6);
     expect(config.extra?.publicationGate).toBe("server_and_device");
     expect(config.extra?.hubUpdater).toEqual({
       enabled: true,
@@ -56,5 +56,17 @@ describe("standalone Android distribution configuration", () => {
     expect(manifest).not.toContain("QUERY_ALL_PACKAGES");
     expect(manifest.match(/<package /gu)).toHaveLength(1);
     expect(manifest).toContain("com.lololabs.hubfixture");
+  });
+
+  it("keeps the self-update API in the native module and verifies it in release APKs", async () => {
+    const modulePath = fileURLToPath(new URL("../modules/app-installer/android/src/main/java/com/lololabs/hub/installer/AppInstallerModule.kt", import.meta.url));
+    const builderPath = fileURLToPath(new URL("../../../tooling/android/build-production.ps1", import.meta.url));
+    const [moduleSource, builderSource] = await Promise.all([
+      readFile(modulePath, "utf8"),
+      readFile(builderPath, "utf8")
+    ]);
+    expect(moduleSource).toContain('AsyncFunction("getCurrentAppInfo")');
+    expect(builderSource).toContain('"getCurrentAppInfo"');
+    expect(builderSource).toContain("Assert-ApkDexContains");
   });
 });

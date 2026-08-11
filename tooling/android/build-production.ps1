@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-  [string]$VersionName = "0.4.0",
-  [int]$VersionCode = 5,
+  [string]$VersionName = "0.4.1",
+  [int]$VersionCode = 6,
   [string]$ShortWorkspace = "C:\hubb03"
 )
 
@@ -38,6 +38,35 @@ function Sync-Directory([string]$Source, [string]$Destination, [string[]]$Exclud
   }
 }
 
+function Assert-ApkDexContains([string]$ApkPath, [string[]]$Symbols) {
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $archive = [IO.Compression.ZipFile]::OpenRead($ApkPath)
+  try {
+    $dexText = [Text.StringBuilder]::new()
+    foreach ($entry in $archive.Entries | Where-Object { $_.FullName -match '^classes[0-9]*\.dex$' }) {
+      $stream = $entry.Open()
+      try {
+        $memory = [IO.MemoryStream]::new()
+        try {
+          $stream.CopyTo($memory)
+          [void]$dexText.Append([Text.Encoding]::ASCII.GetString($memory.ToArray()))
+        } finally {
+          $memory.Dispose()
+        }
+      } finally {
+        $stream.Dispose()
+      }
+    }
+    foreach ($symbol in $Symbols) {
+      if (-not $dexText.ToString().Contains($symbol)) {
+        throw "Signed release APK is missing native AppInstaller API: $symbol"
+      }
+    }
+  } finally {
+    $archive.Dispose()
+  }
+}
+
 try {
   Assert-Path $keystorePath "Dapport release keystore"
   Assert-Path $credentialPath "DPAPI signing credential"
@@ -52,8 +81,20 @@ try {
     Copy-Item -LiteralPath (Join-Path $workspaceRoot $rootFile) -Destination (Join-Path $ShortWorkspace $rootFile) -Force
   }
   Copy-Item -LiteralPath (Join-Path $workspaceRoot "apps\web\package.json") -Destination (Join-Path $ShortWorkspace "apps\web\package.json") -Force
-  Sync-Directory (Join-Path $workspaceRoot "apps\mobile") (Join-Path $ShortWorkspace "apps\mobile") @("android", "ios", "node_modules", ".expo", ".turbo")
-  Sync-Directory (Join-Path $workspaceRoot "packages") (Join-Path $ShortWorkspace "packages") @("node_modules", "dist", ".turbo")
+  $mobileSource = Join-Path $workspaceRoot "apps\mobile"
+  $packagesSource = Join-Path $workspaceRoot "packages"
+  Sync-Directory $mobileSource (Join-Path $ShortWorkspace "apps\mobile") @(
+    (Join-Path $mobileSource "android"),
+    (Join-Path $mobileSource "ios"),
+    (Join-Path $mobileSource "node_modules"),
+    (Join-Path $mobileSource ".expo"),
+    (Join-Path $mobileSource ".turbo")
+  )
+  Sync-Directory $packagesSource (Join-Path $ShortWorkspace "packages") @(
+    (Join-Path $packagesSource "node_modules"),
+    (Join-Path $packagesSource "dist"),
+    (Join-Path $packagesSource ".turbo")
+  )
 
   $securePassword = Import-Clixml -LiteralPath $credentialPath
   if ($securePassword -isnot [Security.SecureString]) {
@@ -101,6 +142,12 @@ try {
   Assert-Path $builtApk "Signed release APK"
   New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
   Copy-Item -LiteralPath $builtApk -Destination $artifactPath -Force
+  Assert-ApkDexContains $artifactPath @(
+    "getCurrentAppInfo",
+    "getInstallCapability",
+    "prepareInstall",
+    "installPrepared"
+  )
 
   $badging = & $aapt dump badging $artifactPath
   if ($LASTEXITCODE -ne 0) { throw "aapt could not inspect the APK" }
