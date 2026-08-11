@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { AppEnvironment } from "@hub/domain";
+import type { JSONValue } from "postgres";
 import type { HubSql } from "./client";
+import { parseJsonValue } from "./json";
 
 export interface BinaryValidationManifest {
   runId: string;
@@ -24,7 +26,7 @@ export interface BinaryValidationResult {
 
 interface ValidationRow {
   correlation_id: string;
-  expected: BinaryValidationManifest;
+  expected: JSONValue;
   status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
 }
 
@@ -58,12 +60,20 @@ export class ValidationRepository {
       if (!['metadata_valid', 'validating_binary'].includes(release.validation_status)) {
         throw new Error(release.validation_status === "server_binary_valid" ? "RELEASE_ALREADY_VALIDATED" : "RELEASE_NOT_VALIDATABLE");
       }
-      const [active] = await tx<{ correlation_id: string; expected: BinaryValidationManifest }[]>`
+      const [active] = await tx<{ correlation_id: string; expected: JSONValue }[]>`
         select correlation_id, expected from hub.release_validation_runs
         where release_id = ${releaseId} and stage = 'binary' and status in ('queued', 'running')
         order by created_at desc limit 1
       `;
-      if (active) return { ...active.expected, runId: active.correlation_id };
+      if (active) {
+        const restored = decodeBinaryValidationManifest(active.expected, active.correlation_id);
+        if (restored) return restored;
+        await tx`
+          update hub.release_validation_runs set status = 'failed', completed_at = now(),
+            failure_codes = array['MANIFEST_INVALID']
+          where correlation_id = ${active.correlation_id} and status in ('queued', 'running')
+        `;
+      }
 
       const correlationId = randomUUID();
       const manifest: BinaryValidationManifest = {
@@ -79,7 +89,8 @@ export class ValidationRepository {
       };
       await tx`
         insert into hub.release_validation_runs (release_id, stage, provider, status, correlation_id, expected)
-        values (${releaseId}, 'binary', 'github_actions_ephemeral', 'queued', ${correlationId}, ${JSON.stringify(manifest)}::jsonb)
+        values (${releaseId}, 'binary', 'github_actions_ephemeral', 'queued', ${correlationId},
+          ${tx.json(parseJsonValue(JSON.stringify(manifest)))})
       `;
       await tx`update hub.releases set validation_status = 'validating_binary', updated_at = now() where id = ${releaseId}`;
       return manifest;
@@ -90,7 +101,8 @@ export class ValidationRepository {
     await this.sql.begin(async (tx) => {
       const [run] = await tx<{ release_id: string }[]>`
         update hub.release_validation_runs set status = 'failed', completed_at = now(),
-          failure_codes = array['VALIDATOR_DISPATCH_FAILED'], observed = ${JSON.stringify({ detail: detail.slice(0, 500) })}::jsonb
+          failure_codes = array['VALIDATOR_DISPATCH_FAILED'],
+          observed = ${tx.json(parseJsonValue(JSON.stringify({ detail: detail.slice(0, 500) })))}
         where correlation_id = ${runId} and status = 'queued'
         returning release_id
       `;
@@ -104,7 +116,7 @@ export class ValidationRepository {
       where correlation_id = ${runId} and stage = 'binary' and status in ('queued', 'running')
       returning correlation_id, expected, status
     `;
-    return run ? { ...run.expected, runId: run.correlation_id } : null;
+    return run ? decodeBinaryValidationManifest(run.expected, run.correlation_id) : null;
   }
 
   public async completeBinaryRun(input: {
@@ -129,8 +141,8 @@ export class ValidationRepository {
         : [...new Set(input.result.failureCodes.length > 0 ? input.result.failureCodes : ["VALIDATOR_RESULT_MISMATCH"])];
       await tx`
         update hub.release_validation_runs set status = ${status}::hub.job_status,
-          observed = ${JSON.stringify(input.result.observed ?? {})}::jsonb,
-          tool_versions = ${JSON.stringify(input.result.toolVersions ?? {})}::jsonb,
+          observed = ${tx.json(parseJsonValue(JSON.stringify(input.result.observed ?? {})))},
+          tool_versions = ${tx.json(parseJsonValue(JSON.stringify(input.result.toolVersions ?? {})))},
           failure_codes = ${failures}, log_digest = ${input.result.logDigest ?? null},
           oidc_subject = ${input.oidcSubject}, oidc_replay_key_hash = ${input.oidcReplayKeyHash}, completed_at = now()
         where correlation_id = ${input.runId}
@@ -172,4 +184,33 @@ export class ValidationRepository {
     if (!release) throw new Error("RELEASE_NOT_PUBLISHABLE");
     return release;
   }
+}
+
+export function decodeBinaryValidationManifest(value: unknown, runId: string): BinaryValidationManifest | null {
+  let candidate = value;
+  if (typeof candidate === "string") {
+    try {
+      candidate = JSON.parse(candidate) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+  const record = candidate as Record<string, unknown>;
+  if (typeof record.apkUrl !== "string" || typeof record.expectedSize !== "number"
+    || typeof record.expectedSha256 !== "string" || typeof record.packageName !== "string"
+    || typeof record.versionCode !== "string" || typeof record.certificateSha256 !== "string"
+    || typeof record.minSdk !== "number" || !Array.isArray(record.permissions)
+    || record.permissions.some((permission) => typeof permission !== "string")) return null;
+  return {
+    runId,
+    apkUrl: record.apkUrl,
+    expectedSize: record.expectedSize,
+    expectedSha256: record.expectedSha256,
+    packageName: record.packageName,
+    versionCode: record.versionCode,
+    certificateSha256: record.certificateSha256,
+    minSdk: record.minSdk,
+    permissions: record.permissions as string[]
+  };
 }

@@ -66,6 +66,8 @@ jobs:
       - name: Validate APK in ephemeral runner storage
         id: validate
         continue-on-error: true
+        env:
+          VALIDATION_RUN_ID: ${{ inputs.correlation_id }}
         run: node tooling/apk-validator/src/validate.mjs manifest.json result.json
       - name: Return signed result
         if: always() && hashFiles('result.json') != ''

@@ -1,6 +1,8 @@
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { compareObserved, isPublicAddress, validateManifestShape } from "../src/validate.mjs";
+import { compareObserved, isPublicAddress, runValidationCli, validateManifestShape } from "../src/validate.mjs";
 
 const manifest = {
   runId: "02586adf-1c19-47b0-99b6-97b0352dd841",
@@ -58,5 +60,23 @@ describe("ephemeral APK validator", () => {
     expect(workflow).toContain('sdkmanager "build-tools;36.0.0"');
     expect(workflow).toContain('build_tools="$ANDROID_HOME/build-tools/36.0.0"');
     expect(workflow).not.toContain("sort -V | tail -1");
+    expect(workflow).toContain("VALIDATION_RUN_ID: ${{ inputs.correlation_id }}");
+  });
+
+  it("always writes a callback result when the manifest is malformed", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "dapport-validator-test-"));
+    const manifestPath = join(directory, "manifest.json");
+    const resultPath = join(directory, "result.json");
+    try {
+      await writeFile(manifestPath, JSON.stringify({ runId: manifest.runId, apkUrl: null }), "utf8");
+      await expect(runValidationCli(manifestPath, resultPath, manifest.runId)).resolves.toBe("failed");
+      await expect(readFile(resultPath, "utf8").then(JSON.parse)).resolves.toMatchObject({
+        runId: manifest.runId,
+        status: "failed",
+        failureCodes: ["MANIFEST_INVALID"]
+      });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

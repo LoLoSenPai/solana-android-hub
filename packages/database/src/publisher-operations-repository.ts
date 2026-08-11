@@ -4,6 +4,7 @@ import type { HubSql } from "./client";
 export interface PublisherAppSummary {
   id: string;
   appMint: string;
+  slug: string;
   name: string;
   packageName: string;
   claimStatus: string;
@@ -20,11 +21,11 @@ export class PublisherOperationsRepository {
 
   public async listApps(publisherId: string, environment: AppEnvironment): Promise<readonly PublisherAppSummary[]> {
     const rows = await this.sql<{
-      id: string; app_mint: string; name: string; package_name: string; claim_status: string;
+      id: string; app_mint: string; slug: string; name: string; package_name: string; claim_status: string;
       distribution_enabled: boolean; release_policy: string; consent_status: string | null; release_count: string;
       primary_category: CatalogCategory | null; tags: GameGenre[] | null;
     }[]>`
-      select a.id, a.app_mint, a.name, a.package_name, a.claim_status, a.distribution_enabled, a.release_policy,
+      select a.id, a.app_mint, a.slug, a.name, a.package_name, a.claim_status, a.distribution_enabled, a.release_policy,
         consent.status as consent_status, count(r.id)::text as release_count,
         classification.primary_category, classification.tags
       from hub.apps a
@@ -41,6 +42,7 @@ export class PublisherOperationsRepository {
     return rows.map((row) => ({
       id: row.id,
       appMint: row.app_mint,
+      slug: row.slug,
       name: row.name,
       packageName: row.package_name,
       claimStatus: row.claim_status,
@@ -57,10 +59,17 @@ export class PublisherOperationsRepository {
     return this.sql<{
       id: string; release_mint: string; version_name: string; version_code: string; validation_status: string;
       publication_status: string; quarantine_code: string | null; created_at: Date;
+      validation_failure_codes: string[];
     }[]>`
       select r.id, r.release_mint, r.version_name, r.version_code::text, r.validation_status,
-        r.publication_status, r.quarantine_code, r.discovered_at as created_at
+        r.publication_status, r.quarantine_code, r.discovered_at as created_at,
+        coalesce(validation.failure_codes, array[]::text[]) as validation_failure_codes
       from hub.releases r join hub.apps a on a.id = r.app_id
+      left join lateral (
+        select failure_codes from hub.release_validation_runs
+        where release_id = r.id and stage = 'binary' and status = 'failed'
+        order by created_at desc limit 1
+      ) validation on true
       where r.app_id = ${appId} and a.publisher_id = ${publisherId}
       order by r.version_code desc
     `;
