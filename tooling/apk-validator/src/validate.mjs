@@ -259,13 +259,30 @@ function validatorError(code, message) {
   return error;
 }
 
+export async function runValidationCli(manifestPath, resultPath, fallbackRunId) {
+  let manifest;
+  let result;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    result = await validateApk(manifest);
+  } catch (error) {
+    const manifestRunId = manifest && typeof manifest === "object" && typeof manifest.runId === "string"
+      ? manifest.runId
+      : null;
+    const runId = manifestRunId ?? fallbackRunId;
+    if (!runId) throw error;
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "VALIDATOR_INTERNAL_ERROR";
+    result = failureResult(runId, [code], undefined, undefined, error instanceof Error ? error.message : "Validation failed");
+  }
+  await writeFile(resultPath, `${JSON.stringify(result)}\n`, { mode: 0o600 });
+  return result.status;
+}
+
 async function main() {
   const [manifestPath, resultPath] = process.argv.slice(2);
   if (!manifestPath || !resultPath) throw new Error("Usage: validate.mjs <manifest.json> <result.json>");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const result = await validateApk(manifest);
-  await writeFile(resultPath, `${JSON.stringify(result)}\n`, { mode: 0o600 });
-  if (result.status !== "succeeded") process.exitCode = 1;
+  const status = await runValidationCli(manifestPath, resultPath, process.env.VALIDATION_RUN_ID);
+  if (status !== "succeeded") process.exitCode = 1;
 }
 
 if (process.argv[1] && new URL(import.meta.url).pathname.replace(/^\/[A-Za-z]:/u, (value) => value.slice(1)) === process.argv[1].replaceAll("\\", "/")) {

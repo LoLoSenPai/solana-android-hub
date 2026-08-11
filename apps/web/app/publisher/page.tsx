@@ -10,9 +10,9 @@ export default function PublisherPage() {
     <main>
       <section className="hero compact">
         <p className="eyebrow">Publisher workspace</p>
-        <h1>{onboardingEnabled ? "Claim with authority. Consent separately." : "Publisher onboarding is not open yet."}</h1>
+        <h1>{onboardingEnabled ? "Bring your Solana app to every Android." : "Publisher onboarding is not open yet."}</h1>
         <p>{onboardingEnabled
-          ? "Wallet Standard authentication, finalized App authority, and environment-bound distribution consent are explicit, independently recorded steps."
+          ? "Connect the wallet used for your App NFT. Dapport guides you from discovery to publication and keeps every listing under your control."
           : "The public staging catalogue is available, but finalized Solana chain verification is not configured for publisher onboarding in this environment."}</p>
       </section>
       {onboardingEnabled ? <PublisherClient termsVersion={hubConfig.consentTermsVersion} /> : <PublisherUnavailable />}
