@@ -52,14 +52,14 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
           {app.iconUrl
             // Publisher icon hosts are metadata-driven, so they stay direct instead of enabling a broad Next image proxy allowlist.
             ? <img className="detail-app-icon" src={app.iconUrl} alt={`${app.name} icon`} />
-            : <Image className="detail-app-icon" src="/hub-app-fallback.png" width={160} height={160} alt={`${app.name} icon`} />}
+            : <Image className="detail-app-icon" src="/dapport-app-fallback.png" width={160} height={160} alt={`${app.name} icon`} />}
           <div className="detail-title-copy">
             <p className="eyebrow">{categoryFromApp(app.category)}</p>
             <h1 id="app-title">{app.name}</h1>
             <p>{app.shortDescription ?? "An independently published Android app for the Solana ecosystem."}</p>
           </div>
           <div className="detail-primary-action">
-            <Link className="primary-action" href="/download">Install with Android Hub</Link>
+            <Link className="primary-action" href="/download">Install with Dapport</Link>
             <a
               className="secondary-action"
               href={app.latestRelease.apkUrl}
@@ -69,7 +69,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             >
               Download APK directly
             </a>
-            <small>The Hub checks this release on your phone. Direct download is an advanced option that skips those final device checks.</small>
+            <small>Dapport checks this release on your phone. Direct download is an advanced option that skips those final device checks.</small>
           </div>
         </section>
 
@@ -80,16 +80,16 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
                 <img className="detail-hero-backdrop" src={heroArtwork} alt="" aria-hidden="true" />
                 <img className="detail-hero-image" src={heroArtwork} alt={`${app.name} cover artwork`} />
               </>
-            ) : <Image className="detail-hero-image" src="/hub-hero-chromatic.webp" alt="" fill priority sizes="(max-width: 760px) 100vw, 900px" />}
+            ) : <Image className="detail-hero-image" src="/dapport-hero-chromatic.webp" alt="" fill priority sizes="(max-width: 760px) 100vw, 900px" />}
             <span className="detail-hero-scrim" aria-hidden="true" />
             <span className="detail-state">{authenticity}</span>
           </div>
           <aside className="detail-flow-card">
-            <div><p className="eyebrow">Install & manage with the Hub</p><h2>A simple 3-step flow.</h2><p>Discover on the web. Install and manage on Android.</p></div>
+            <div><p className="eyebrow">Install & manage with Dapport</p><h2>A simple 3-step flow.</h2><p>Discover on the web. Install and manage on Android.</p></div>
             <ol>
               <li><Compass aria-hidden="true" weight="duotone" /><span><strong>Browse on the web</strong><small>Choose the app and release that fits you.</small></span></li>
-              <li><DeviceMobile aria-hidden="true" weight="duotone" /><span><strong>Continue on Android</strong><small>Open the Hub companion app and run device checks.</small></span></li>
-              <li><ArrowsClockwise aria-hidden="true" weight="duotone" /><span><strong>Manage updates</strong><small>Keep Hub-installed apps current.</small></span></li>
+              <li><DeviceMobile aria-hidden="true" weight="duotone" /><span><strong>Continue on Android</strong><small>Open Dapport and run the device checks.</small></span></li>
+              <li><ArrowsClockwise aria-hidden="true" weight="duotone" /><span><strong>Manage updates</strong><small>Keep apps installed through Dapport current.</small></span></li>
             </ol>
             <dl>
               <div><dt>Category</dt><dd>{categoryFromApp(app.category)}</dd></div>
@@ -117,8 +117,8 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <ScreenshotRail appName={app.name} screenshots={app.screenshots} />
           </section>
         ) : (
-          <section className="detail-editorial-card" aria-label="Android Hub installation promise">
-            <Image src="/hub-hero-chromatic.webp" alt="" fill sizes="(max-width: 760px) 100vw, 1280px" />
+          <section className="detail-editorial-card" aria-label="Dapport installation promise">
+            <Image src="/dapport-hero-chromatic.webp" alt="" fill sizes="(max-width: 760px) 100vw, 1280px" />
             <div><p className="eyebrow">A safer hand-off</p><h2>The APK is checked before Android ever sees it.</h2><p>Hash, package, version, minimum SDK, permissions, and signing certificate must all match the published release.</p></div>
           </section>
         )}
@@ -141,7 +141,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <p className="eyebrow">Current Android release</p>
             <h2 id="release-heading">Version {app.latestRelease.versionName}</h2>
             <p>Version code {app.latestRelease.versionCode} · requires Android {androidVersion(app.latestRelease.minSdk)} or newer · {formatFileSize(app.latestRelease.apkSize)}</p>
-            <p className="muted">The Android Hub validates the full SHA-256, package name, version, and signing certificate again on-device before opening PackageInstaller.</p>
+            <p className="muted">Dapport validates the full SHA-256, package name, version, and signing certificate again on-device before opening PackageInstaller.</p>
           </div>
           <dl className="release-facts">
             <div><dt>Package</dt><dd>{app.latestRelease.packageName}</dd></div>
@@ -157,7 +157,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <h2 id="direct-download-heading">Need the APK file itself?</h2>
           </div>
           <div>
-            <p>You can download the publisher-hosted APK from a computer and transfer it to Android. This does not run the Hub's installed-package, downgrade, or signer-conflict checks.</p>
+            <p>You can download the publisher-hosted APK from a computer and transfer it to Android. This does not run Dapport's installed-package, downgrade, or signer-conflict checks.</p>
             <a
               className="secondary-action"
               href={app.latestRelease.apkUrl}
@@ -187,7 +187,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
         <aside className="independence-note">
           <ShieldCheck aria-hidden="true" weight="duotone" />
-          <div><strong>Independent by design.</strong><p>Solana Android Hub is an independent catalogue and is not affiliated with or endorsed by Solana Mobile.</p></div>
+          <div><strong>Independent by design.</strong><p>Dapport is an independent catalogue and is not affiliated with or endorsed by Solana Mobile.</p></div>
         </aside>
       </article>
     </main>

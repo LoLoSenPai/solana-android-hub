@@ -59,7 +59,7 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
         </div>
         <Link className="catalog-android-callout" href="/download">
           {category === "games" ? <GameController aria-hidden="true" weight="duotone" /> : <DeviceMobile aria-hidden="true" weight="duotone" />}
-          <span><strong>{category === "games" ? "Install and play on Android" : "Take your catalogue to Android"}</strong><small>Use the Hub to validate, install and manage releases.</small></span>
+          <span><strong>{category === "games" ? "Install and play on Android" : "Take your catalogue to Android"}</strong><small>Use Dapport to validate, install and manage releases.</small></span>
           <span aria-hidden="true">→</span>
         </Link>
       </section>
@@ -111,7 +111,7 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
             <aside className="catalogue-growing-card">
               <RocketLaunch aria-hidden="true" weight="duotone" />
               <p className="eyebrow">Catalogue in progress</p>
-              <h3>{category === "games" ? "More games are on the way." : "More apps are joining the Hub."}</h3>
+              <h3>{category === "games" ? "More games are on the way." : "More apps are joining Dapport."}</h3>
               <p>Publishers can opt in as their Android releases become available.</p>
               <Link href="/publisher">For publishers <span aria-hidden="true">→</span></Link>
             </aside>

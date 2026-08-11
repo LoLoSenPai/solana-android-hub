@@ -158,7 +158,7 @@ export default function CategoryScreen() {
           <View className="items-center rounded-[26px] border border-dashed border-line bg-surface px-7 py-12">
             <HubSymbol name="filter_alt_off" size={38} color="#95A5B7" />
             <Text className="mt-4 text-lg font-bold text-ink">{activeFilterCount || query ? "Nothing matches yet" : "No apps here yet"}</Text>
-            <Text className="mt-2 text-center leading-5 text-muted">{activeFilterCount || query ? "Clear one filter to see more apps." : "This category will fill up as more publishers join the Hub."}</Text>
+            <Text className="mt-2 text-center leading-5 text-muted">{activeFilterCount || query ? "Clear one filter to see more apps." : "This category will fill up as more publishers join Dapport."}</Text>
             {activeFilterCount || query ? <Pressable className="mt-6 rounded-full bg-mint px-5 py-3" onPress={clearFilters}><Text className="font-bold text-canvas">Clear filters</Text></Pressable> : null}
           </View>
         ) : null}

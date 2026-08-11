@@ -14,7 +14,7 @@ export function StoreAppCard({ app }: { app: CatalogAppDto }) {
       <Link className="catalogue-card-art" href={`/apps/${app.slug}`} aria-label={`View ${app.name}`}>
         {artwork
           ? <img src={artwork} alt="" />
-          : <Image src="/hub-hero.png" alt="" fill sizes="(max-width: 760px) 100vw, 50vw" />}
+          : <Image src="/dapport-hero-chromatic.webp" alt="" fill sizes="(max-width: 760px) 100vw, 50vw" />}
         <span className="catalogue-card-category">{categoryLabel(app.category)}</span>
       </Link>
       <div className="catalogue-card-body">
@@ -39,7 +39,7 @@ export function StoreAppCard({ app }: { app: CatalogAppDto }) {
 function AppIcon({ app }: { app: CatalogAppDto }) {
   const [failed, setFailed] = useState(false);
   if (!app.iconUrl || failed) {
-    return <Image className="catalogue-card-icon" src="/hub-app-fallback.png" width={160} height={160} alt={`${app.name} icon`} />;
+    return <Image className="catalogue-card-icon" src="/dapport-app-fallback.png" width={160} height={160} alt={`${app.name} icon`} />;
   }
   return <img className="catalogue-card-icon" src={app.iconUrl} alt={`${app.name} icon`} onError={() => setFailed(true)} />;
 }

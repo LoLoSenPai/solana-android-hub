@@ -11,9 +11,9 @@ This runbook verifies the first real Publisher → App → Release flow without 
 
 The Hub does not accept a generic NFT. It discovers through Helius DAS, then independently verifies finalized raw Token Metadata accounts. The connected wallet must be the current App metadata update authority or an authorized collection delegate; NFT ownership alone is insufficient.
 
-## Verify in Hub staging
+## Verify in Dapport staging
 
-1. Open <https://solana-hub.lololabs.xyz/publisher> in a browser with a Wallet Standard wallet that supports Ed25519 message signing.
+1. Open <https://dapport.app/publisher> in a browser with a Wallet Standard wallet that supports Ed25519 message signing.
 2. Connect the same publisher-authority wallet and sign the authentication challenge. This is sign-in only, not distribution consent.
 3. Select **Discover authorized Apps**. If the App NFT was just minted, allow a short indexing delay and retry.
 4. Claim the discovered App. The backend rechecks that the App is a collection NFT and verifies finalized wallet authority. A legacy Publisher collection parent is checked when present, but current portal App NFTs do not require one.

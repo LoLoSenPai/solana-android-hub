@@ -26,7 +26,17 @@ interface ClaimedApp extends DiscoveredApp {
   genres?: readonly GameGenre[];
 }
 
-export function PublisherClient() {
+interface PublisherRelease {
+  id: string;
+  release_mint: string;
+  version_name: string;
+  version_code: string;
+  validation_status: "discovered" | "metadata_valid" | "validating_binary" | "server_binary_valid" | "quarantined";
+  publication_status: "preview" | "unpublished" | "published" | "ignored" | "withdrawn";
+  quarantine_code: string | null;
+}
+
+export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const registry = useMemo(getWallets, []);
   const [wallets, setWallets] = useState<readonly CompatibleWallet[]>([]);
   const [activeWallet, setActiveWallet] = useState<CompatibleWallet | null>(null);
@@ -34,6 +44,7 @@ export function PublisherClient() {
   const [account, setAccount] = useState<WalletAccount | null>(null);
   const [apps, setApps] = useState<readonly DiscoveredApp[]>([]);
   const [claims, setClaims] = useState<Record<string, ClaimedApp>>({});
+  const [releases, setReleases] = useState<Record<string, readonly PublisherRelease[]>>({});
   const [manualMint, setManualMint] = useState("");
   const [policy, setPolicy] = useState<ReleasePolicy>("manual");
   const [status, setStatus] = useState("Connect a Wallet Standard wallet that supports Ed25519 message signing.");
@@ -114,6 +125,11 @@ export function PublisherClient() {
       category: app.category,
       genres: app.genres
     }])));
+    const releaseEntries = await Promise.all(existing.apps.map(async (app) => {
+      const response = await api<{ releases: readonly PublisherRelease[] }>(`/api/v1/publisher/apps/${app.id}/releases`);
+      return [app.id, response.releases] as const;
+    }));
+    setReleases(Object.fromEntries(releaseEntries));
     setActiveWallet(wallet);
     setAccount(nextAccount);
     setStatus(`Authenticated with ${wallet.name} as ${shortAddress(nextAccount.address)}. ${existing.apps.length} claimed app${existing.apps.length === 1 ? "" : "s"} loaded.`);
@@ -172,8 +188,22 @@ export function PublisherClient() {
 
   const sync = (candidate: ClaimedApp) => run(async () => {
     const result = await api<{ releases: readonly { releaseMint: string }[] }>(`/api/v1/publisher/apps/${candidate.id}/sync`, mutation());
+    await refreshReleases(candidate.id);
     setStatus(`Release synchronization completed with ${result.releases.length} normalized Release NFT(s).`);
   });
+
+  const validateOrPublish = (candidate: ClaimedApp, release: PublisherRelease) => run(async () => {
+    const result = await api<{ status: "validating_binary" | "published" }>(`/api/v1/publisher/releases/${release.id}/publish`, mutation());
+    await refreshReleases(candidate.id);
+    setStatus(result.status === "published"
+      ? `${candidate.name} ${release.version_name} is published.`
+      : `${candidate.name} ${release.version_name} was sent to the independent APK validator. Refresh in a moment to see the result.`);
+  });
+
+  async function refreshReleases(appId: string): Promise<void> {
+    const response = await api<{ releases: readonly PublisherRelease[] }>(`/api/v1/publisher/apps/${appId}/releases`);
+    setReleases((current) => ({ ...current, [appId]: response.releases }));
+  }
 
   const classify = (candidate: ClaimedApp, category: CatalogCategory, genres: readonly GameGenre[]) => run(async () => {
     await api(`/api/v1/publisher/apps/${candidate.id}/classification`, mutation({ category, genres }));
@@ -276,6 +306,7 @@ export function PublisherClient() {
 
       <div className="panel">
         <p className="step-label">3 · Separate distribution consent</p>
+        <p className="muted">Review the <a href="/publisher/distribution-terms" target="_blank" rel="noreferrer">Dapport distribution terms</a> before signing. Active version: {termsVersion}.</p>
         <label>Release policy
           <select value={policy} onChange={(event) => setPolicy(event.target.value as ReleasePolicy)} disabled={busy}>
             <option value="manual">Manual publication</option>
@@ -296,7 +327,35 @@ export function PublisherClient() {
         </div>
       </div>
       <div className="panel">
-        <p className="step-label">4 · Storefront classification</p>
+        <p className="step-label">4 · Release validation and publication</p>
+        <p className="muted">Every APK is checked on an ephemeral GitHub runner before it can enter the production catalogue.</p>
+        <div className="operation-list">
+          {claimList.flatMap((candidate) => (releases[candidate.id] ?? []).map((release) => (
+            <div className="operation-row" key={release.id}>
+              <div>
+                <strong>{candidate.name} {release.version_name}</strong>
+                <small>{releaseStatusLabel(release)}</small>
+              </div>
+              <div className="control-row compact">
+                {release.validation_status === "validating_binary" ? (
+                  <button type="button" className="secondary" onClick={() => void run(() => refreshReleases(candidate.id))} disabled={busy}>Refresh validation</button>
+                ) : null}
+                {releaseActionLabel(release) ? (
+                  <button type="button" onClick={() => void validateOrPublish(candidate, release)} disabled={busy || Boolean(release.quarantine_code)}>
+                    {releaseActionLabel(release)}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          )))}
+          {claimList.length > 0 && claimList.every((candidate) => (releases[candidate.id] ?? []).length === 0)
+            ? <p className="muted">Sync an App to discover its Release NFTs.</p>
+            : null}
+          {claimList.length === 0 ? <p className="muted">Claim and sync an App before validating a release.</p> : null}
+        </div>
+      </div>
+      <div className="panel">
+        <p className="step-label">5 · Storefront classification</p>
         <p className="muted">The NFT standard identifies a dApp, but does not carry the consumer category used by the store. Choose how people should discover your app here.</p>
         <div className="operation-list">
           {claimList.map((candidate) => (
@@ -436,6 +495,22 @@ function categoryLabel(category: CatalogCategory): string {
     other: "Other"
   };
   return labels[category];
+}
+
+function releaseActionLabel(release: PublisherRelease): string | null {
+  if (release.quarantine_code || release.publication_status === "published" || release.publication_status === "withdrawn" || release.publication_status === "ignored") return null;
+  if (release.validation_status === "metadata_valid") return "Validate APK";
+  if (release.validation_status === "server_binary_valid") return "Publish release";
+  return null;
+}
+
+function releaseStatusLabel(release: PublisherRelease): string {
+  if (release.quarantine_code) return `Blocked · ${release.quarantine_code.replaceAll("_", " ")}`;
+  if (release.publication_status === "published") return "Published in the production catalogue";
+  if (release.validation_status === "validating_binary") return "APK validation in progress";
+  if (release.validation_status === "server_binary_valid") return "APK validated · ready to publish";
+  if (release.validation_status === "metadata_valid") return "Metadata verified · APK validation required";
+  return `${release.validation_status.replaceAll("_", " ")} · ${release.publication_status.replaceAll("_", " ")}`;
 }
 
 function genreLabel(genre: GameGenre): string {

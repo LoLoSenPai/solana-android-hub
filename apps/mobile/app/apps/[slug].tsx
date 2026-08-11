@@ -209,7 +209,7 @@ export default function AppDetailScreen() {
           >
             <View className="overflow-hidden rounded-[22px] border border-line bg-canvas">
               <EvidenceRow icon="person_check" label="Publisher permission" value="Confirmed" tone="mint" />
-              <EvidenceRow icon="fact_check" label="Hub listing consent" value="Confirmed" tone="mint" />
+              <EvidenceRow icon="fact_check" label="Dapport listing consent" value="Confirmed" tone="mint" />
               <EvidenceRow
                 icon={release.previewOnly ? "science" : "shield_lock"}
                 label="App file"
@@ -224,7 +224,7 @@ export default function AppDetailScreen() {
                 last
               />
             </View>
-            <Text className="mt-3 text-xs leading-5 text-muted">Solana Mobile approval is shown only when independently verified. This Hub is independent from Solana Mobile.</Text>
+            <Text className="mt-3 text-xs leading-5 text-muted">Solana Mobile approval is shown only when independently verified. Dapport is independent from Solana Mobile.</Text>
           </DisclosureSection>
 
           <SectionTitle title="Details" />
@@ -242,7 +242,7 @@ export default function AppDetailScreen() {
               <HubSymbol name="verified_user" size={24} color="#77A7FF" />
               <View className="ml-3 flex-1">
                 <Text className="text-base font-bold text-ink">Ready when you are</Text>
-                <Text className="mt-1 text-sm leading-5 text-muted">The Hub checks the app file on your phone before handing it to Android.</Text>
+                <Text className="mt-1 text-sm leading-5 text-muted">Dapport checks the app file on your phone before handing it to Android.</Text>
               </View>
             </View>
             <InstallButton app={app} action={installAction} />

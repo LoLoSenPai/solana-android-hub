@@ -29,7 +29,7 @@ export default function InstallScreen() {
       const capability = await AppInstaller.getInstallCapability();
       if (!capability.canRequestPackageInstalls) {
         setStage("permission");
-        setDetail("Allow this Hub to request APK installation in Android settings, then return here.");
+        setDetail("Allow Dapport to request APK installation in Android settings, then return here.");
       } else {
         setStage("ready");
         setDetail("The APK will be downloaded into private temporary storage and fully validated.");
@@ -132,7 +132,7 @@ async function awaitInstallResult(
     const operation = await AppInstaller.getInstallOperation(operationId);
     if (!operation || operation.status === "submitted") continue;
     if (operation.status !== "success") throw new Error(operation.statusMessage ?? `Android install ${operation.status}`);
-    setDetail("Android confirmed installation. This Hub stored only the local installation record.");
+    setDetail("Android confirmed installation. Dapport stored only the local installation record.");
     await saveInstalledApp({
       packageName: app.latestRelease.packageName,
       appId: app.id,

@@ -12,7 +12,7 @@ export default function HubUpdateScreen() {
   const [stage, setStage] = useState<UpdateStage>("checking");
   const [manifest, setManifest] = useState<HubReleaseManifest | null>(null);
   const [currentVersion, setCurrentVersion] = useState("—");
-  const [detail, setDetail] = useState("Checking the latest signed Hub release…");
+  const [detail, setDetail] = useState("Checking the latest signed Dapport release…");
   const operationId = useMemo(() => `hub_update_${Date.now()}_${Math.random().toString(36).slice(2)}`, []);
 
   const load = useCallback(async () => {
@@ -20,7 +20,7 @@ export default function HubUpdateScreen() {
     const result = await checkForHubUpdate({ force: true });
     if (result.status === "disabled") {
       setStage("error");
-      setDetail("Integrated Hub updates are available in production builds.");
+      setDetail("Integrated Dapport updates are available in production builds.");
       return;
     }
     if (result.status === "error") {
@@ -39,7 +39,7 @@ export default function HubUpdateScreen() {
     const capability = await AppInstaller.getInstallCapability();
     if (!capability.canRequestPackageInstalls) {
       setStage("permission");
-      setDetail("Allow this Hub to install its signed update, then return here.");
+      setDetail("Allow Dapport to install its signed update, then return here.");
     } else {
       setStage("ready");
       setDetail(`Version ${result.manifest.versionName} is ready to download and verify.`);
@@ -67,7 +67,7 @@ export default function HubUpdateScreen() {
         if (!active || !result || result.status === "submitted") continue;
         if (result.status === "success") {
           setStage("complete");
-          setDetail("Android installed the Hub update.");
+          setDetail("Android installed the Dapport update.");
         } else {
           setStage("error");
           setDetail(result.statusMessage ?? `Android update ${result.status}.`);
@@ -90,7 +90,7 @@ export default function HubUpdateScreen() {
       setStage("submitted");
     } catch (cause) {
       setStage("error");
-      setDetail(cause instanceof Error ? cause.message : "The Hub update could not be installed.");
+      setDetail(cause instanceof Error ? cause.message : "The Dapport update could not be installed.");
     }
   };
 
@@ -107,8 +107,8 @@ export default function HubUpdateScreen() {
       <View className="mt-2 h-14 w-14 items-center justify-center rounded-[20px] bg-raised">
         <HubSymbol name="system_update" size={29} color="#77A7FF" />
       </View>
-      <Text className="mt-5 text-xs font-bold uppercase tracking-[1.8px] text-mint">Solana Android Hub</Text>
-      <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">Keep the Hub current.</Text>
+      <Text className="mt-5 text-xs font-bold uppercase tracking-[1.8px] text-mint">Dapport</Text>
+      <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">Keep Dapport current.</Text>
       <Text className="mt-3 leading-6 text-muted">Updates use the same permanent signing identity and Android’s supported installer.</Text>
 
       <View className="mt-7 overflow-hidden rounded-[26px] border border-line bg-surface">
@@ -137,7 +137,7 @@ export default function HubUpdateScreen() {
       {busy ? <ActivityIndicator className="mt-6" color="#77A7FF" /> : null}
       {stage === "permission" ? (
         <Pressable className="mt-7 rounded-[18px] bg-mint p-4 active:opacity-80" onPress={() => void AppInstaller.openUnknownSourcesSettings()}>
-          <Text className="text-center font-bold text-canvas">Allow Hub updates</Text>
+          <Text className="text-center font-bold text-canvas">Allow Dapport updates</Text>
         </Pressable>
       ) : null}
       {stage === "ready" ? (

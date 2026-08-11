@@ -1,4 +1,4 @@
-# Open Orbit — Solana Android Hub
+# Dapport Gateway
 
 ## Product character
 
@@ -6,20 +6,21 @@ A premium, editorial Android storefront with a native mobile rhythm. It borrows 
 
 ## Colour
 
-- Background ink: `#091018`
-- Surface: `#111B27`
-- Raised surface: `#172536`
-- Primary text: `#F4F7FB`
-- Secondary text: `#95A5B7`
+- Background ink: `#07111D`
+- Surface: `#0D1A29`
+- Raised surface: `#14253A`
+- Primary text: `#F7F8FC`
+- Secondary text: `#9EADC0`
 - Border: `#26384D`
-- Discovery blue: `#77A7FF`
-- Deep blue: `#4F7FEA`
-- Warm coral: `#F49A8A`
+- Gateway cyan: `#63E6D1`
+- Ice blue: `#7CD7FF`
+- Electric blue: `#5B8CFF`
+- Restrained violet: `#8B5CF6`
 - Amber accent: `#E6C994`
 - Warning/preview: `#FFD58A`
 - Danger: `#FF7D78`
 
-The mint/coral orbital mark remains the Hub signature, but the product chrome uses blue-night and blue-grey tones. Use generated artwork for editorial moments and real publisher imagery when available. Do not recreate artwork with CSS shapes or imply official Solana Mobile affiliation.
+The open D-shaped gateway and three-slat perspective path are the Dapport signature. Cyan-mint marks the entrance, electric blue carries the movement, and violet is limited to a subtle reflection. The silhouette is deliberately original and must not be replaced with the official Solana mark. Use real publisher imagery whenever available and never imply official Solana Mobile affiliation.
 
 ## Typography
 

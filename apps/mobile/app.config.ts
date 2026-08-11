@@ -2,33 +2,35 @@ import type { ExpoConfig } from "expo/config";
 
 const appEnvironment = environmentVariable("APP_ENV") ?? "local";
 const production = appEnvironment === "production";
-const publicWebsiteOrigin = "https://solana-hub.lololabs.xyz";
+const publicWebsiteOrigin = "https://dapport.app";
 const hubOrigin = environmentVariable("EXPO_PUBLIC_HUB_ORIGIN") ?? "http://10.0.2.2:3000";
 const publicationGate = environmentVariable("RELEASE_PUBLICATION_GATE") ?? "device_only_preview";
-const version = environmentVariable("HUB_APP_VERSION_NAME") ?? "0.3.1";
-const versionCode = positiveIntegerEnvironmentVariable("HUB_APP_VERSION_CODE") ?? 4;
+const version = environmentVariable("HUB_APP_VERSION_NAME") ?? "0.4.0";
+const versionCode = positiveIntegerEnvironmentVariable("HUB_APP_VERSION_CODE") ?? 5;
 const productionPackageName = "com.lololabs.solanaandroidhub";
 const releaseCertificateSha256 = "02F204B9CBED11E59F85B2A6DBCB34AD6F0A4658C639D58B2C27FB3BE2AD0E09";
 
 if (production) {
   if (new URL(hubOrigin).protocol !== "https:") throw new Error("Production mobile builds require an HTTPS Hub origin");
+  if (new URL(hubOrigin).origin !== publicWebsiteOrigin) throw new Error("Production mobile builds require https://dapport.app as the canonical origin");
   if (publicationGate !== "server_and_device") throw new Error("Production mobile builds require server_and_device publication");
 }
 
 const config: ExpoConfig = {
-  name: production ? "Solana Android Hub" : "Solana Android Hub Dev",
+  name: production ? "Dapport" : "Dapport Dev",
   slug: "solana-android-hub",
   version,
   icon: "./assets/icon.png",
   orientation: "portrait",
-  scheme: "solanaandroidhub",
+  scheme: ["dapport", "solanaandroidhub"],
   userInterfaceStyle: "dark",
   android: {
     package: production ? productionPackageName : "com.lololabs.solanaandroidhub.dev",
     versionCode,
     adaptiveIcon: {
-      foregroundImage: "./assets/icon.png",
-      backgroundColor: "#091018"
+      foregroundImage: "./assets/adaptive-icon.png",
+      monochromeImage: "./assets/monochrome-icon.png",
+      backgroundColor: "#07111D"
     }
   },
   plugins: [

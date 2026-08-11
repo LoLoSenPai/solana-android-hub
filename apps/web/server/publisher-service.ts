@@ -187,7 +187,7 @@ function isConsentBound(message: string, expected: { wallet: string; appMint: st
   const origin = new URL(hubConfig.hubOrigin);
   const lines = message.split("\n");
   return lines.length === 14 &&
-    lines[0] === "Solana Android Hub Distribution Consent" &&
+    lines[0] === "Dapport Distribution Consent" &&
     lines[1] === "Version: 1" &&
     lines[2] === `Environment: ${hubConfig.appEnvironment}` &&
     lines[3] === `Domain: ${origin.host.toLowerCase()}` &&

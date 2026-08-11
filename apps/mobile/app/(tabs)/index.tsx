@@ -13,7 +13,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import HUB_HERO from "../../assets/hub-hero.png";
+import DAPPORT_HERO from "../../assets/dapport-hero.webp";
 import HUB_ICON from "../../assets/icon.png";
 import { AppCard } from "@/components/AppCard";
 import { AppArtwork } from "@/components/AppArtwork";
@@ -111,8 +111,8 @@ export default function DiscoverScreen() {
           <View className="flex-row items-center">
             <Image source={HUB_ICON} style={{ width: 42, height: 42, borderRadius: 14 }} />
             <View className="ml-3">
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-mint">Independent catalogue</Text>
-              <Text className="text-lg font-bold text-ink">Solana Android Hub</Text>
+              <Text className="text-xs font-semibold uppercase tracking-[2px] text-mint">Solana apps. Any Android.</Text>
+              <Text className="text-lg font-bold text-ink">Dapport</Text>
             </View>
           </View>
           <Pressable
@@ -161,15 +161,15 @@ export default function DiscoverScreen() {
         {hubUpdate ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Update Solana Android Hub to version ${hubUpdate.versionName}`}
+            accessibilityLabel={`Update Dapport to version ${hubUpdate.versionName}`}
             className="mt-4 flex-row items-center rounded-[22px] border border-mint bg-raised p-4 active:opacity-80"
-            onPress={() => router.push("/hub-update" as Href)}
+            onPress={() => router.push("/hub-update")}
           >
             <View className="h-11 w-11 items-center justify-center rounded-2xl bg-canvas">
               <HubSymbol name="system_update" size={23} color="#77A7FF" />
             </View>
             <View className="ml-3 flex-1">
-              <Text className="font-bold text-ink">Hub update available</Text>
+              <Text className="font-bold text-ink">Dapport update available</Text>
               <Text className="mt-1 text-sm text-muted">Version {hubUpdate.versionName} · {(hubUpdate.apkSize / 1024 / 1024).toFixed(1)} MB</Text>
             </View>
             <HubSymbol name="chevron_right" size={21} color="#95A5B7" />
@@ -182,10 +182,10 @@ export default function DiscoverScreen() {
               className="mt-7 overflow-hidden rounded-[30px] active:opacity-90"
               onPress={() => availableNow ? router.push(`/apps/${availableNow.slug}` as Href) : openCategory("all")}
             >
-              <ImageBackground source={featuredArtwork ? { uri: featuredArtwork } : HUB_HERO} resizeMode="cover" style={{ minHeight: 340 }}>
+              <ImageBackground source={featuredArtwork ? { uri: featuredArtwork } : DAPPORT_HERO} resizeMode="cover" style={{ minHeight: 340 }}>
                 <View className="min-h-[340px] justify-between p-6" style={{ backgroundColor: "rgba(5, 12, 21, 0.5)" }}>
                   <View className="self-start rounded-full bg-ink px-3 py-1.5">
-                    <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-canvas">{availableNow ? "Featured on the Hub" : "Built for discovery"}</Text>
+                    <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-canvas">{availableNow ? "Featured on Dapport" : "Built for discovery"}</Text>
                   </View>
                   <View className="max-w-[285px]">
                     {availableNow ? (

@@ -15,7 +15,7 @@ export default function PublisherPage() {
           ? "Wallet Standard authentication, finalized App authority, and environment-bound distribution consent are explicit, independently recorded steps."
           : "The public staging catalogue is available, but finalized Solana chain verification is not configured for publisher onboarding in this environment."}</p>
       </section>
-      {onboardingEnabled ? <PublisherClient /> : <PublisherUnavailable />}
+      {onboardingEnabled ? <PublisherClient termsVersion={hubConfig.consentTermsVersion} /> : <PublisherUnavailable />}
     </main>
   );
 }

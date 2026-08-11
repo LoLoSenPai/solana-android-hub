@@ -53,7 +53,7 @@ export async function checkForHubUpdate(options: { force?: boolean } = {}): Prom
     return {
       status: "error",
       ...(current ? { current } : {}),
-      message: cause instanceof Error ? cause.message : "The Hub could not check for updates."
+      message: cause instanceof Error ? cause.message : "Dapport could not check for updates."
     };
   }
 }

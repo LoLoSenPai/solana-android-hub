@@ -125,6 +125,7 @@ describe("canonical signed messages", () => {
 
   it("builds authentication bytes with no trailing newline", () => {
     const message = buildAuthenticationMessage(common);
+    expect(message.startsWith("Dapport Authentication\n")).toBe(true);
     expect(message).toContain("Purpose: Publisher sign-in");
     expect(message.endsWith("\n")).toBe(false);
   });
@@ -137,6 +138,7 @@ describe("canonical signed messages", () => {
       termsVersion: "staging-1"
     });
     expect(message).toContain("App Mint: 22222222222222222222222222222222");
+    expect(message.startsWith("Dapport Distribution Consent\n")).toBe(true);
     expect(message).toContain("Release Policy: automatic");
     expect(message).toContain("Terms Version: staging-1");
   });

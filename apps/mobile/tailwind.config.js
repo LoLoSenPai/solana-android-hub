@@ -5,14 +5,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        canvas: "#091018",
-        surface: "#111B27",
-        raised: "#172536",
+        canvas: "#07111D",
+        surface: "#0D1A29",
+        raised: "#14253A",
         line: "#26384D",
-        ink: "#F4F7FB",
-        muted: "#95A5B7",
+        ink: "#F7F8FC",
+        muted: "#9EADC0",
         mint: "#77A7FF",
-        coral: "#F49A8A",
+        coral: "#8B5CF6",
         warning: "#FFD58A"
       }
     }

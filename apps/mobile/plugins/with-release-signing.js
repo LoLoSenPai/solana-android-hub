@@ -5,7 +5,7 @@ const SIGNING_MARKER = "// Solana Android Hub release signing";
 function withReleaseSigning(config) {
   return withAppBuildGradle(config, (buildConfig) => {
     if (buildConfig.modResults.language !== "groovy") {
-      throw new Error("Solana Android Hub release signing requires a Groovy app build.gradle");
+      throw new Error("Dapport release signing requires a Groovy app build.gradle");
     }
 
     buildConfig.modResults.contents = configureReleaseSigning(buildConfig.modResults.contents);
@@ -91,4 +91,3 @@ if (hubReleaseSigningRequired && !hubReleaseSigningConfigured) {
 
 module.exports = withReleaseSigning;
 module.exports.configureReleaseSigning = configureReleaseSigning;
-

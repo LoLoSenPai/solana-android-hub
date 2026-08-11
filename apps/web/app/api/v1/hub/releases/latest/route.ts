@@ -7,7 +7,7 @@ export function GET(): NextResponse {
     return NextResponse.json({
       error: {
         code: "HUB_UPDATE_UNAVAILABLE",
-        message: "The Hub update manifest is not configured."
+        message: "The Dapport update manifest is not configured."
       }
     }, {
       status: 503,

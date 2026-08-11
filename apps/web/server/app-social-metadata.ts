@@ -1,18 +1,18 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import type { Metadata } from "next";
 
-const HUB_ORIGIN = "https://solana-hub.lololabs.xyz";
+const DAPPORT_ORIGIN = "https://dapport.app";
 
 export function buildAppSocialMetadata(app: CatalogAppDto): Metadata {
   const description = app.shortDescription
     ?? app.description
     ?? `Discover ${app.name}, an independently published Android app for the Solana ecosystem.`;
-  const pageUrl = new URL(`/apps/${app.slug}`, HUB_ORIGIN);
+  const pageUrl = new URL(`/apps/${app.slug}`, DAPPORT_ORIGIN);
   const socialImage = app.bannerUrl
     ?? app.featureGraphicUrl
     ?? app.screenshots[0]
-    ?? new URL("/hub-hero-chromatic.webp", HUB_ORIGIN).toString();
-  const socialTitle = `${app.name} on Solana Android Hub`;
+    ?? new URL("/dapport-social-card.png", DAPPORT_ORIGIN).toString();
+  const socialTitle = `${app.name} on Dapport`;
 
   return {
     title: app.name,
@@ -21,7 +21,7 @@ export function buildAppSocialMetadata(app: CatalogAppDto): Metadata {
     openGraph: {
       type: "website",
       url: pageUrl,
-      siteName: "Solana Android Hub",
+      siteName: "Dapport",
       title: socialTitle,
       description,
       images: [{

@@ -28,7 +28,7 @@ export function CatalogueExperience({
       <section className="hub-hero" id="discover" aria-labelledby="catalogue-title">
         <Image
           className="hub-hero-art"
-          src="/hub-hero-chromatic.webp"
+          src="/dapport-hero-chromatic.webp"
           alt=""
           fill
           priority
@@ -36,14 +36,14 @@ export function CatalogueExperience({
         />
         <div className="hub-hero-scrim" aria-hidden="true" />
         <div className="hub-hero-copy">
-          <p className="eyebrow">Solana Android Hub</p>
-          <h1 id="catalogue-title">Discover. Install. <span>Android apps on Solana.</span></h1>
-          <p className="hero-intro">Browse Solana apps on the web, then install and keep them updated on the Android phone you already own.</p>
+          <p className="eyebrow">Dapport</p>
+          <h1 id="catalogue-title">Solana apps. <span>Any Android.</span></h1>
+          <p className="hero-intro">Discover publisher-approved Solana apps on the web, then install and keep them updated on the Android phone you already own.</p>
           <div className="hero-actions">
             <Link className="primary-action" href="/catalog">Browse the catalogue <span aria-hidden="true">→</span></Link>
-            <Link className="signature-action" href="/download"><span>Get the Hub</span><Sparkle aria-hidden="true" weight="fill" /></Link>
+            <Link className="signature-action" href="/download"><span>Get Dapport</span><Sparkle aria-hidden="true" weight="fill" /></Link>
           </div>
-          <div className="hub-hero-proof" aria-label="How the Hub works">
+          <div className="hub-hero-proof" aria-label="How Dapport works">
             <div><Compass aria-hidden="true" /><span><strong>Browse on the web</strong><small>Publisher-provided apps and artwork.</small></span></div>
             <div><DeviceMobile aria-hidden="true" /><span><strong>Install on Android</strong><small>No special Solana phone required.</small></span></div>
             <div><ShieldCheck aria-hidden="true" /><span><strong>Checks you can see</strong><small>Publisher, release and consent stay separate.</small></span></div>
@@ -52,7 +52,7 @@ export function CatalogueExperience({
         <aside className="catalogue-growth-note">
           <span>{apps.length} {apps.length === 1 ? "app" : "apps"} available now</span>
           <strong>The catalogue is growing.</strong>
-          <small>New publishers can bring their Android releases to the Hub.</small>
+          <small>New publishers can bring their Android releases to Dapport.</small>
         </aside>
         {previewEnvironment ? <span className="environment-badge">Preview catalogue</span> : null}
       </section>
@@ -104,7 +104,7 @@ export function CatalogueExperience({
       <section className="how-it-works" aria-labelledby="how-heading">
         <div className="editorial-heading">
           <div><p className="eyebrow">From discovery to updates</p><h2 id="how-heading">One simple Android flow.</h2></div>
-          <p>The website helps you choose. The Hub companion app performs the final checks and hands the release to Android.</p>
+          <p>The website helps you choose. Dapport performs the final checks on your phone and hands the release to Android.</p>
         </div>
         <ol>
           <li>
@@ -116,13 +116,13 @@ export function CatalogueExperience({
           <li>
             <span className="flow-number" aria-hidden="true">02</span>
             <span className="flow-art" aria-hidden="true"><Image src="/process-icons/send-android.webp" alt="" width={512} height={512} sizes="180px" /></span>
-            <span className="flow-copy"><strong>Send to Android</strong><p>Open the release with the Hub and validate it on your device.</p></span>
+            <span className="flow-copy"><strong>Send to Android</strong><p>Open the release with Dapport and validate it on your device.</p></span>
             <ArrowRight className="flow-arrow" aria-hidden="true" />
           </li>
           <li>
             <span className="flow-number" aria-hidden="true">03</span>
             <span className="flow-art" aria-hidden="true"><Image src="/process-icons/manage-updates.webp" alt="" width={512} height={512} sizes="180px" /></span>
-            <span className="flow-copy"><strong>Manage updates</strong><p>Keep Hub-installed apps current without uploading your app inventory.</p></span>
+            <span className="flow-copy"><strong>Manage updates</strong><p>Keep apps installed through Dapport current without uploading your app inventory.</p></span>
           </li>
         </ol>
       </section>
@@ -131,7 +131,7 @@ export function CatalogueExperience({
         <div>
           <p className="eyebrow">Openness with visible checks</p>
           <h2 id="trust-heading">You stay in control.</h2>
-          <p>Publishers opt in. The Hub does not control your keys, data or funds, and Solana Mobile approval is never implied.</p>
+          <p>Publishers opt in. Dapport does not control your keys, data or funds, and Solana Mobile approval is never implied.</p>
           <Link className="text-link" href="/download">How installation works <span aria-hidden="true">→</span></Link>
         </div>
         <ol className="trust-steps">

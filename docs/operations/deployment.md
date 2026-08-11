@@ -2,8 +2,10 @@
 
 ## Canonical origin
 
-- Reserved public web/API origin: `https://solana-hub.lololabs.xyz`.
+- Canonical public web/API origin: `https://dapport.app`.
 - Configure both `HUB_ORIGIN` and `EXPO_PUBLIC_HUB_ORIGIN` to that exact HTTPS origin for production web and Android builds.
+- Configure the legacy `solana-hub.lololabs.xyz` Vercel domain as a permanent
+  redirect to `https://dapport.app`; never serve consent challenges from both origins.
 - The domain may host a visibly labeled staging showcase before launch, but that does not make staging consent promotable or open production publisher onboarding.
 - `.env.production.example` intentionally contains a blocked development terms version and blank secrets so an incomplete production configuration fails closed.
 

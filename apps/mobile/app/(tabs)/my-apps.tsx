@@ -39,7 +39,7 @@ export default function MyAppsScreen() {
         <View className="mb-7 mt-4">
           <Text className="text-xs font-bold uppercase tracking-[2px] text-mint">Private device library</Text>
           <Text className="mt-2 text-[38px] font-bold tracking-[-1px] text-ink">My Apps</Text>
-          <Text className="mt-3 max-w-[350px] leading-6 text-muted">Only apps installed through this Hub appear here. Your installed-app inventory never leaves this device.</Text>
+          <Text className="mt-3 max-w-[350px] leading-6 text-muted">Only apps installed through Dapport appear here. Your installed-app inventory never leaves this device.</Text>
         </View>
 
         {apps.length > 0 ? (
@@ -85,7 +85,7 @@ export default function MyAppsScreen() {
           <View className="items-center rounded-[28px] border border-dashed border-line bg-surface px-8 py-14">
             <HubSymbol name="download_for_offline" size={44} color="#95A5B7" />
             <Text className="mt-5 text-xl font-bold text-ink">Your library is empty</Text>
-            <Text className="mt-2 text-center leading-5 text-muted">Apps you install through the Hub will appear here with update status.</Text>
+            <Text className="mt-2 text-center leading-5 text-muted">Apps you install through Dapport will appear here with update status.</Text>
           </View>
         ) : null}
       </ScrollView>

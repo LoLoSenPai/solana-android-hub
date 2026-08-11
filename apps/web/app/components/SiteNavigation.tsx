@@ -19,7 +19,7 @@ const NAV_ITEMS: readonly NavigationItem[] = [
   { href: "/#discover", label: "Discover", section: "discover", active: (pathname, section) => pathname === "/" && section === "discover" },
   { href: "/catalog", label: "Catalogue", active: (pathname) => pathname === "/catalog" || pathname.startsWith("/apps/") },
   { href: "/#trust-model", label: "Trust model", section: "trust-model", active: (pathname, section) => pathname === "/" && section === "trust-model" },
-  { href: "/download", label: "Get the Hub", active: (pathname) => pathname === "/download", hub: true },
+  { href: "/download", label: "Get Dapport", active: (pathname) => pathname === "/download", hub: true },
   { href: "/publisher", label: "For publishers", active: (pathname) => pathname.startsWith("/publisher"), publisher: true }
 ];
 

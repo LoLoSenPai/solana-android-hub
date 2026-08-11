@@ -1,6 +1,6 @@
 # Trust model
 
-The Hub deliberately answers four different questions:
+Dapport deliberately answers four different questions:
 
 | Fact | Proof authority | Revocation |
 | --- | --- | --- |

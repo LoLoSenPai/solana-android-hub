@@ -44,8 +44,8 @@ describe("app social metadata", () => {
     const metadata = buildAppSocialMetadata(app);
 
     expect(metadata.title).toBe("DegenMerge");
-    expect(metadata.alternates?.canonical).toEqual(new URL("https://solana-hub.lololabs.xyz/apps/degenmerge-5w4yc8k"));
-    expect(metadata.openGraph?.title).toBe("DegenMerge on Solana Android Hub");
+    expect(metadata.alternates?.canonical).toEqual(new URL("https://dapport.app/apps/degenmerge-5w4yc8k"));
+    expect(metadata.openGraph?.title).toBe("DegenMerge on Dapport");
     expect(metadata.openGraph?.images).toEqual([{
       url: "https://cdn.example.com/banner.png",
       alt: "DegenMerge app preview"
@@ -65,7 +65,7 @@ describe("app social metadata", () => {
     });
 
     expect(metadata.openGraph?.images).toEqual([{
-      url: "https://solana-hub.lololabs.xyz/hub-hero-chromatic.webp",
+      url: "https://dapport.app/dapport-social-card.png",
       alt: "DegenMerge app preview"
     }]);
   });

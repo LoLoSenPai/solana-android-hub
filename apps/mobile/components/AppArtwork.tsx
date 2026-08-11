@@ -1,7 +1,7 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import { useEffect, useState } from "react";
 import { Image } from "react-native";
-import FALLBACK_ARTWORK from "../assets/hub-app-fallback.png";
+import FALLBACK_ARTWORK from "../assets/dapport-app-fallback.png";
 
 interface AppArtworkProps {
   app: Pick<CatalogAppDto, "iconUrl">;
@@ -23,7 +23,7 @@ export function AppArtwork({ app, size = 64, radius = 18 }: AppArtworkProps) {
         source={{ uri: app.iconUrl }}
         onError={() => setRemoteFailed(true)}
         resizeMode="cover"
-        style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#172536" }}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#14253A" }}
       />
     );
   }
@@ -33,7 +33,7 @@ export function AppArtwork({ app, size = 64, radius = 18 }: AppArtworkProps) {
       accessibilityIgnoresInvertColors
       source={FALLBACK_ARTWORK}
       resizeMode="cover"
-      style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#172536" }}
+      style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#14253A" }}
     />
   );
 }

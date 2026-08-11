@@ -33,7 +33,7 @@ function canonicalOrigin(origin: string): URL {
 export function buildAuthenticationMessage(input: AuthenticationMessageInput): string {
   const origin = canonicalOrigin(input.origin);
   return [
-    "Solana Android Hub Authentication",
+    "Dapport Authentication",
     "Version: 1",
     `Environment: ${input.environment}`,
     `Domain: ${origin.host.toLowerCase()}`,
@@ -50,7 +50,7 @@ export function buildAuthenticationMessage(input: AuthenticationMessageInput): s
 export function buildDistributionConsentMessage(input: ConsentMessageInput): string {
   const origin = canonicalOrigin(input.origin);
   return [
-    "Solana Android Hub Distribution Consent",
+    "Dapport Distribution Consent",
     "Version: 1",
     `Environment: ${input.environment}`,
     `Domain: ${origin.host.toLowerCase()}`,
