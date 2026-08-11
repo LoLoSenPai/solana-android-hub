@@ -13,7 +13,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import HUB_HERO from "../../assets/hub-hero.png";
+import DAPPORT_HERO from "../../assets/dapport-hero.webp";
 import HUB_ICON from "../../assets/icon.png";
 import { AppCard } from "@/components/AppCard";
 import { AppArtwork } from "@/components/AppArtwork";
@@ -26,6 +26,7 @@ import {
   type BrowseCategory
 } from "@/features/catalog/discovery";
 import { loadCatalog } from "@/features/catalog/api";
+import { checkForHubUpdate } from "@/features/hub-update/service";
 import { initializeLocalDatabase, listInstalledApps, type LocalInstallRecord } from "@/storage/database";
 
 const HOME_CATEGORIES: readonly BrowseCategory[] = ["games", "defi", "depin", "wallets", "social-identity", "ai-agents"];
@@ -38,6 +39,7 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hubUpdate, setHubUpdate] = useState<{ versionName: string; apkSize: number } | null>(null);
 
   const refresh = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -55,7 +57,14 @@ export default function DiscoverScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
+  useFocusEffect(useCallback(() => {
+    void refresh();
+    void checkForHubUpdate().then((result) => {
+      setHubUpdate(result.status === "available"
+        ? { versionName: result.manifest.versionName, apkSize: result.manifest.apkSize }
+        : null);
+    });
+  }, [refresh]));
 
   const installedByPackage = useMemo(
     () => new Map(installedApps.map((app) => [app.packageName, app])),
@@ -74,6 +83,7 @@ export default function DiscoverScreen() {
     () => [...apps].sort((left, right) => (Date.parse(right.releaseUpdatedAt ?? "") || 0) - (Date.parse(left.releaseUpdatedAt ?? "") || 0))[0],
     [apps]
   );
+  const featuredArtwork = availableNow?.featureGraphicUrl ?? availableNow?.bannerUrl ?? availableNow?.screenshots[0];
 
   const openCategory = (category: BrowseCategory) => {
     router.push(`/categories/${category}` as Href);
@@ -83,7 +93,7 @@ export default function DiscoverScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
         <Image source={HUB_ICON} style={{ width: 72, height: 72, borderRadius: 22 }} />
-        <ActivityIndicator className="mt-5" color="#72F0C6" />
+        <ActivityIndicator className="mt-5" color="#77A7FF" />
       </View>
     );
   }
@@ -95,14 +105,14 @@ export default function DiscoverScreen() {
         contentContainerClassName="px-4 pb-36"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh(true)} tintColor="#72F0C6" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh(true)} tintColor="#77A7FF" />}
       >
         <View className="mb-5 mt-3 flex-row items-center justify-between">
           <View className="flex-row items-center">
             <Image source={HUB_ICON} style={{ width: 42, height: 42, borderRadius: 14 }} />
             <View className="ml-3">
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-mint">Independent catalogue</Text>
-              <Text className="text-lg font-bold text-ink">Solana Android Hub</Text>
+              <Text className="text-xs font-semibold uppercase tracking-[2px] text-mint">Solana apps. Any Android.</Text>
+              <Text className="text-lg font-bold text-ink">Dapport</Text>
             </View>
           </View>
           <Pressable
@@ -119,24 +129,24 @@ export default function DiscoverScreen() {
           Find the app that fits.
         </Text>
         <Text className="mt-3 max-w-[350px] text-base leading-6 text-muted">
-          Browse by category, trust signal, install state, or update availability.
+          Browse by category, find the right game, and keep every update in one place.
         </Text>
 
         <View className="mt-6 flex-row items-center rounded-[22px] border border-line bg-surface px-4 py-1">
-          <HubSymbol name="search" size={22} color="#93A7A2" />
+          <HubSymbol name="search" size={22} color="#95A5B7" />
           <TextInput
             accessibilityLabel="Search the app catalogue"
             className="ml-3 h-14 flex-1 text-base text-ink"
-            placeholder="Search apps, packages, or use cases"
-            placeholderTextColor="#71847F"
-            selectionColor="#72F0C6"
+            placeholder="Search apps or what you want to do"
+            placeholderTextColor="#718399"
+            selectionColor="#77A7FF"
             value={query}
             onChangeText={setQuery}
             returnKeyType="search"
           />
           {query ? (
             <Pressable accessibilityLabel="Clear search" className="p-2" onPress={() => setQuery("")}>
-              <HubSymbol name="close" size={20} color="#93A7A2" />
+              <HubSymbol name="close" size={20} color="#95A5B7" />
             </Pressable>
           ) : null}
         </View>
@@ -148,22 +158,47 @@ export default function DiscoverScreen() {
           </View>
         ) : null}
 
+        {hubUpdate ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Update Dapport to version ${hubUpdate.versionName}`}
+            className="mt-4 flex-row items-center rounded-[22px] border border-mint bg-raised p-4 active:opacity-80"
+            onPress={() => router.push("/hub-update")}
+          >
+            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-canvas">
+              <HubSymbol name="system_update" size={23} color="#77A7FF" />
+            </View>
+            <View className="ml-3 flex-1">
+              <Text className="font-bold text-ink">Dapport update available</Text>
+              <Text className="mt-1 text-sm text-muted">Version {hubUpdate.versionName} · {(hubUpdate.apkSize / 1024 / 1024).toFixed(1)} MB</Text>
+            </View>
+            <HubSymbol name="chevron_right" size={21} color="#95A5B7" />
+          </Pressable>
+        ) : null}
+
         {!query ? (
           <>
-            <Pressable className="mt-7 overflow-hidden rounded-[30px] active:opacity-90" onPress={() => openCategory("all")}>
-              <ImageBackground source={HUB_HERO} resizeMode="cover" style={{ minHeight: 310 }}>
-                <View className="min-h-[310px] justify-end p-6" style={{ backgroundColor: "rgba(1, 12, 12, 0.38)" }}>
-                  <View className="max-w-[260px]">
-                    <View className="self-start rounded-full bg-ink px-3 py-1.5">
-                      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-canvas">Built for discovery</Text>
-                    </View>
-                    <Text className="mt-4 text-[29px] font-bold leading-8 text-ink">A catalogue you can actually explore.</Text>
-                    <View className="mt-3 self-start rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(1, 12, 12, 0.78)" }}>
-                      <Text className="text-sm leading-5 text-ink">Filter the noise. Keep every trust fact visible.</Text>
-                    </View>
-                    <View className="mt-5 flex-row items-center self-start rounded-full bg-ink px-5 py-3">
-                      <Text className="font-bold text-canvas">Explore with filters</Text>
-                      <HubSymbol name="arrow_forward" size={18} color="#061311" style={{ marginLeft: 8 }} />
+            <Pressable
+              className="mt-7 overflow-hidden rounded-[30px] active:opacity-90"
+              onPress={() => availableNow ? router.push(`/apps/${availableNow.slug}` as Href) : openCategory("all")}
+            >
+              <ImageBackground source={featuredArtwork ? { uri: featuredArtwork } : DAPPORT_HERO} resizeMode="cover" style={{ minHeight: 340 }}>
+                <View className="min-h-[340px] justify-between p-6" style={{ backgroundColor: "rgba(5, 12, 21, 0.5)" }}>
+                  <View className="self-start rounded-full bg-ink px-3 py-1.5">
+                    <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-canvas">{availableNow ? "Featured on Dapport" : "Built for discovery"}</Text>
+                  </View>
+                  <View className="max-w-[285px]">
+                    {availableNow ? (
+                      <View className="mb-4 flex-row items-center">
+                        <AppArtwork app={availableNow} size={58} radius={17} />
+                        <View className="ml-3 flex-1">
+                          <Text className="text-[27px] font-bold leading-8 text-ink">{availableNow.name}</Text>
+                          <Text className="mt-1 text-sm text-ink" numberOfLines={1}>{availableNow.shortDescription}</Text>
+                        </View>
+                      </View>
+                    ) : <Text className="text-[29px] font-bold leading-8 text-ink">A catalogue you can actually explore.</Text>}
+                    <View className="self-start rounded-full bg-ink px-5 py-3">
+                      <Text className="font-bold text-canvas">{availableNow ? "Discover the app" : "Explore with filters"}</Text>
                     </View>
                   </View>
                 </View>
@@ -204,15 +239,15 @@ export default function DiscoverScreen() {
                     <View className="ml-4 flex-1">
                       <Text className="text-xs font-semibold uppercase tracking-[1.4px] text-mint">{categoryDefinition(availableNow.category).label}</Text>
                       <Text className="mt-1 text-xl font-bold text-ink">{availableNow.name}</Text>
-                      <Text className="mt-1 text-sm leading-5 text-muted" numberOfLines={2}>{availableNow.shortDescription ?? availableNow.latestRelease.packageName}</Text>
+                      <Text className="mt-1 text-sm leading-5 text-muted" numberOfLines={2}>{availableNow.shortDescription ?? "Discover this Solana app"}</Text>
                     </View>
                   </View>
                   <View className="mt-5 flex-row items-center justify-between border-t border-line pt-4">
                     <View className="flex-row items-center">
-                      <HubSymbol name={availableNow.latestRelease.previewOnly ? "science" : "verified"} size={18} color={availableNow.latestRelease.previewOnly ? "#FFC857" : "#72F0C6"} />
-                      <Text className="ml-2 text-xs text-muted">{availableNow.latestRelease.previewOnly ? "Development preview" : "Server and device checked"}</Text>
+                      <HubSymbol name={availableNow.latestRelease.previewOnly ? "science" : "verified"} size={18} color={availableNow.latestRelease.previewOnly ? "#FFC857" : "#77A7FF"} />
+                      <Text className="ml-2 text-xs text-muted">{availableNow.latestRelease.previewOnly ? "Preview release" : "Checked release"}</Text>
                     </View>
-                    <HubSymbol name="chevron_right" size={20} color="#F5F7F2" />
+                    <HubSymbol name="chevron_right" size={20} color="#F4F7FB" />
                   </View>
                 </Pressable>
               </>
@@ -220,7 +255,7 @@ export default function DiscoverScreen() {
 
             <View className="mt-8 flex-row rounded-[24px] border border-line bg-surface p-5">
               <View className="h-11 w-11 items-center justify-center rounded-2xl bg-raised">
-                <HubSymbol name="shield_lock" size={24} color="#72F0C6" />
+                <HubSymbol name="shield_lock" size={24} color="#77A7FF" />
               </View>
               <View className="ml-4 flex-1">
                 <Text className="text-base font-bold text-ink">The final check happens here.</Text>
@@ -239,9 +274,9 @@ export default function DiscoverScreen() {
             ))}
             {visibleApps.length === 0 ? (
               <View className="items-center rounded-[24px] border border-dashed border-line bg-surface px-6 py-12">
-                <HubSymbol name="search_off" size={36} color="#93A7A2" />
+                <HubSymbol name="search_off" size={36} color="#95A5B7" />
                 <Text className="mt-4 text-lg font-bold text-ink">No matching apps</Text>
-                <Text className="mt-2 text-center leading-5 text-muted">Try a broader name, package, or use case.</Text>
+                <Text className="mt-2 text-center leading-5 text-muted">Try a broader app name or use case.</Text>
               </View>
             ) : null}
           </View>
@@ -257,7 +292,7 @@ function SectionHeader({ title, action, onPress }: { title: string; action: stri
       <Text className="text-[25px] font-bold tracking-[-0.5px] text-ink">{title}</Text>
       <Pressable className="flex-row items-center py-2" onPress={onPress}>
         <Text className="text-sm font-semibold text-mint">{action}</Text>
-        <HubSymbol name="chevron_right" size={18} color="#72F0C6" style={{ marginLeft: 2 }} />
+        <HubSymbol name="chevron_right" size={18} color="#77A7FF" style={{ marginLeft: 2 }} />
       </Pressable>
     </View>
   );

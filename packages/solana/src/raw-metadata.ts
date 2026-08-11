@@ -43,12 +43,13 @@ export interface MetadataEvidence {
 
 export interface AuthorityProofEvidence {
   path: "metadata_update_authority" | "collection_authority";
+  publishingTopology: "standalone_app_collection" | "publisher_collection";
   wallet: string;
   appMint: string;
-  publisherMint: string;
+  publisherCollectionMint: string | null;
   finalizedSlot: bigint;
   appMetadata: MetadataEvidence;
-  publisherMetadata: MetadataEvidence;
+  publisherMetadata: MetadataEvidence | null;
   collectionAuthorityRecordHash?: string;
 }
 
@@ -67,26 +68,33 @@ export class FinalizedMetadataVerifier {
   public async verifyAppAuthority(input: {
     wallet: string;
     appMint: string;
-    publisherMint: string;
   }): Promise<AuthorityProofEvidence> {
-    const [appMetadata, publisherMetadata] = await Promise.all([
-      this.readMetadata(input.appMint),
-      this.readMetadata(input.publisherMint)
-    ]);
-    if (!appMetadata.nonFungible || !publisherMetadata.nonFungible || !publisherMetadata.collectionNft) {
-      throw new Error("INVALID_APP_PUBLISHER_TOKEN_STANDARD");
+    const appMetadata = await this.readMetadata(input.appMint);
+    if (!appMetadata.nonFungible || !appMetadata.collectionNft) {
+      throw new Error("APP_MUST_BE_COLLECTION_NFT");
     }
-    if (appMetadata.collection?.key !== input.publisherMint || appMetadata.collection.verified !== true) {
+    if (appMetadata.collection !== null && appMetadata.collection.verified !== true) {
       throw new Error("APP_PUBLISHER_COLLECTION_NOT_VERIFIED");
     }
+    const publisherCollectionMint = appMetadata.collection?.key ?? null;
+    const publisherMetadata = publisherCollectionMint === null
+      ? null
+      : await this.readMetadata(publisherCollectionMint);
+    if (publisherMetadata !== null && (!publisherMetadata.nonFungible || !publisherMetadata.collectionNft)) {
+      throw new Error("INVALID_PUBLISHER_COLLECTION_TOKEN_STANDARD");
+    }
+    const publishingTopology = publisherMetadata === null
+      ? "standalone_app_collection" as const
+      : "publisher_collection" as const;
 
     const finalizedSlot = await this.accounts.getFinalizedSlot();
     if (appMetadata.updateAuthority === input.wallet) {
       return {
         path: "metadata_update_authority",
+        publishingTopology,
         wallet: input.wallet,
         appMint: input.appMint,
-        publisherMint: input.publisherMint,
+        publisherCollectionMint,
         finalizedSlot,
         appMetadata,
         publisherMetadata
@@ -100,9 +108,10 @@ export class FinalizedMetadataVerifier {
 
     return {
       path: "collection_authority",
+      publishingTopology,
       wallet: input.wallet,
       appMint: input.appMint,
-      publisherMint: input.publisherMint,
+      publisherCollectionMint,
       finalizedSlot,
       appMetadata,
       publisherMetadata,

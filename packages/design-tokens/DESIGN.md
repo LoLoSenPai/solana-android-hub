@@ -1,4 +1,4 @@
-# Open Orbit — Solana Android Hub
+# Dapport Gateway
 
 ## Product character
 
@@ -6,20 +6,21 @@ A premium, editorial Android storefront with a native mobile rhythm. It borrows 
 
 ## Colour
 
-- Background ink: `#071411`
-- Surface: `#10201C`
-- Raised surface: `#172923`
-- Primary text: `#F5F8F6`
-- Secondary text: `#9AAEA7`
-- Border: `#29433B`
-- Discovery mint: `#58EBC5`
-- Deep mint: `#25B894`
-- Warm coral: `#FF765C`
-- Amber accent: `#FFB23F`
-- Warning/preview: `#FFD07A`
+- Background ink: `#07111D`
+- Surface: `#0D1A29`
+- Raised surface: `#14253A`
+- Primary text: `#F7F8FC`
+- Secondary text: `#9EADC0`
+- Border: `#26384D`
+- Gateway cyan: `#63E6D1`
+- Ice blue: `#7CD7FF`
+- Electric blue: `#5B8CFF`
+- Restrained violet: `#8B5CF6`
+- Amber accent: `#E6C994`
+- Warning/preview: `#FFD58A`
 - Danger: `#FF7D78`
 
-The mint/coral orbital mark is the Hub signature. Use generated artwork for editorial moments and real publisher imagery when available. Do not recreate artwork with CSS shapes or imply official Solana Mobile affiliation.
+The open D-shaped gateway and three-slat perspective path are the Dapport signature. Cyan-mint marks the entrance, electric blue carries the movement, and violet is limited to a subtle reflection. The silhouette is deliberately original and must not be replaced with the official Solana mark. Use real publisher imagery whenever available and never imply official Solana Mobile affiliation.
 
 ## Typography
 
@@ -48,7 +49,7 @@ Trust is never encoded by colour alone.
 Design these connected screens first:
 
 1. Discover with search, featured artwork, category cards, and compact app rows.
-2. Category results with query, installation-status filter, trust filter, sorting, and a live result count.
+2. Category results with search and adaptive filters. Games exposes genre, installation state, approval, and sorting in a compact sheet; simpler categories omit genre.
 3. App detail with artwork, publisher, description, screenshots, selected release, permissions, integrity details, and install action.
 4. Download/validation/install progress with explicit stages for hash, package, version, certificate, and Android confirmation.
 5. Permission-change sheet with additions and removals.

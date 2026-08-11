@@ -27,6 +27,7 @@ local.properties
 Thumbs.db
 .artifacts/
 .playwright-mcp/
+.playwright-cli/
 output/playwright/
 apps/web/.qa/
 

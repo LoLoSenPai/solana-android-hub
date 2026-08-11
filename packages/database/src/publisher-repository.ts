@@ -1,13 +1,14 @@
-import type { AppEnvironment, ReleasePolicy } from "@hub/domain";
+import type { AppEnvironment, CatalogCategory, GameGenre, ReleasePolicy } from "@hub/domain";
 import type { AuthorityProofEvidence } from "@hub/solana";
 import type { HubSql } from "./client";
+import { parseJsonValue } from "./json";
 import type { ChallengeRecord } from "./auth-repository";
 
 export interface PublisherAppRecord {
   id: string;
   publisherId: string;
   appMint: string;
-  publisherMint: string;
+  publisherCollectionMint: string | null;
   packageName: string;
   metadataUri: string;
   claimStatus: "pending" | "verified" | "suspended" | "revoked";
@@ -17,7 +18,7 @@ interface AppRow {
   id: string;
   publisher_id: string;
   app_mint: string;
-  publisher_mint: string;
+  publisher_collection_mint: string | null;
   package_name: string;
   metadata_uri: string;
   claim_status: PublisherAppRecord["claimStatus"];
@@ -28,7 +29,7 @@ export class PublisherRepository {
 
   public async getAppForPublisher(appId: string, publisherId: string): Promise<PublisherAppRecord | null> {
     const [row] = await this.sql<AppRow[]>`
-      select id, publisher_id, app_mint, publisher_mint, package_name, metadata_uri, claim_status
+      select id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status
       from hub.apps where id = ${appId} and publisher_id = ${publisherId}
     `;
     return row ? mapApp(row) : null;
@@ -57,25 +58,25 @@ export class PublisherRepository {
     return this.sql.begin(async (tx) => {
       await tx`select pg_advisory_xact_lock(hashtext(${input.proof.appMint}))`;
       const [existing] = await tx<AppRow[]>`
-        select id, publisher_id, app_mint, publisher_mint, package_name, metadata_uri, claim_status
+        select id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status
         from hub.apps where app_mint = ${input.proof.appMint} for update
       `;
       if (existing && existing.publisher_id !== input.publisherId) throw new Error("APP_ALREADY_CLAIMED");
 
       const [app] = await tx<AppRow[]>`
         insert into hub.apps (
-          publisher_id, app_mint, publisher_mint, package_name, slug, name, short_description, description,
+          publisher_id, app_mint, publisher_collection_mint, package_name, slug, name, short_description, description,
           icon_uri, screenshots, metadata_uri, source_snapshot, source_snapshot_hash, claim_status,
           authority_path, authority_address, authority_last_verified_slot, authority_last_verified_at
         ) values (
-          ${input.publisherId}, ${input.proof.appMint}, ${input.proof.publisherMint}, ${input.packageName}, ${input.slug},
+          ${input.publisherId}, ${input.proof.appMint}, ${input.proof.publisherCollectionMint}, ${input.packageName}, ${input.slug},
           ${input.name}, ${input.shortDescription}, ${input.description}, ${input.iconUri}, ${this.sql.json([...input.screenshots])},
-          ${input.metadataUri}, ${input.sourceSnapshotJson}::jsonb, ${input.sourceSnapshotHash}, 'verified',
+          ${input.metadataUri}, ${tx.json(parseJsonValue(input.sourceSnapshotJson))}, ${input.sourceSnapshotHash}, 'verified',
           ${input.proof.path === "metadata_update_authority" ? "update_authority" : "delegated_collection_authority"},
           ${input.proof.wallet}, ${input.proof.finalizedSlot.toString()}, now()
         )
         on conflict (app_mint) do update set
-          publisher_mint = excluded.publisher_mint,
+          publisher_collection_mint = excluded.publisher_collection_mint,
           package_name = excluded.package_name,
           name = excluded.name,
           short_description = excluded.short_description,
@@ -91,7 +92,7 @@ export class PublisherRepository {
           authority_last_verified_slot = excluded.authority_last_verified_slot,
           authority_last_verified_at = now(),
           updated_at = now()
-        returning id, publisher_id, app_mint, publisher_mint, package_name, metadata_uri, claim_status
+        returning id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status
       `;
       if (!app) throw new Error("APP_CLAIM_NOT_SAVED");
       await tx`update hub.app_claims set superseded_at = now() where app_id = ${app.id} and superseded_at is null`;
@@ -101,7 +102,7 @@ export class PublisherRepository {
         ) values (
           ${app.id}, ${input.publisherWalletId}, 'verified',
           ${input.proof.path === "metadata_update_authority" ? "update_authority" : "delegated_collection_authority"},
-          ${input.proof.finalizedSlot.toString()}, ${input.evidenceHash}, ${evidenceSnapshotJson}::jsonb, now()
+          ${input.proof.finalizedSlot.toString()}, ${input.evidenceHash}, ${tx.json(parseJsonValue(evidenceSnapshotJson))}, now()
         )
       `;
       return mapApp(app);
@@ -163,6 +164,29 @@ export class PublisherRepository {
       return consent.id;
     });
   }
+
+  public async saveClassification(input: {
+    appId: string;
+    publisherId: string;
+    walletAddress: string;
+    category: CatalogCategory;
+    genres: readonly GameGenre[];
+  }): Promise<boolean> {
+    const [classification] = await this.sql<{ app_id: string }[]>`
+      insert into hub.app_classifications (app_id, primary_category, tags, source, updated_by_wallet)
+      select id, ${input.category}, ${input.genres}, 'publisher', ${input.walletAddress}
+      from hub.apps
+      where id = ${input.appId} and publisher_id = ${input.publisherId} and claim_status = 'verified'
+      on conflict (app_id) do update set
+        primary_category = excluded.primary_category,
+        tags = excluded.tags,
+        source = excluded.source,
+        updated_by_wallet = excluded.updated_by_wallet,
+        updated_at = now()
+      returning app_id
+    `;
+    return Boolean(classification);
+  }
 }
 
 function mapApp(row: AppRow): PublisherAppRecord {
@@ -170,7 +194,7 @@ function mapApp(row: AppRow): PublisherAppRecord {
     id: row.id,
     publisherId: row.publisher_id,
     appMint: row.app_mint,
-    publisherMint: row.publisher_mint,
+    publisherCollectionMint: row.publisher_collection_mint,
     packageName: row.package_name,
     metadataUri: row.metadata_uri,
     claimStatus: row.claim_status

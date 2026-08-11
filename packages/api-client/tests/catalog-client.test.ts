@@ -10,6 +10,8 @@ const legacyItem = {
   description: null,
   iconUrl: null,
   screenshots: [],
+  bannerUrl: null,
+  featureGraphicUrl: null,
   latestRelease: {
     id: "20000000-0000-4000-8000-000000000001",
     releaseMint: "44444444444444444444444444444444",
@@ -37,11 +39,12 @@ describe("catalog API client", () => {
   it("parses legacy catalogue items with safe category defaults", () => {
     expect(catalogAppDtoSchema.parse(legacyItem)).toMatchObject({
       category: "other",
+      genres: [],
       releaseUpdatedAt: null
     });
   });
 
-  it("sends category, sort, channel, search, and Android SDK filters", async () => {
+  it("sends category, genre, sort, channel, search, and Android SDK filters", async () => {
     let requestedUrl = "";
     const fetchImpl = ((input: RequestInfo | URL) => {
       requestedUrl = input instanceof Request ? input.url : input instanceof URL ? input.href : input;
@@ -49,6 +52,7 @@ describe("catalog API client", () => {
         items: [{
           ...legacyItem,
           category: "games",
+          genres: ["arcade"],
           releaseUpdatedAt: "2026-08-08T00:00:00.000Z"
         }],
         nextCursor: null,
@@ -62,7 +66,8 @@ describe("catalog API client", () => {
       query: "arcade",
       category: "games",
       sort: "recently_updated",
-      androidSdk: 36
+      androidSdk: 36,
+      genre: "arcade"
     });
 
     const url = new URL(requestedUrl);
@@ -71,7 +76,8 @@ describe("catalog API client", () => {
       query: "arcade",
       category: "games",
       sort: "recently_updated",
-      androidSdk: "36"
+      androidSdk: "36",
+      genre: "arcade"
     });
     expect(response.items[0]?.category).toBe("games");
   });

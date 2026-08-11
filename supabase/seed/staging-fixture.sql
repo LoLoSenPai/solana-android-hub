@@ -54,7 +54,7 @@ insert into hub.apps (
   id,
   publisher_id,
   app_mint,
-  publisher_mint,
+  publisher_collection_mint,
   package_name,
   slug,
   name,
@@ -94,7 +94,7 @@ insert into hub.apps (
 on conflict (id) do update set
   publisher_id = excluded.publisher_id,
   app_mint = excluded.app_mint,
-  publisher_mint = excluded.publisher_mint,
+  publisher_collection_mint = excluded.publisher_collection_mint,
   package_name = excluded.package_name,
   slug = excluded.slug,
   name = excluded.name,
@@ -113,6 +113,20 @@ on conflict (id) do update set
   suspended_at = null,
   suspension_reason = null,
   revoked_at = null,
+  updated_at = now();
+
+insert into hub.app_classifications (app_id, primary_category, tags, source)
+values (
+  '30000000-0000-4000-8000-000000000003',
+  'games',
+  array['casual', 'puzzle'],
+  'hub_curated'
+)
+on conflict (app_id) do update set
+  primary_category = excluded.primary_category,
+  tags = excluded.tags,
+  source = excluded.source,
+  updated_by_wallet = null,
   updated_at = now();
 
 insert into hub.app_claims (

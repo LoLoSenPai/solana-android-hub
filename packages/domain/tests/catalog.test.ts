@@ -5,6 +5,7 @@ import {
   computeUpdateDecision,
   diffPermissions,
   normalizeCatalogCategory,
+  normalizeGameGenres,
   quarantineReason,
   selectLatestRelease,
   type ReleaseCandidate
@@ -20,6 +21,10 @@ describe("catalog categories", () => {
   it("keeps missing and unrecognized categories visible under other", () => {
     expect(normalizeCatalogCategory(undefined)).toBe("other");
     expect(normalizeCatalogCategory("Experimental category")).toBe("other");
+  });
+
+  it("keeps only stable game genres and removes duplicates", () => {
+    expect(normalizeGameGenres(["Puzzle", "puzzle", "RPG", "unknown", 7])).toEqual(["puzzle", "rpg"]);
   });
 });
 
@@ -120,6 +125,7 @@ describe("canonical signed messages", () => {
 
   it("builds authentication bytes with no trailing newline", () => {
     const message = buildAuthenticationMessage(common);
+    expect(message.startsWith("Dapport Authentication\n")).toBe(true);
     expect(message).toContain("Purpose: Publisher sign-in");
     expect(message.endsWith("\n")).toBe(false);
   });
@@ -132,6 +138,7 @@ describe("canonical signed messages", () => {
       termsVersion: "staging-1"
     });
     expect(message).toContain("App Mint: 22222222222222222222222222222222");
+    expect(message.startsWith("Dapport Distribution Consent\n")).toBe(true);
     expect(message).toContain("Release Policy: automatic");
     expect(message).toContain("Terms Version: staging-1");
   });

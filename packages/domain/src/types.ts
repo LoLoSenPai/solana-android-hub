@@ -14,6 +14,19 @@ export const CATALOG_CATEGORIES = [
   "other"
 ] as const;
 export type CatalogCategory = typeof CATALOG_CATEGORIES[number];
+export const GAME_GENRES = [
+  "action",
+  "adventure",
+  "arcade",
+  "card",
+  "casual",
+  "puzzle",
+  "rpg",
+  "simulation",
+  "sports",
+  "strategy"
+] as const;
+export type GameGenre = typeof GAME_GENRES[number];
 export const CATALOG_SORTS = ["name", "recently_updated"] as const;
 export type CatalogSort = typeof CATALOG_SORTS[number];
 export type AppEnvironment = "local" | "staging" | "production";

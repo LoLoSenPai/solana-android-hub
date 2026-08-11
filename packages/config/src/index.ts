@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const base58Address = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/u;
+export const PRODUCTION_ORIGIN = "https://dapport.app";
 
 export const appEnvironmentSchema = z.enum(["local", "staging", "production"]);
 export const publicationGateSchema = z.enum(["device_only_preview", "server_and_device"]);
@@ -48,6 +49,9 @@ const environmentSchema = z
     }
 
     if (value.APP_ENV === "production") {
+      if (origin.origin !== PRODUCTION_ORIGIN) {
+        context.addIssue({ code: "custom", path: ["HUB_ORIGIN"], message: `Production origin must be ${PRODUCTION_ORIGIN}` });
+      }
       if (value.RELEASE_PUBLICATION_GATE !== "server_and_device") {
         context.addIssue({ code: "custom", path: ["RELEASE_PUBLICATION_GATE"], message: "Production requires server_and_device" });
       }

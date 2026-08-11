@@ -1,5 +1,6 @@
 "use client";
 
+import { CATALOG_CATEGORIES, GAME_GENRES, type CatalogCategory, type GameGenre } from "@hub/api-client";
 import { SolanaSignMessage, type SolanaSignMessageFeature } from "@solana/wallet-standard-features";
 import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount, WalletWithFeatures } from "@wallet-standard/base";
@@ -12,7 +13,7 @@ type ReleasePolicy = "automatic" | "manual";
 
 interface DiscoveredApp {
   appMint: string;
-  publisherMint: string;
+  publisherCollectionMint: string | null;
   name: string;
   packageName: string;
   authorityPath: string;
@@ -21,9 +22,21 @@ interface DiscoveredApp {
 interface ClaimedApp extends DiscoveredApp {
   id: string;
   consented?: boolean;
+  category?: CatalogCategory;
+  genres?: readonly GameGenre[];
 }
 
-export function PublisherClient() {
+interface PublisherRelease {
+  id: string;
+  release_mint: string;
+  version_name: string;
+  version_code: string;
+  validation_status: "discovered" | "metadata_valid" | "validating_binary" | "server_binary_valid" | "quarantined";
+  publication_status: "preview" | "unpublished" | "published" | "ignored" | "withdrawn";
+  quarantine_code: string | null;
+}
+
+export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const registry = useMemo(getWallets, []);
   const [wallets, setWallets] = useState<readonly CompatibleWallet[]>([]);
   const [activeWallet, setActiveWallet] = useState<CompatibleWallet | null>(null);
@@ -31,6 +44,7 @@ export function PublisherClient() {
   const [account, setAccount] = useState<WalletAccount | null>(null);
   const [apps, setApps] = useState<readonly DiscoveredApp[]>([]);
   const [claims, setClaims] = useState<Record<string, ClaimedApp>>({});
+  const [releases, setReleases] = useState<Record<string, readonly PublisherRelease[]>>({});
   const [manualMint, setManualMint] = useState("");
   const [policy, setPolicy] = useState<ReleasePolicy>("manual");
   const [status, setStatus] = useState("Connect a Wallet Standard wallet that supports Ed25519 message signing.");
@@ -91,9 +105,34 @@ export function PublisherClient() {
       method: "POST",
       body: JSON.stringify({ challengeId: challenge.challengeId, signature })
     });
+    const existing = await api<{ apps: readonly {
+      id: string;
+      appMint: string;
+      name: string;
+      packageName: string;
+      consentStatus: string | null;
+      category: CatalogCategory;
+      genres: readonly GameGenre[];
+    }[] }>("/api/v1/publisher/apps");
+    setClaims(Object.fromEntries(existing.apps.map((app) => [app.appMint, {
+      id: app.id,
+      appMint: app.appMint,
+      publisherCollectionMint: null,
+      name: app.name,
+      packageName: app.packageName,
+      authorityPath: "finalized verification",
+      consented: app.consentStatus === "active",
+      category: app.category,
+      genres: app.genres
+    }])));
+    const releaseEntries = await Promise.all(existing.apps.map(async (app) => {
+      const response = await api<{ releases: readonly PublisherRelease[] }>(`/api/v1/publisher/apps/${app.id}/releases`);
+      return [app.id, response.releases] as const;
+    }));
+    setReleases(Object.fromEntries(releaseEntries));
     setActiveWallet(wallet);
     setAccount(nextAccount);
-    setStatus(`Authenticated with ${wallet.name} as ${shortAddress(nextAccount.address)}. Authentication is not distribution consent.`);
+    setStatus(`Authenticated with ${wallet.name} as ${shortAddress(nextAccount.address)}. ${existing.apps.length} claimed app${existing.apps.length === 1 ? "" : "s"} loaded.`);
   });
 
   const requestConnection = () => {
@@ -131,7 +170,7 @@ export function PublisherClient() {
   const claimMint = async () => {
     const mint = manualMint.trim();
     if (!mint) return;
-    await claim({ appMint: mint, publisherMint: "", name: `App ${shortAddress(mint)}`, packageName: "Pending finalized verification", authorityPath: "finalized verification" });
+    await claim({ appMint: mint, publisherCollectionMint: null, name: `App ${shortAddress(mint)}`, packageName: "Pending finalized verification", authorityPath: "finalized verification" });
   };
 
   const consent = (candidate: ClaimedApp) => run(async () => {
@@ -149,7 +188,27 @@ export function PublisherClient() {
 
   const sync = (candidate: ClaimedApp) => run(async () => {
     const result = await api<{ releases: readonly { releaseMint: string }[] }>(`/api/v1/publisher/apps/${candidate.id}/sync`, mutation());
+    await refreshReleases(candidate.id);
     setStatus(`Release synchronization completed with ${result.releases.length} normalized Release NFT(s).`);
+  });
+
+  const validateOrPublish = (candidate: ClaimedApp, release: PublisherRelease) => run(async () => {
+    const result = await api<{ status: "validating_binary" | "published" }>(`/api/v1/publisher/releases/${release.id}/publish`, mutation());
+    await refreshReleases(candidate.id);
+    setStatus(result.status === "published"
+      ? `${candidate.name} ${release.version_name} is published.`
+      : `${candidate.name} ${release.version_name} was sent to the independent APK validator. Refresh in a moment to see the result.`);
+  });
+
+  async function refreshReleases(appId: string): Promise<void> {
+    const response = await api<{ releases: readonly PublisherRelease[] }>(`/api/v1/publisher/apps/${appId}/releases`);
+    setReleases((current) => ({ ...current, [appId]: response.releases }));
+  }
+
+  const classify = (candidate: ClaimedApp, category: CatalogCategory, genres: readonly GameGenre[]) => run(async () => {
+    await api(`/api/v1/publisher/apps/${candidate.id}/classification`, mutation({ category, genres }));
+    setClaims((current) => ({ ...current, [candidate.appMint]: { ...candidate, category, genres } }));
+    setStatus(`${candidate.name} will appear in ${categoryLabel(category)}${genres.length ? ` · ${genres.map(genreLabel).join(", ")}` : ""}.`);
   });
 
   function run(action: () => Promise<void>): Promise<void> {
@@ -247,6 +306,7 @@ export function PublisherClient() {
 
       <div className="panel">
         <p className="step-label">3 · Separate distribution consent</p>
+        <p className="muted">Review the <a href="/publisher/distribution-terms" target="_blank" rel="noreferrer">Dapport distribution terms</a> before signing. Active version: {termsVersion}.</p>
         <label>Release policy
           <select value={policy} onChange={(event) => setPolicy(event.target.value as ReleasePolicy)} disabled={busy}>
             <option value="manual">Manual publication</option>
@@ -266,8 +326,104 @@ export function PublisherClient() {
           {claimList.length === 0 && <p className="muted">Claim an App before consent can be created.</p>}
         </div>
       </div>
+      <div className="panel">
+        <p className="step-label">4 · Release validation and publication</p>
+        <p className="muted">Every APK is checked on an ephemeral GitHub runner before it can enter the production catalogue.</p>
+        <div className="operation-list">
+          {claimList.flatMap((candidate) => (releases[candidate.id] ?? []).map((release) => (
+            <div className="operation-row" key={release.id}>
+              <div>
+                <strong>{candidate.name} {release.version_name}</strong>
+                <small>{releaseStatusLabel(release)}</small>
+              </div>
+              <div className="control-row compact">
+                {release.validation_status === "validating_binary" ? (
+                  <button type="button" className="secondary" onClick={() => void run(() => refreshReleases(candidate.id))} disabled={busy}>Refresh validation</button>
+                ) : null}
+                {releaseActionLabel(release) ? (
+                  <button type="button" onClick={() => void validateOrPublish(candidate, release)} disabled={busy || Boolean(release.quarantine_code)}>
+                    {releaseActionLabel(release)}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          )))}
+          {claimList.length > 0 && claimList.every((candidate) => (releases[candidate.id] ?? []).length === 0)
+            ? <p className="muted">Sync an App to discover its Release NFTs.</p>
+            : null}
+          {claimList.length === 0 ? <p className="muted">Claim and sync an App before validating a release.</p> : null}
+        </div>
+      </div>
+      <div className="panel">
+        <p className="step-label">5 · Storefront classification</p>
+        <p className="muted">The NFT standard identifies a dApp, but does not carry the consumer category used by the store. Choose how people should discover your app here.</p>
+        <div className="operation-list">
+          {claimList.map((candidate) => (
+            <ClassificationEditor
+              key={candidate.id}
+              app={candidate}
+              disabled={busy}
+              onSave={(category, genres) => void classify(candidate, category, genres)}
+            />
+          ))}
+          {claimList.length === 0 && <p className="muted">Claim an App before choosing its category.</p>}
+        </div>
+      </div>
       <p className="status-line" role="status">{busy ? "Waiting for verified operation…" : status}</p>
     </section>
+  );
+}
+
+function ClassificationEditor({
+  app,
+  disabled,
+  onSave
+}: {
+  app: ClaimedApp;
+  disabled: boolean;
+  onSave: (category: CatalogCategory, genres: readonly GameGenre[]) => void;
+}) {
+  const [category, setCategory] = useState<CatalogCategory>(app.category ?? "other");
+  const [genres, setGenres] = useState<readonly GameGenre[]>(app.genres ?? []);
+  const toggleGenre = (genre: GameGenre) => setGenres((current) => current.includes(genre)
+    ? current.filter((item) => item !== genre)
+    : current.length < 4 ? [...current, genre] : current);
+
+  return (
+    <div className="classification-editor">
+      <div><strong>{app.name}</strong><small>{app.packageName}</small></div>
+      <label>Primary category
+        <select
+          value={category}
+          disabled={disabled}
+          onChange={(event) => {
+            const next = event.target.value as CatalogCategory;
+            setCategory(next);
+            if (next !== "games") setGenres([]);
+          }}
+        >
+          {CATALOG_CATEGORIES.map((item) => <option value={item} key={item}>{categoryLabel(item)}</option>)}
+        </select>
+      </label>
+      {category === "games" ? (
+        <fieldset className="genre-picker">
+          <legend>Game genres · choose up to 4</legend>
+          <div>
+            {GAME_GENRES.map((genre) => (
+              <button
+                type="button"
+                className={genres.includes(genre) ? "is-selected" : "secondary"}
+                aria-pressed={genres.includes(genre)}
+                disabled={disabled || (!genres.includes(genre) && genres.length >= 4)}
+                onClick={() => toggleGenre(genre)}
+                key={genre}
+              >{genreLabel(genre)}</button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+      <button type="button" onClick={() => onSave(category, genres)} disabled={disabled}>Save storefront</button>
+    </div>
   );
 }
 
@@ -321,6 +477,44 @@ function base64Url(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+}
+
+function categoryLabel(category: CatalogCategory): string {
+  const labels: Record<CatalogCategory, string> = {
+    "ai-agents": "AI & agents",
+    "content-streaming": "Content & streaming",
+    defi: "DeFi & trading",
+    depin: "DePIN",
+    games: "Games",
+    lifestyle: "Lifestyle",
+    nfts: "NFTs",
+    "privacy-security": "Privacy & security",
+    productivity: "Productivity",
+    "social-identity": "Social & identity",
+    wallets: "Wallets",
+    other: "Other"
+  };
+  return labels[category];
+}
+
+function releaseActionLabel(release: PublisherRelease): string | null {
+  if (release.quarantine_code || release.publication_status === "published" || release.publication_status === "withdrawn" || release.publication_status === "ignored") return null;
+  if (release.validation_status === "metadata_valid") return "Validate APK";
+  if (release.validation_status === "server_binary_valid") return "Publish release";
+  return null;
+}
+
+function releaseStatusLabel(release: PublisherRelease): string {
+  if (release.quarantine_code) return `Blocked · ${release.quarantine_code.replaceAll("_", " ")}`;
+  if (release.publication_status === "published") return "Published in the production catalogue";
+  if (release.validation_status === "validating_binary") return "APK validation in progress";
+  if (release.validation_status === "server_binary_valid") return "APK validated · ready to publish";
+  if (release.validation_status === "metadata_valid") return "Metadata verified · APK validation required";
+  return `${release.validation_status.replaceAll("_", " ")} · ${release.publication_status.replaceAll("_", " ")}`;
+}
+
+function genreLabel(genre: GameGenre): string {
+  return genre === "rpg" ? "RPG" : `${genre.charAt(0).toUpperCase()}${genre.slice(1)}`;
 }
 
 function shortAddress(address: string): string {

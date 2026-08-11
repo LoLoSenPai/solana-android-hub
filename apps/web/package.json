@@ -17,6 +17,7 @@
     "@hub/domain": "workspace:*",
     "@hub/solana": "workspace:*",
     "@hub/validation": "workspace:*",
+    "@phosphor-icons/react": "2.1.10",
     "@solana/wallet-standard-features": "1.4.0",
     "@wallet-standard/app": "1.1.1",
     "@wallet-standard/base": "1.1.1",

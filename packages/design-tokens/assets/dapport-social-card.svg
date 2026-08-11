@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Dapport social card</title>
+  <desc id="desc">Dapport, Solana apps on any Android.</desc>
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientTransform="translate(870 270) rotate(135) scale(720 620)">
+      <stop stop-color="#182F68"/>
+      <stop offset="0.34" stop-color="#10213F"/>
+      <stop offset="1" stop-color="#07111D"/>
+    </radialGradient>
+    <linearGradient id="gateway" x1="176" y1="128" x2="820" y2="894" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#63E6D1"/>
+      <stop offset="0.48" stop-color="#7CD7FF"/>
+      <stop offset="0.88" stop-color="#5B8CFF"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="steps" x1="150" y1="850" x2="455" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7CD7FF"/>
+      <stop offset="1" stop-color="#B9FFF5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="994" cy="105" r="280" fill="#8B5CF6" opacity="0.08"/>
+  <circle cx="840" cy="525" r="330" fill="#63E6D1" opacity="0.06"/>
+  <text x="82" y="255" fill="#F7F8FC" font-family="Inter, Arial, sans-serif" font-size="112" font-weight="760" letter-spacing="-5">Dapport</text>
+  <text x="88" y="340" fill="#63E6D1" font-family="Inter, Arial, sans-serif" font-size="43" font-weight="650">Solana apps.</text>
+  <text x="360" y="340" fill="#7EA6FF" font-family="Inter, Arial, sans-serif" font-size="43" font-weight="650">Any Android.</text>
+  <text x="88" y="415" fill="#A9B7C9" font-family="Inter, Arial, sans-serif" font-size="25">Discover publisher-approved releases on the web.</text>
+  <text x="88" y="455" fill="#A9B7C9" font-family="Inter, Arial, sans-serif" font-size="25">Install and manage them with the Dapport Android app.</text>
+  <text x="88" y="550" fill="#F7F8FC" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="2">DAPPORT.APP</text>
+</svg>

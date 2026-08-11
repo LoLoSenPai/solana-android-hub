@@ -1,71 +1,124 @@
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
+import { Compass } from "@phosphor-icons/react/dist/ssr/Compass";
+import { DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
+import { Fingerprint } from "@phosphor-icons/react/dist/ssr/Fingerprint";
+import { SealCheck } from "@phosphor-icons/react/dist/ssr/SealCheck";
+import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
+import { Signature } from "@phosphor-icons/react/dist/ssr/Signature";
+import { UserFocus } from "@phosphor-icons/react/dist/ssr/UserFocus";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
+import { ScreenshotRail } from "../../components/ScreenshotRail";
+import { buildAppSocialMetadata } from "../../../server/app-social-metadata";
 import { getCatalogApp } from "../../../server/catalog-service";
 
 export const dynamic = "force-dynamic";
 
+const getTrustedCatalogApp = cache((slug: string) => getCatalogApp(slug, "trusted"));
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const app = await getTrustedCatalogApp(slug);
+  if (!app) {
+    return {
+      title: "App unavailable",
+      robots: { index: false, follow: false }
+    };
+  }
+  return buildAppSocialMetadata(app);
+}
+
 export default async function AppDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const app = await getCatalogApp(slug, "trusted");
+  const app = await getTrustedCatalogApp(slug);
   if (!app) notFound();
 
   const authenticity = app.latestRelease.previewOnly ? "Development preview" : "Server-validated release";
   const approval = approvalLabel(app.latestRelease.trust.solanaMobileApproval);
+  const heroArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
 
   return (
     <main className="app-detail-page">
       <article>
         <div className="detail-back-row">
-          <Link className="text-link" href="/">Back to catalogue</Link>
+          <Link className="text-link" href="/catalog">Back to catalogue</Link>
           <span>{app.latestRelease.packageName}</span>
         </div>
 
-        <section className="detail-hero" aria-labelledby="app-title">
-          {app.screenshots[0]
-            // Publisher screenshot hosts are metadata-driven, so they stay direct instead of enabling a broad Next image proxy allowlist.
-            ? <img className="detail-hero-image" src={app.screenshots[0]} alt="" />
-            : <Image className="detail-hero-image" src="/hub-hero.png" alt="" fill priority sizes="(max-width: 760px) 100vw, 1280px" />}
-          <span className="detail-state">{authenticity}</span>
-        </section>
-
-        <section className="detail-intro">
+        <section className="detail-intro" aria-labelledby="app-title">
           {app.iconUrl
             // Publisher icon hosts are metadata-driven, so they stay direct instead of enabling a broad Next image proxy allowlist.
             ? <img className="detail-app-icon" src={app.iconUrl} alt={`${app.name} icon`} />
-            : <Image className="detail-app-icon" src="/hub-app-fallback.png" width={160} height={160} alt={`${app.name} icon`} />}
+            : <Image className="detail-app-icon" src="/dapport-app-fallback.png" width={160} height={160} alt={`${app.name} icon`} />}
           <div className="detail-title-copy">
             <p className="eyebrow">{categoryFromApp(app.category)}</p>
             <h1 id="app-title">{app.name}</h1>
             <p>{app.shortDescription ?? "An independently published Android app for the Solana ecosystem."}</p>
           </div>
           <div className="detail-primary-action">
-            <a className="primary-action" href="#release">Review Android release</a>
-            <small>Installation continues in the Android Hub after full on-device validation.</small>
+            <Link className="primary-action" href="/download">Install with Dapport</Link>
+            <a
+              className="secondary-action"
+              href={app.latestRelease.apkUrl}
+              target="_blank"
+              rel="noreferrer nofollow"
+              referrerPolicy="no-referrer"
+            >
+              Download APK directly
+            </a>
+            <small>Dapport checks this release on your phone. Direct download is an advanced option that skips those final device checks.</small>
           </div>
         </section>
 
-        <section className="detail-description editorial-split" aria-labelledby="about-heading">
+        <section className="detail-showcase" aria-label={`${app.name} artwork and installation overview`}>
+          <div className="detail-hero">
+            {heroArtwork ? (
+              <>
+                <img className="detail-hero-backdrop" src={heroArtwork} alt="" aria-hidden="true" />
+                <img className="detail-hero-image" src={heroArtwork} alt={`${app.name} cover artwork`} />
+              </>
+            ) : <Image className="detail-hero-image" src="/dapport-hero-chromatic.webp" alt="" fill priority sizes="(max-width: 760px) 100vw, 900px" />}
+            <span className="detail-hero-scrim" aria-hidden="true" />
+            <span className="detail-state">{authenticity}</span>
+          </div>
+          <aside className="detail-flow-card">
+            <div><p className="eyebrow">Install & manage with Dapport</p><h2>A simple 3-step flow.</h2><p>Discover on the web. Install and manage on Android.</p></div>
+            <ol>
+              <li><Compass aria-hidden="true" weight="duotone" /><span><strong>Browse on the web</strong><small>Choose the app and release that fits you.</small></span></li>
+              <li><DeviceMobile aria-hidden="true" weight="duotone" /><span><strong>Continue on Android</strong><small>Open Dapport and run the device checks.</small></span></li>
+              <li><ArrowsClockwise aria-hidden="true" weight="duotone" /><span><strong>Manage updates</strong><small>Keep apps installed through Dapport current.</small></span></li>
+            </ol>
+            <dl>
+              <div><dt>Category</dt><dd>{categoryFromApp(app.category)}</dd></div>
+              <div><dt>Compatibility</dt><dd>Android {androidVersion(app.latestRelease.minSdk)}+</dd></div>
+              <div><dt>Version</dt><dd>{app.latestRelease.versionName}</dd></div>
+            </dl>
+          </aside>
+        </section>
+
+        <section className={`detail-description editorial-split${app.featureGraphicUrl ? " has-feature-art" : ""}`} aria-labelledby="about-heading">
           <div>
             <p className="eyebrow">About this app</p>
             <h2 id="about-heading">A clear view before you install.</h2>
           </div>
-          <p>{app.description ?? app.shortDescription ?? "The publisher has not provided a longer description for this release yet."}</p>
+          <div className="detail-about-copy"><p>{app.description ?? app.shortDescription ?? "The publisher has not provided a longer description for this release yet."}</p></div>
         </section>
 
         {app.screenshots.length > 0 ? (
           <section className="screenshot-section" aria-labelledby="screenshots-heading">
-            <div className="section-title-row"><h2 id="screenshots-heading">Preview</h2><span>{app.screenshots.length} images</span></div>
-            <div className="screenshot-rail">
-              {/* Publisher screenshot hosts are validated metadata, but remain direct to avoid a broad image-proxy allowlist. */}
-              {app.screenshots.map((screenshot, index) => (
-                <img key={screenshot} src={screenshot} alt={`${app.name} screenshot ${index + 1}`} />
-              ))}
+            <div className="section-title-row">
+              <h2 id="screenshots-heading">Preview</h2>
+              <span>{app.screenshots.length} images · drag to explore</span>
             </div>
+            {/* Publisher screenshot hosts are validated metadata, but remain direct to avoid a broad image-proxy allowlist. */}
+            <ScreenshotRail appName={app.name} screenshots={app.screenshots} />
           </section>
         ) : (
-          <section className="detail-editorial-card" aria-label="Android Hub installation promise">
-            <Image src="/hub-hero.png" alt="" fill sizes="(max-width: 760px) 100vw, 1280px" />
+          <section className="detail-editorial-card" aria-label="Dapport installation promise">
+            <Image src="/dapport-hero-chromatic.webp" alt="" fill sizes="(max-width: 760px) 100vw, 1280px" />
             <div><p className="eyebrow">A safer hand-off</p><h2>The APK is checked before Android ever sees it.</h2><p>Hash, package, version, minimum SDK, permissions, and signing certificate must all match the published release.</p></div>
           </section>
         )}
@@ -73,13 +126,13 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
         <section className="detail-trust" aria-labelledby="trust-facts-heading">
           <div className="section-title-row">
             <div><p className="eyebrow">Visible evidence</p><h2 id="trust-facts-heading">Trust facts</h2></div>
-            <p>These checks answer different questions and never collapse into a generic verified claim.</p>
+            <p>These checks answer different questions. None of them becomes a vague “safe” badge.</p>
           </div>
           <dl className="detail-trust-grid">
-            <div><span>01</span><dt>Publisher control</dt><dd>Verified from current finalized authority evidence.</dd><strong>Verified</strong></div>
-            <div><span>02</span><dt>Distribution consent</dt><dd>A separate, environment-bound consent is active.</dd><strong>Active</strong></div>
-            <div><span>03</span><dt>Release authenticity</dt><dd>The APK must match its published identity and certificate.</dd><strong>{authenticity}</strong></div>
-            <div><span>04</span><dt>Independent approval</dt><dd>Approval cannot be asserted by the publisher.</dd><strong>{approval}</strong></div>
+            <div><UserFocus aria-hidden="true" weight="duotone" /><dt>Publisher control</dt><dd>Verified from current finalized authority evidence.</dd><strong>Verified</strong></div>
+            <div><Signature aria-hidden="true" weight="duotone" /><dt>Distribution consent</dt><dd>A separate, environment-bound consent is active.</dd><strong>Active</strong></div>
+            <div><Fingerprint aria-hidden="true" weight="duotone" /><dt>Release authenticity</dt><dd>The APK must match its published identity and certificate.</dd><strong>{authenticity}</strong></div>
+            <div><SealCheck aria-hidden="true" weight="duotone" /><dt>Independent approval</dt><dd>Approval cannot be asserted by the publisher.</dd><strong>{approval}</strong></div>
           </dl>
         </section>
 
@@ -88,7 +141,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <p className="eyebrow">Current Android release</p>
             <h2 id="release-heading">Version {app.latestRelease.versionName}</h2>
             <p>Version code {app.latestRelease.versionCode} · requires Android {androidVersion(app.latestRelease.minSdk)} or newer · {formatFileSize(app.latestRelease.apkSize)}</p>
-            <p className="muted">The Android Hub validates the full SHA-256, package name, version, and signing certificate again on-device before opening PackageInstaller.</p>
+            <p className="muted">Dapport validates the full SHA-256, package name, version, and signing certificate again on-device before opening PackageInstaller.</p>
           </div>
           <dl className="release-facts">
             <div><dt>Package</dt><dd>{app.latestRelease.packageName}</dd></div>
@@ -96,6 +149,26 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <div><dt>APK SHA-256</dt><dd>{shortHash(app.latestRelease.apkSha256)}</dd></div>
             <div><dt>Certificate</dt><dd>{shortHash(app.latestRelease.certificateSha256)}</dd></div>
           </dl>
+        </section>
+
+        <section className="direct-download-note" aria-labelledby="direct-download-heading">
+          <div>
+            <p className="eyebrow">Desktop transfer</p>
+            <h2 id="direct-download-heading">Need the APK file itself?</h2>
+          </div>
+          <div>
+            <p>You can download the publisher-hosted APK from a computer and transfer it to Android. This does not run Dapport's installed-package, downgrade, or signer-conflict checks.</p>
+            <a
+              className="secondary-action"
+              href={app.latestRelease.apkUrl}
+              target="_blank"
+              rel="noreferrer nofollow"
+              referrerPolicy="no-referrer"
+            >
+              Download {app.name} APK
+            </a>
+            <p className="download-hash"><span>Expected SHA-256</span><code>{app.latestRelease.apkSha256}</code></p>
+          </div>
         </section>
 
         <section className="permission-section" aria-labelledby="permissions-heading">
@@ -113,8 +186,8 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
         </section>
 
         <aside className="independence-note">
-          <Image src="/hub-mark.png" alt="" width={64} height={64} />
-          <div><strong>Independent by design.</strong><p>Solana Android Hub is an independent catalogue and is not affiliated with or endorsed by Solana Mobile.</p></div>
+          <ShieldCheck aria-hidden="true" weight="duotone" />
+          <div><strong>Independent by design.</strong><p>Dapport is an independent catalogue and is not affiliated with or endorsed by Solana Mobile.</p></div>
         </aside>
       </article>
     </main>
@@ -141,7 +214,7 @@ function categoryFromApp(category: string): string {
     "social-identity": "Social & identity",
     wallets: "Wallets"
   };
-  return labels[category] ?? "More tools";
+  return labels[category] ?? "Other apps";
 }
 
 function androidVersion(minSdk: number): string {

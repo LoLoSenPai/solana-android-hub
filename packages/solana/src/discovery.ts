@@ -71,7 +71,7 @@ export class HeliusReleaseDiscovery {
 }
 
 export function createHeliusReleaseDiscovery(apiKey: string): HeliusReleaseDiscovery {
-  const client: HeliusClient = createHelius({ apiKey, network: "mainnet", userAgent: "solana-android-hub/0.1" });
+  const client: HeliusClient = createHelius({ apiKey, network: "mainnet", userAgent: "dapport/0.1" });
   return new HeliusReleaseDiscovery(client);
 }
 

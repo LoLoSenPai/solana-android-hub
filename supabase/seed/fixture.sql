@@ -10,7 +10,7 @@ values (
 );
 
 insert into hub.apps (
-  id, publisher_id, app_mint, publisher_mint, package_name, slug, name, short_description, description,
+  id, publisher_id, app_mint, publisher_collection_mint, package_name, slug, name, short_description, description,
   metadata_uri, source_snapshot, source_snapshot_hash, claim_status, release_policy, distribution_enabled,
   authority_path, authority_address, authority_last_verified_slot, authority_last_verified_at
 ) values (
@@ -33,6 +33,14 @@ insert into hub.apps (
   '66666666666666666666666666666666',
   1,
   now()
+);
+
+insert into hub.app_classifications (app_id, primary_category, tags, source)
+values (
+  '10000000-0000-4000-8000-000000000003',
+  'games',
+  array['casual', 'puzzle'],
+  'hub_curated'
 );
 
 insert into hub.app_claims (

@@ -1,7 +1,7 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import { AppInstaller, type InstalledPackageInfo } from "@hub/app-installer";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppArtwork } from "@/components/AppArtwork";
@@ -9,6 +9,7 @@ import { HubSymbol } from "@/components/HubSymbol";
 import { categoryDefinition } from "@/features/catalog/discovery";
 import { loadCatalogApp } from "@/features/catalog/api";
 import { getInstallAction, type InstallAction } from "@/features/catalog/install-action";
+import { approvalLabel, humanizePermission, permissionSummary, releaseBadgeLabel } from "@/features/catalog/release-presentation";
 import { listInstalledApps } from "@/storage/database";
 
 export default function AppDetailScreen() {
@@ -18,6 +19,9 @@ export default function AppDetailScreen() {
   const [installed, setInstalled] = useState<InstalledPackageInfo | null>(null);
   const [installedPermissions, setInstalledPermissions] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [permissionsExpanded, setPermissionsExpanded] = useState(false);
+  const [technicalNamesExpanded, setTechnicalNamesExpanded] = useState(false);
+  const [verificationExpanded, setVerificationExpanded] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -41,7 +45,7 @@ export default function AppDetailScreen() {
   if (!app && !error) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator color="#72F0C6" />
+        <ActivityIndicator color="#77A7FF" />
       </View>
     );
   }
@@ -67,15 +71,20 @@ export default function AppDetailScreen() {
   const isUpdate = installAction === "update";
   const addedPermissions = isUpdate ? release.permissions.filter((permission) => !installedPermissions.includes(permission)) : [];
   const removedPermissions = isUpdate ? installedPermissions.filter((permission) => !release.permissions.includes(permission)) : [];
-  const primaryScreenshot = app.screenshots[0];
+  const coverArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
+  const badgeLabel = releaseBadgeLabel(release.previewOnly, release.trust.solanaMobileApproval);
 
   return (
     <View className="flex-1 bg-canvas">
       <ScrollView className="flex-1" contentContainerClassName="pb-14" showsVerticalScrollIndicator={false}>
-        {primaryScreenshot ? (
-          <ImageBackground source={{ uri: primaryScreenshot }} resizeMode="cover" style={{ height: 290 }}>
-            <View className="h-full justify-between px-4 pb-7 pt-12" style={{ backgroundColor: "rgba(0, 12, 11, 0.30)" }}>
-              <DetailHeader onBack={() => router.back()} preview={release.previewOnly} />
+        {coverArtwork ? (
+          <ImageBackground
+            source={{ uri: coverArtwork }}
+            resizeMode="cover"
+            style={{ width: "100%", aspectRatio: app.bannerUrl ? 2 : 16 / 9 }}
+          >
+            <View className="h-full justify-between px-4 pb-4 pt-12" style={{ backgroundColor: "rgba(5, 12, 21, 0.5)" }}>
+              <DetailHeader onBack={() => router.back()} statusLabel={badgeLabel} />
               <View className="self-start rounded-full bg-canvas px-3 py-1.5">
                 <Text className="text-xs font-bold text-ink">{category.label}</Text>
               </View>
@@ -83,11 +92,11 @@ export default function AppDetailScreen() {
           </ImageBackground>
         ) : (
           <View className="h-[250px] justify-between bg-raised px-4 pb-8 pt-12">
-            <DetailHeader onBack={() => router.back()} preview={release.previewOnly} />
+            <DetailHeader onBack={() => router.back()} statusLabel={badgeLabel} />
             <View className="flex-row items-end justify-between">
               <View>
                 <Text className="text-xs font-bold uppercase tracking-[1.6px] text-muted">{category.label}</Text>
-                <Text className="mt-2 max-w-[270px] text-[28px] font-bold leading-8 text-ink">Android release. Evidence first.</Text>
+                <Text className="mt-2 max-w-[270px] text-[28px] font-bold leading-8 text-ink">Made for Android.</Text>
               </View>
               <HubSymbol name={category.icon} size={48} color={category.accent} />
             </View>
@@ -103,40 +112,21 @@ export default function AppDetailScreen() {
           </View>
 
           <Text className="mt-5 text-[38px] font-bold leading-[42px] tracking-[-1px] text-ink">{app.name}</Text>
-          <Text className="mt-2 text-base leading-6 text-muted">{app.shortDescription ?? release.packageName}</Text>
+          <Text className="mt-2 text-base leading-6 text-muted">{app.shortDescription ?? "Discover this Solana app"}</Text>
+          {app.genres.length ? <View className="mt-4 flex-row flex-wrap gap-2">{app.genres.map((genre) => <View className="rounded-full border border-line bg-surface px-3 py-2" key={genre}><Text className="text-xs font-semibold text-muted">{genre === "rpg" ? "RPG" : `${genre.charAt(0).toUpperCase()}${genre.slice(1)}`}</Text></View>)}</View> : null}
           {isUpdate ? (
             <View className="mt-4 flex-row items-center self-start rounded-full bg-coral px-4 py-2">
-              <HubSymbol name="update" size={17} color="#061311" />
+              <HubSymbol name="update" size={17} color="#091018" />
               <Text className="ml-2 text-sm font-bold text-canvas">Update to {release.versionName}</Text>
             </View>
           ) : installed ? (
             <View className="mt-4 flex-row items-center self-start rounded-full border border-line bg-surface px-4 py-2">
-              <HubSymbol name="check_circle" size={17} color="#72F0C6" />
+              <HubSymbol name="check_circle" size={17} color="#77A7FF" />
               <Text className="ml-2 text-sm font-semibold text-ink">
                 {installAction === "newer-installed" ? "Newer version installed" : "Installed"} · {installed.versionName ?? installed.versionCode}
               </Text>
             </View>
           ) : null}
-
-          <SectionTitle title="Why you can trust this release" />
-          <View className="overflow-hidden rounded-[26px] border border-line bg-surface">
-            <EvidenceRow icon="person_check" label="Publisher control" value="Verified now" tone="mint" />
-            <EvidenceRow icon="fact_check" label="Distribution consent" value="Active" tone="mint" />
-            <EvidenceRow
-              icon={release.previewOnly ? "science" : "shield_lock"}
-              label="Release authenticity"
-              value={release.previewOnly ? "Development preview" : "Server binary valid"}
-              tone={release.previewOnly ? "warning" : "mint"}
-            />
-            <EvidenceRow
-              icon="approval"
-              label="Solana Mobile approval"
-              value={approvalLabel(release.trust.solanaMobileApproval)}
-              tone={release.trust.solanaMobileApproval === "verified_approved" ? "mint" : "muted"}
-              last
-            />
-          </View>
-          <Text className="mt-3 text-xs leading-5 text-muted">Each fact is checked independently. This Hub is not affiliated with Solana Mobile.</Text>
 
           {app.screenshots.length > 0 ? (
             <>
@@ -162,7 +152,7 @@ export default function AppDetailScreen() {
             </>
           ) : null}
 
-          <SectionTitle title={isUpdate ? "Permission changes" : "Data & permissions"} />
+          {isUpdate ? <SectionTitle title="Permission changes" /> : null}
           {addedPermissions.length > 0 ? (
             <View className="mb-3 rounded-[22px] border border-warning bg-surface p-4">
               <Text className="text-sm font-bold text-warning">New in this update</Text>
@@ -175,18 +165,69 @@ export default function AppDetailScreen() {
               <Text className="mt-2 text-sm leading-5 text-muted">{removedPermissions.map(humanizePermission).join(", ")}</Text>
             </View>
           ) : null}
-          <View className="overflow-hidden rounded-[26px] border border-line bg-surface">
-            {release.permissions.length > 0 ? release.permissions.map((permission, index) => (
-              <PermissionRow key={permission} permission={permission} last={index === release.permissions.length - 1} />
-            )) : (
-              <View className="flex-row items-center p-5">
-                <HubSymbol name="check_circle" size={23} color="#72F0C6" />
-                <Text className="ml-3 flex-1 text-sm leading-5 text-muted">No permissions are listed in this release metadata.</Text>
-              </View>
-            )}
-          </View>
 
-          <SectionTitle title="App information" />
+          <DisclosureSection
+            expanded={permissionsExpanded}
+            icon="privacy_tip"
+            onPress={() => setPermissionsExpanded((current) => !current)}
+            summary={permissionSummary(release.permissions)}
+            title="Data & permissions"
+          >
+            <View className="overflow-hidden rounded-[22px] border border-line bg-canvas">
+              {release.permissions.length > 0 ? release.permissions.map((permission, index) => (
+                <PermissionRow
+                  key={permission}
+                  permission={permission}
+                  showTechnicalName={technicalNamesExpanded}
+                  last={index === release.permissions.length - 1}
+                />
+              )) : (
+                <View className="flex-row items-center p-5">
+                  <HubSymbol name="check_circle" size={23} color="#77A7FF" />
+                  <Text className="ml-3 flex-1 text-sm leading-5 text-muted">No permissions are listed in this release metadata.</Text>
+                </View>
+              )}
+            </View>
+            {release.permissions.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                className="mt-4 flex-row items-center self-start rounded-full border border-line px-4 py-3 active:bg-raised"
+                onPress={() => setTechnicalNamesExpanded((current) => !current)}
+              >
+                <Text className="text-sm font-semibold text-muted">{technicalNamesExpanded ? "Hide technical names" : "Show technical names"}</Text>
+                <HubSymbol name={technicalNamesExpanded ? "keyboard_arrow_up" : "keyboard_arrow_down"} size={18} color="#95A5B7" style={{ marginLeft: 6 }} />
+              </Pressable>
+            ) : null}
+          </DisclosureSection>
+
+          <DisclosureSection
+            expanded={verificationExpanded}
+            icon="verified_user"
+            onPress={() => setVerificationExpanded((current) => !current)}
+            summary="Publisher permission, app-file checks and Solana Mobile status"
+            title="Verification details"
+          >
+            <View className="overflow-hidden rounded-[22px] border border-line bg-canvas">
+              <EvidenceRow icon="person_check" label="Publisher permission" value="Confirmed" tone="mint" />
+              <EvidenceRow icon="fact_check" label="Dapport listing consent" value="Confirmed" tone="mint" />
+              <EvidenceRow
+                icon={release.previewOnly ? "science" : "shield_lock"}
+                label="App file"
+                value={release.previewOnly ? "Preview release" : "Validated release"}
+                tone={release.previewOnly ? "warning" : "mint"}
+              />
+              <EvidenceRow
+                icon="approval"
+                label="Solana Mobile status"
+                value={approvalLabel(release.trust.solanaMobileApproval)}
+                tone={release.trust.solanaMobileApproval === "verified_approved" ? "mint" : "muted"}
+                last
+              />
+            </View>
+            <Text className="mt-3 text-xs leading-5 text-muted">Solana Mobile approval is shown only when independently verified. Dapport is independent from Solana Mobile.</Text>
+          </DisclosureSection>
+
+          <SectionTitle title="Details" />
           <View className="overflow-hidden rounded-[26px] border border-line bg-surface">
             <InfoRow label="Version" value={`${release.versionName} (${release.versionCode})`} />
             <InfoRow label="Android required" value={`Android API ${release.minSdk}+`} />
@@ -198,10 +239,10 @@ export default function AppDetailScreen() {
 
           <View className="mt-8 rounded-[26px] bg-raised p-5">
             <View className="flex-row items-start">
-              <HubSymbol name="verified_user" size={24} color="#72F0C6" />
+              <HubSymbol name="verified_user" size={24} color="#77A7FF" />
               <View className="ml-3 flex-1">
-                <Text className="text-base font-bold text-ink">Checked again before install</Text>
-                <Text className="mt-1 text-sm leading-5 text-muted">SHA-256, package, version, permissions, and current signing certificate must all match on this device.</Text>
+                <Text className="text-base font-bold text-ink">Ready when you are</Text>
+                <Text className="mt-1 text-sm leading-5 text-muted">Dapport checks the app file on your phone before handing it to Android.</Text>
               </View>
             </View>
             <InstallButton app={app} action={installAction} />
@@ -212,7 +253,8 @@ export default function AppDetailScreen() {
   );
 }
 
-function DetailHeader({ onBack, preview }: { onBack: () => void; preview: boolean }) {
+function DetailHeader({ onBack, statusLabel }: { onBack: () => void; statusLabel: string | null }) {
+  const preview = statusLabel === "Preview release";
   return (
     <View className="flex-row items-center justify-between">
       <Pressable
@@ -222,9 +264,11 @@ function DetailHeader({ onBack, preview }: { onBack: () => void; preview: boolea
       >
         <HubSymbol name="arrow_back" size={24} />
       </Pressable>
-      <View className={preview ? "rounded-full bg-warning px-4 py-2" : "rounded-full bg-canvas px-4 py-2"}>
-        <Text className={preview ? "text-xs font-bold text-canvas" : "text-xs font-bold text-ink"}>{preview ? "Preview" : "Verified release"}</Text>
-      </View>
+      {statusLabel ? (
+        <View className={preview ? "rounded-full bg-warning px-4 py-2" : "rounded-full bg-canvas px-4 py-2"}>
+          <Text className={preview ? "text-xs font-bold text-canvas" : "text-xs font-bold text-ink"}>{statusLabel}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -244,7 +288,7 @@ function InstallButton({
       ? "Installed"
       : action === "newer-installed"
         ? "Newer version installed"
-        : "Install securely";
+        : "Install";
 
   if (action === "current" || action === "newer-installed") {
     return (
@@ -274,6 +318,43 @@ function SectionTitle({ title }: { title: string }) {
   return <Text className="mb-4 mt-9 text-[25px] font-bold tracking-[-0.5px] text-ink">{title}</Text>;
 }
 
+function DisclosureSection({
+  children,
+  expanded,
+  icon,
+  onPress,
+  summary,
+  title
+}: {
+  children: ReactNode;
+  expanded: boolean;
+  icon: Parameters<typeof HubSymbol>[0]["name"];
+  onPress: () => void;
+  summary: string;
+  title: string;
+}) {
+  return (
+    <View className="mt-8 overflow-hidden rounded-[26px] border border-line bg-surface">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        className="flex-row items-center p-5 active:bg-raised"
+        onPress={onPress}
+      >
+        <View className="h-11 w-11 items-center justify-center rounded-2xl bg-raised">
+          <HubSymbol name={icon} size={23} color="#77A7FF" />
+        </View>
+        <View className="ml-3 flex-1">
+          <Text className="text-lg font-bold text-ink">{title}</Text>
+          <Text className="mt-1 text-sm leading-5 text-muted">{summary}</Text>
+        </View>
+        <HubSymbol name={expanded ? "keyboard_arrow_up" : "keyboard_arrow_down"} size={24} color="#95A5B7" />
+      </Pressable>
+      {expanded ? <View className="border-t border-line p-4">{children}</View> : null}
+    </View>
+  );
+}
+
 function EvidenceRow({
   icon,
   label,
@@ -287,7 +368,7 @@ function EvidenceRow({
   tone: "mint" | "warning" | "muted";
   last?: boolean;
 }) {
-  const color = tone === "mint" ? "#72F0C6" : tone === "warning" ? "#FFC857" : "#93A7A2";
+  const color = tone === "mint" ? "#77A7FF" : tone === "warning" ? "#FFC857" : "#95A5B7";
   return (
     <View className={last ? "flex-row items-center p-4" : "flex-row items-center border-b border-line p-4"}>
       <View className="h-10 w-10 items-center justify-center rounded-2xl bg-raised">
@@ -297,20 +378,20 @@ function EvidenceRow({
         <Text className="text-xs text-muted">{label}</Text>
         <Text className="mt-0.5 text-sm font-semibold text-ink">{value}</Text>
       </View>
-      <HubSymbol name="check_circle" size={19} color={color} />
+      <HubSymbol name={tone === "mint" ? "check_circle" : "info"} size={19} color={color} />
     </View>
   );
 }
 
-function PermissionRow({ permission, last }: { permission: string; last: boolean }) {
+function PermissionRow({ permission, last, showTechnicalName }: { permission: string; last: boolean; showTechnicalName: boolean }) {
   return (
     <View className={last ? "flex-row items-center p-4" : "flex-row items-center border-b border-line p-4"}>
       <View className="h-10 w-10 items-center justify-center rounded-2xl bg-raised">
-        <HubSymbol name="key" size={21} color="#93A7A2" />
+        <HubSymbol name="key" size={21} color="#95A5B7" />
       </View>
       <View className="ml-3 flex-1">
         <Text className="text-sm font-semibold text-ink">{humanizePermission(permission)}</Text>
-        <Text className="mt-1 text-xs text-muted" numberOfLines={1}>{permission}</Text>
+        {showTechnicalName ? <Text className="mt-1 text-xs text-muted" selectable>{permission}</Text> : null}
       </View>
     </View>
   );
@@ -323,18 +404,6 @@ function InfoRow({ label, value, last = false }: { label: string; value: string;
       <Text className="max-w-[58%] text-right text-sm font-semibold text-ink" selectable>{value}</Text>
     </View>
   );
-}
-
-function approvalLabel(value: CatalogAppDto["latestRelease"]["trust"]["solanaMobileApproval"]): string {
-  if (value === "verified_approved") return "Verified approved";
-  if (value === "rejected") return "Rejected";
-  return "Not recorded";
-}
-
-function humanizePermission(permission: string): string {
-  const parts = permission.split(".");
-  const value = parts[parts.length - 1] ?? permission;
-  return value.toLocaleLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toLocaleUpperCase());
 }
 
 function formatBytes(bytes: number): string {

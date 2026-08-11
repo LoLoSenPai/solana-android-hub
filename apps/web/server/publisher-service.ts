@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { AuthRepository, PublisherRepository, type PublisherAppRecord, type SessionRecord } from "@hub/database";
 import { buildDistributionConsentMessage, DISTRIBUTION_SCOPES, type ReleasePolicy } from "@hub/domain";
+import type { CatalogCategory, GameGenre } from "@hub/domain";
 import {
   createHeliusFinalizedAccountReader,
   createHeliusReleaseDiscovery,
@@ -16,7 +17,7 @@ const authRepository = new AuthRepository(database);
 
 export interface DiscoveredPublisherApp {
   appMint: string;
-  publisherMint: string;
+  publisherCollectionMint: string | null;
   name: string;
   packageName: string;
   iconUrl: string;
@@ -30,20 +31,14 @@ export async function discoverPublisherApps(session: SessionRecord): Promise<rea
   for (const candidate of candidates.slice(0, 50)) {
     try {
       if (candidate.burnt || candidate.compression !== "uncompressed") continue;
-      const appEvidence = await verifier.readMetadata(candidate.mint);
-      const publisherMint = appEvidence.collection?.verified === true ? appEvidence.collection.key : null;
-      if (!publisherMint) continue;
-      const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint: candidate.mint, publisherMint });
-      const [appJson, publisherEvidence] = await Promise.all([
-        fetchHardenedJson(appEvidence.metadataUri),
-        verifier.readMetadata(publisherMint)
-      ]);
-      const publisherJson = await fetchHardenedJson(publisherEvidence.metadataUri);
-      const app = appJsonMetadataSchema.parse(appJson);
-      publisherJsonMetadataSchema.parse(publisherJson);
+      const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint: candidate.mint });
+      const app = appJsonMetadataSchema.parse(await fetchHardenedJson(proof.appMetadata.metadataUri));
+      if (proof.publisherMetadata !== null) {
+        publisherJsonMetadataSchema.parse(await fetchHardenedJson(proof.publisherMetadata.metadataUri));
+      }
       output.push({
         appMint: candidate.mint,
-        publisherMint,
+        publisherCollectionMint: proof.publisherCollectionMint,
         name: app.name,
         packageName: app.extensions.solana_dapp_store.android_package,
         iconUrl: app.image,
@@ -58,21 +53,16 @@ export async function discoverPublisherApps(session: SessionRecord): Promise<rea
 
 export async function claimPublisherApp(session: SessionRecord, appMint: string): Promise<PublisherAppRecord> {
   const { verifier } = solanaServices();
-  const appEvidence = await verifier.readMetadata(appMint);
-  const publisherMint = appEvidence.collection?.verified === true ? appEvidence.collection.key : null;
-  if (!publisherMint) throw new Error("APP_PUBLISHER_COLLECTION_NOT_VERIFIED");
-  const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint, publisherMint });
-  const [appJsonRaw, publisherJsonRaw] = await Promise.all([
-    fetchHardenedJson(proof.appMetadata.metadataUri),
-    fetchHardenedJson(proof.publisherMetadata.metadataUri)
-  ]);
-  const appJson = appJsonMetadataSchema.parse(appJsonRaw);
-  const publisherJson = publisherJsonMetadataSchema.parse(publisherJsonRaw);
+  const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint });
+  const appJson = appJsonMetadataSchema.parse(await fetchHardenedJson(proof.appMetadata.metadataUri));
+  const publisherJson = proof.publisherMetadata === null
+    ? null
+    : publisherJsonMetadataSchema.parse(await fetchHardenedJson(proof.publisherMetadata.metadataUri));
   const packageName = appJson.extensions.solana_dapp_store.android_package;
   const sourceSnapshot = {
     schemaRevision: appJson.schema_version,
     appMetadata: appJson,
-    publisherMetadata: publisherJson,
+    ...(publisherJson === null ? {} : { publisherMetadata: publisherJson }),
     authority: { ...proof, finalizedSlot: proof.finalizedSlot.toString() }
   };
   const sourceSnapshotJson = canonicalJson(sourceSnapshot);
@@ -155,6 +145,23 @@ export async function recordDistributionConsent(input: {
   });
 }
 
+export async function updatePublisherClassification(input: {
+  session: SessionRecord;
+  appId: string;
+  category: CatalogCategory;
+  genres: readonly GameGenre[];
+}): Promise<boolean> {
+  const app = await requirePublisherApp(input.session, input.appId);
+  await reverifyAuthority(input.session, app);
+  return publisherRepository.saveClassification({
+    appId: app.id,
+    publisherId: input.session.publisherId,
+    walletAddress: input.session.walletAddress,
+    category: input.category,
+    genres: input.category === "games" ? input.genres : []
+  });
+}
+
 async function requirePublisherApp(session: SessionRecord, appId: string): Promise<PublisherAppRecord> {
   const app = await publisherRepository.getAppForPublisher(appId, session.publisherId);
   if (!app || app.claimStatus !== "verified") throw new Error("PUBLISHER_APP_NOT_FOUND");
@@ -164,8 +171,7 @@ async function requirePublisherApp(session: SessionRecord, appId: string): Promi
 async function reverifyAuthority(session: SessionRecord, app: PublisherAppRecord): Promise<void> {
   await solanaServices().verifier.verifyAppAuthority({
     wallet: session.walletAddress,
-    appMint: app.appMint,
-    publisherMint: app.publisherMint
+    appMint: app.appMint
   });
 }
 
@@ -181,7 +187,7 @@ function isConsentBound(message: string, expected: { wallet: string; appMint: st
   const origin = new URL(hubConfig.hubOrigin);
   const lines = message.split("\n");
   return lines.length === 14 &&
-    lines[0] === "Solana Android Hub Distribution Consent" &&
+    lines[0] === "Dapport Distribution Consent" &&
     lines[1] === "Version: 1" &&
     lines[2] === `Environment: ${hubConfig.appEnvironment}` &&
     lines[3] === `Domain: ${origin.host.toLowerCase()}` &&

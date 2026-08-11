@@ -8,7 +8,7 @@ interface HubSymbolProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function HubSymbol({ name, size = 24, color = "#F5F7F2", style }: HubSymbolProps) {
+export function HubSymbol({ name, size = 24, color = "#F7F8FC", style }: HubSymbolProps) {
   return (
     <SymbolView
       name={{ android: name }}

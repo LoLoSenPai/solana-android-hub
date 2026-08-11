@@ -4,7 +4,7 @@
 
 1. Suspend the App and withdraw preview/published Releases.
 2. Preserve finalized account slot/hash evidence and the append-only audit entry.
-3. Reverify App→Publisher collection and current update/delegated authority.
+3. Reverify the App collection NFT and current update/delegated authority. If a legacy Publisher parent is present, reverify that relationship too.
 4. Do not unsuspend from cached DAS fields.
 
 ## APK mismatch or mutable host

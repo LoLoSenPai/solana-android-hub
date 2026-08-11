@@ -1,6 +1,6 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import { describe, expect, it } from "vitest";
-import { filterAndSortApps, localStatusForApp } from "./discovery";
+import { CATEGORY_DEFINITIONS, filterAndSortApps, localStatusForApp } from "./discovery";
 import type { LocalInstallRecord } from "@/storage/database";
 
 const installed: LocalInstallRecord = {
@@ -71,6 +71,36 @@ describe("mobile catalogue discovery", () => {
 
     expect(results.map((candidate) => candidate.id)).toEqual(["game", "wallet"]);
   });
+
+  it("filters Games by genre without affecting simple categories", () => {
+    const games = filterAndSortApps({
+      apps: [wallet, game],
+      category: "games",
+      genre: "puzzle",
+      query: "",
+      availability: "all",
+      trust: "all",
+      sort: "recent",
+      installedByPackage: new Map()
+    });
+    const wallets = filterAndSortApps({
+      apps: [wallet, game],
+      category: "wallets",
+      genre: "all",
+      query: "",
+      availability: "all",
+      trust: "all",
+      sort: "recent",
+      installedByPackage: new Map()
+    });
+
+    expect(games.map((candidate) => candidate.id)).toEqual(["game"]);
+    expect(wallets.map((candidate) => candidate.id)).toEqual(["wallet"]);
+  });
+
+  it("does not expose a vague More category in discovery", () => {
+    expect(CATEGORY_DEFINITIONS.some((category) => category.id === "other")).toBe(false);
+  });
 });
 
 function app(input: {
@@ -93,7 +123,10 @@ function app(input: {
     description: null,
     iconUrl: null,
     screenshots: [],
+    bannerUrl: null,
+    featureGraphicUrl: null,
     category: input.category,
+    genres: input.category === "games" ? ["puzzle"] : [],
     releaseUpdatedAt: input.updatedAt,
     latestRelease: {
       id: `${input.id}-release`,
