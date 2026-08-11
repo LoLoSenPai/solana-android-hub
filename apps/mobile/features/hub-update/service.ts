@@ -26,6 +26,11 @@ export async function checkForHubUpdate(options: { force?: boolean } = {}): Prom
   if (!config.enabled) return { status: "disabled" };
   let current: InstalledPackageInfo | undefined;
   try {
+    if (typeof AppInstaller.getCurrentAppInfo !== "function") {
+      throw new Error(
+        "This Dapport build cannot update itself. Download the latest signed APK once from dapport.app to enable future in-app updates."
+      );
+    }
     current = await AppInstaller.getCurrentAppInfo();
     const cached = await getHubUpdateCache();
     const now = Date.now();
