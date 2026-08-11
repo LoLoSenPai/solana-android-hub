@@ -75,14 +75,14 @@ export class PublisherOperationsRepository {
     `;
   }
 
-  public async revokeDistribution(appId: string, publisherId: string, environment: AppEnvironment, reason: string): Promise<boolean> {
+  public async revokeDistribution(appId: string, publisherId: string, environment: AppEnvironment): Promise<boolean> {
     return this.sql.begin(async (tx) => {
       const [app] = await tx<{ id: string }[]>`
         select id from hub.apps where id = ${appId} and publisher_id = ${publisherId} for update
       `;
       if (!app) return false;
       await tx`
-        update hub.distribution_consents set status = 'revoked', revoked_at = now(), revocation_reason = ${reason}
+        update hub.distribution_consents set status = 'revoked', revoked_at = now(), revocation_reason = null
         where app_id = ${appId} and environment = ${environment}::hub.app_environment and status = 'active'
       `;
       await tx`

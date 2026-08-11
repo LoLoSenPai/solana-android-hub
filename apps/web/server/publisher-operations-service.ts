@@ -11,8 +11,8 @@ export function listPublisherReleases(session: SessionRecord, appId: string) {
   return repository.listReleases(appId, session.publisherId);
 }
 
-export function revokePublisherDistribution(session: SessionRecord, appId: string, reason: string) {
-  return repository.revokeDistribution(appId, session.publisherId, hubConfig.appEnvironment, reason);
+export function revokePublisherDistribution(session: SessionRecord, appId: string) {
+  return repository.revokeDistribution(appId, session.publisherId, hubConfig.appEnvironment);
 }
 
 export function ignorePublisherRelease(session: SessionRecord, releaseId: string) {

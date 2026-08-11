@@ -122,6 +122,11 @@ export class PublisherRepository {
     verify: (wallet: string, message: string) => boolean;
   }): Promise<string | null> {
     return this.sql.begin(async (tx) => {
+      const [appState] = await tx<{ was_revoked: boolean }[]>`
+        select revoked_at is not null as was_revoked
+        from hub.apps where id = ${input.app.id} and publisher_id = ${input.app.publisherId} for update
+      `;
+      if (!appState) return null;
       const [challenge] = await tx<{
         id: string;
         wallet_address: string;
@@ -158,9 +163,32 @@ export class PublisherRepository {
       `;
       if (!consent) throw new Error("CONSENT_NOT_SAVED");
       await tx`
-        update hub.apps set release_policy = ${input.releasePolicy}, distribution_enabled = true, updated_at = now()
+        update hub.apps set release_policy = ${input.releasePolicy}, distribution_enabled = true,
+          revoked_at = null, updated_at = now()
         where id = ${input.app.id}
       `;
+      if (appState.was_revoked) {
+        await tx`
+          update hub.releases r set
+            publication_status = case
+              when r.validation_status = 'server_binary_valid' and ${input.releasePolicy} = 'automatic'
+                then 'published'::hub.publication_status
+              when ${input.environment} <> 'production' and r.validation_status in ('metadata_valid', 'server_binary_valid')
+                then 'preview'::hub.publication_status
+              else 'unpublished'::hub.publication_status
+            end,
+            published_at = case
+              when r.validation_status = 'server_binary_valid' and ${input.releasePolicy} = 'automatic'
+                then coalesce(r.published_at, now())
+              else r.published_at
+            end,
+            updated_at = now()
+          from hub.apps a
+          where r.app_id = ${input.app.id} and r.app_id = a.id
+            and r.publication_status = 'withdrawn' and r.quarantine_code is null
+            and a.claim_status = 'verified' and a.suspended_at is null
+        `;
+      }
       return consent.id;
     });
   }
