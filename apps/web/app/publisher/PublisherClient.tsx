@@ -66,7 +66,6 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const [policy, setPolicy] = useState<ReleasePolicy>("manual");
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("setup");
   const [revokingAppMint, setRevokingAppMint] = useState<string | null>(null);
-  const [revocationReason, setRevocationReason] = useState("");
   const [status, setStatus] = useState("Connect a Wallet Standard wallet that supports Ed25519 message signing.");
   const [busy, setBusy] = useState(false);
   const walletPickerTrigger = useRef<HTMLButtonElement>(null);
@@ -231,23 +230,27 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     await claim({ appMint: mint, publisherCollectionMint: null, name: `App ${shortAddress(mint)}`, packageName: "Pending finalized verification", authorityPath: "finalized verification" });
   };
 
-  const consent = (candidate: ClaimedApp) => run(async () => {
+  const consent = (candidate: ClaimedApp, consentPolicy: ReleasePolicy = policy) => run(async () => {
     if (!activeWallet || !account) throw new Error("Reconnect the signing wallet.");
-    const challenge = await api<{ challengeId: string; message: string }>(`/api/v1/publisher/apps/${candidate.id}/consent/challenge`, mutation({ releasePolicy: policy }));
+    const wasRevoked = candidate.consentStatus === "revoked";
+    const challenge = await api<{ challengeId: string; message: string }>(`/api/v1/publisher/apps/${candidate.id}/consent/challenge`, mutation({ releasePolicy: consentPolicy }));
     const signature = await signExact(activeWallet, account, challenge.message);
     await api(`/api/v1/publisher/apps/${candidate.id}/consent`, mutation({
       challengeId: challenge.challengeId,
       signature,
-      releasePolicy: policy
+      releasePolicy: consentPolicy
     }));
     setClaims((current) => ({ ...current, [candidate.appMint]: {
       ...candidate,
       consented: true,
       consentStatus: "active",
       distributionEnabled: true,
-      releasePolicy: policy
+      releasePolicy: consentPolicy
     } }));
-    setStatus(`Environment-bound ${policy} distribution consent is active for ${candidate.name}.`);
+    await refreshReleases(candidate.id);
+    setStatus(wasRevoked
+      ? `${candidate.name} is available on Dapport again.`
+      : `Environment-bound ${consentPolicy} distribution consent is active for ${candidate.name}.`);
   });
 
   const sync = (candidate: ClaimedApp) => run(async () => {
@@ -265,7 +268,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   });
 
   const revoke = (candidate: ClaimedApp) => run(async () => {
-    await api(`/api/v1/publisher/apps/${candidate.id}/revoke`, mutation({ reason: revocationReason.trim() }));
+    await api(`/api/v1/publisher/apps/${candidate.id}/revoke`, mutation());
     setClaims((current) => ({ ...current, [candidate.appMint]: {
       ...candidate,
       consented: false,
@@ -277,7 +280,6 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       [candidate.id]: (current[candidate.id] ?? []).map((release) => ({ ...release, publication_status: "withdrawn" }))
     }));
     setRevokingAppMint(null);
-    setRevocationReason("");
     setStatus(`${candidate.name} has been removed from Dapport. Existing installations are not affected.`);
   });
 
@@ -304,7 +306,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     .some((release) => release.publication_status === "published")).length;
   const progressSteps = [
     { label: "Wallet connected", complete: Boolean(account), icon: CheckCircle },
-    { label: "App claimed", complete: activeClaims.length > 0, icon: AppWindow },
+    { label: "App claimed", complete: claimList.length > 0, icon: AppWindow },
     { label: "Distribution allowed", complete: activeClaims.some((candidate) => candidate.consented), icon: ListChecks },
     { label: "Live in catalogue", complete: publishedCount > 0, icon: Storefront }
   ];
@@ -444,16 +446,16 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
               </select>
             </label>
             <div className="operation-list">
-              {activeClaims.map((candidate) => (
+              {claimList.map((candidate) => (
                 <div key={candidate.id} className="operation-row">
-                  <div><strong>{candidate.name}</strong><small>{candidate.consented ? "Distribution allowed" : "Waiting for your consent"}</small></div>
+                  <div><strong>{candidate.name}</strong><small>{candidate.consented ? "Distribution allowed" : candidate.consentStatus === "revoked" ? "Removed — sign again to restore it" : "Waiting for your consent"}</small></div>
                   <div className="control-row compact">
-                    <button type="button" className="secondary" onClick={() => void consent(candidate)} disabled={busy || candidate.consented}>Review and sign</button>
+                    <button type="button" className="secondary" onClick={() => void consent(candidate)} disabled={busy || candidate.consented}>{candidate.consentStatus === "revoked" ? "Review and reauthorize" : "Review and sign"}</button>
                     <button type="button" className="secondary" onClick={() => void sync(candidate)} disabled={busy || !candidate.consented}>Find releases</button>
                   </div>
                 </div>
               ))}
-              {activeClaims.length === 0 && <p className="muted">Add an app first, then its consent controls will appear here.</p>}
+              {claimList.length === 0 && <p className="muted">Add an app first, then its consent controls will appear here.</p>}
             </div>
           </div>
 
@@ -463,10 +465,10 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
             </div>
             <p className="muted">Choose the consumer category used by Dapport. Games can include up to four useful genre filters.</p>
             <div className="operation-list">
-              {activeClaims.map((candidate) => (
+              {claimList.map((candidate) => (
                 <ClassificationEditor key={candidate.id} app={candidate} disabled={busy} onSave={(category, genres) => void classify(candidate, category, genres)} />
               ))}
-              {activeClaims.length === 0 && <p className="muted">Your storefront controls appear after an app is added.</p>}
+              {claimList.length === 0 && <p className="muted">Your storefront controls appear after an app is added.</p>}
             </div>
           </div>
 
@@ -519,20 +521,21 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
                     <div><dt>Release policy</dt><dd>{candidate.releasePolicy === "automatic" ? "Automatic" : "Manual"}</dd></div>
                   </dl>
                   <div className="publisher-app-actions">
-                    {!revoked ? <button type="button" className="secondary" onClick={() => setWorkspaceTab("setup")}><GearSix aria-hidden="true" /> Manage setup</button> : null}
+                    {revoked ? (
+                      <button type="button" onClick={() => void consent(candidate, candidate.releasePolicy ?? policy)} disabled={busy}><CheckCircle aria-hidden="true" /> Reauthorize app</button>
+                    ) : (
+                      <button type="button" className="secondary" onClick={() => setWorkspaceTab("setup")}><GearSix aria-hidden="true" /> Manage setup</button>
+                    )}
                     {liveRelease && candidate.slug ? <Link href={`/apps/${candidate.slug}`}>View store page <ArrowSquareOut aria-hidden="true" /></Link> : null}
-                    {!revoked && candidate.consented ? <button type="button" className="danger-quiet" onClick={() => { setRevokingAppMint(candidate.appMint); setRevocationReason(""); }}><TrashSimple aria-hidden="true" /> Remove from Dapport</button> : null}
+                    {!revoked && candidate.consented ? <button type="button" className="danger-quiet" onClick={() => setRevokingAppMint(candidate.appMint)}><TrashSimple aria-hidden="true" /> Remove from Dapport</button> : null}
                   </div>
                   {revokingAppMint === candidate.appMint ? (
                     <div className="publisher-revoke-confirm">
                       <strong>Remove {candidate.name} from Dapport?</strong>
                       <p>Its catalogue listing and future Dapport updates stop immediately. Apps already installed on phones are not removed.</p>
-                      <label>Reason
-                        <input value={revocationReason} onChange={(event) => setRevocationReason(event.target.value)} placeholder="Why are you removing this app?" autoFocus />
-                      </label>
                       <div className="control-row compact">
-                        <button type="button" className="danger" disabled={busy || revocationReason.trim().length < 4} onClick={() => void revoke(candidate)}>Confirm removal</button>
-                        <button type="button" className="secondary" onClick={() => { setRevokingAppMint(null); setRevocationReason(""); }}>Cancel</button>
+                        <button type="button" className="danger" disabled={busy} onClick={() => void revoke(candidate)} autoFocus>Confirm removal</button>
+                        <button type="button" className="secondary" onClick={() => setRevokingAppMint(null)}>Cancel</button>
                       </div>
                     </div>
                   ) : null}
@@ -682,6 +685,8 @@ function releaseActionLabel(release: PublisherRelease): string | null {
 
 function releaseStatusLabel(release: PublisherRelease): string {
   if (release.quarantine_code) return `Blocked · ${release.quarantine_code.replaceAll("_", " ")}`;
+  if (release.publication_status === "withdrawn") return "Removed from the catalogue";
+  if (release.publication_status === "ignored") return "Ignored by publisher";
   if (release.publication_status === "published") return "Published in the production catalogue";
   if (release.validation_status === "validating_binary") return "Dapport checks in progress";
   if (release.validation_status === "server_binary_valid") return "Dapport checks passed · ready to publish";
