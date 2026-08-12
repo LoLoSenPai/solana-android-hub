@@ -29,6 +29,7 @@ export default function DownloadPage() {
             )}
             <Link className="secondary-action" href="/#discover">Browse apps first</Link>
           </div>
+          <Link className="download-security-link" href="/security">Read Security & transparency <span aria-hidden="true">→</span></Link>
           <p className="download-status">
             <strong>{apkVersion}</strong>
             {apkUrl ? " · Android 8 or newer" : " · The public file will appear here after its permanent Android signing identity is fixed."}

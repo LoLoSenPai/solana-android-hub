@@ -14,6 +14,7 @@ export default function PublisherPage() {
         <p>{onboardingEnabled
           ? "Connect the wallet used for your App NFT. Dapport guides you from discovery to publication and keeps every listing under your control."
           : "The public staging catalogue is available, but finalized Solana chain verification is not configured for publisher onboarding in this environment."}</p>
+        <Link className="publisher-security-link" href="/security">How Dapport verifies releases <span aria-hidden="true">→</span></Link>
       </section>
       {onboardingEnabled ? <PublisherClient termsVersion={hubConfig.consentTermsVersion} /> : <PublisherUnavailable />}
     </main>

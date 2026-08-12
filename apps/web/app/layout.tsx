@@ -62,6 +62,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           <div className="footer-links">
             <Link href="/catalog">Catalogue</Link>
             <Link href="/#trust-model">Trust model</Link>
+            <Link href="/security">Security</Link>
             <Link href="/download">Get Dapport</Link>
             <Link href="/publisher">{onboardingEnabled ? "Publisher workspace" : "Publisher onboarding status"}</Link>
           </div>

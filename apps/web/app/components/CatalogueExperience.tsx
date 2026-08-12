@@ -132,7 +132,10 @@ export function CatalogueExperience({
           <p className="eyebrow">Openness with visible checks</p>
           <h2 id="trust-heading">You stay in control.</h2>
           <p>Publishers opt in. Dapport does not control your keys, data or funds, and Solana Mobile approval is never implied.</p>
-          <Link className="text-link" href="/download">How installation works <span aria-hidden="true">→</span></Link>
+          <div className="trust-links">
+            <Link className="text-link" href="/security">Security & transparency <span aria-hidden="true">→</span></Link>
+            <Link className="text-link" href="/download">How installation works <span aria-hidden="true">→</span></Link>
+          </div>
         </div>
         <ol className="trust-steps">
           <li><span>01</span><strong>Publisher control</strong><small>Current authority is checked on Solana.</small></li>
