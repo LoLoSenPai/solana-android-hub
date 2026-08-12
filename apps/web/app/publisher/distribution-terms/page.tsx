@@ -34,8 +34,8 @@ export default function DistributionTermsPage() {
         <h2>Revocation</h2>
         <p>You may revoke Dapport distribution from the publisher workspace. Revocation stops new catalogue distribution; it cannot remove copies users already installed or control files held by third-party hosting providers.</p>
 
-        <h2>Independent service</h2>
-        <p>Dapport is independent and is not affiliated with or endorsed by Solana Mobile. Solana Mobile approval, when displayed, is a separate fact and is never implied by publisher consent.</p>
+        <h2>Relationship to Solana Mobile</h2>
+        <p>Dapport is a third-party service that uses public Solana Mobile publishing data only after separate publisher consent. It is not operated by, affiliated with, or endorsed by Solana Mobile. Solana Mobile approval, when displayed, is a separate fact and is never implied by publisher consent.</p>
 
         <p className="legal-return"><Link href="/publisher">Return to the publisher workspace</Link></p>
       </article>

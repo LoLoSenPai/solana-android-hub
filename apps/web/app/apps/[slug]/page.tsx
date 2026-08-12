@@ -56,7 +56,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
           <div className="detail-title-copy">
             <p className="eyebrow">{categoryFromApp(app.category)}</p>
             <h1 id="app-title">{app.name}</h1>
-            <p>{app.shortDescription ?? "An independently published Android app for the Solana ecosystem."}</p>
+            <p>{app.shortDescription ?? "A publisher-authorized Android app for the Solana ecosystem."}</p>
           </div>
           <div className="detail-primary-action">
             <Link className="primary-action" href="/download">Install with Dapport</Link>
@@ -187,7 +187,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
         <aside className="independence-note">
           <ShieldCheck aria-hidden="true" weight="duotone" />
-          <div><strong>Independent by design.</strong><p>Dapport is an independent catalogue and is not affiliated with or endorsed by Solana Mobile.</p></div>
+          <div><strong>Clear provenance by design.</strong><p>Dapport uses public Solana Mobile publishing metadata with separate publisher consent. It is not operated by or endorsed by Solana Mobile.</p></div>
         </aside>
       </article>
     </main>

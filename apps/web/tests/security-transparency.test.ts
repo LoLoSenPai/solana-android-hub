@@ -6,6 +6,7 @@ describe("public security and transparency surface", () => {
     const page = await readFile(new URL("../app/security/page.tsx", import.meta.url), "utf8");
 
     expect(page).toContain("No root access, no silent installation, no seed phrase");
+    expect(page).toContain("public Solana Mobile publishing format");
     expect(page).toContain("Identity is not a security audit.");
     expect(page).toContain("not a blanket “safe” badge");
     expect(page).toContain("QUERY_ALL_PACKAGES");

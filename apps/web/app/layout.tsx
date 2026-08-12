@@ -21,13 +21,13 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Dapport",
     title: "Dapport — Solana apps. Any Android.",
-    description: "The independent Android home for publisher-approved Solana apps.",
+    description: "The publisher-authorized Android home for Solana apps.",
     images: [{ url: "/dapport-social-card.png", width: 1200, height: 630, alt: "Dapport — Solana apps. Any Android." }]
   },
   twitter: {
     card: "summary_large_image",
     title: "Dapport — Solana apps. Any Android.",
-    description: "The independent Android home for publisher-approved Solana apps.",
+    description: "The publisher-authorized Android home for Solana apps.",
     images: ["/dapport-social-card.png"]
   }
 };
@@ -66,7 +66,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <Link href="/download">Get Dapport</Link>
             <Link href="/publisher">{onboardingEnabled ? "Publisher workspace" : "Publisher onboarding status"}</Link>
           </div>
-          <p>© {currentYear} Dapport. Independent catalogue, not affiliated with or endorsed by Solana Mobile.</p>
+          <p>© {currentYear} Dapport. Third-party catalogue using publisher-authorized Solana app data; not operated by or endorsed by Solana Mobile.</p>
         </footer>
       </body>
     </html>
