@@ -27,8 +27,8 @@ describe("standalone Android distribution configuration", () => {
     expect(config.android?.package).toBe("com.lololabs.solanaandroidhub");
     expect(config.android?.adaptiveIcon?.foregroundImage).toBe("./assets/adaptive-icon.png");
     expect(config.android?.adaptiveIcon?.monochromeImage).toBe("./assets/monochrome-icon.png");
-    expect(config.version).toBe("0.4.1");
-    expect(config.android?.versionCode).toBe(6);
+    expect(config.version).toBe("0.5.0");
+    expect(config.android?.versionCode).toBe(7);
     expect(config.extra?.publicationGate).toBe("server_and_device");
     expect(config.extra?.hubUpdater).toEqual({
       enabled: true,
