@@ -40,6 +40,7 @@ describe("catalog API client", () => {
     expect(catalogAppDtoSchema.parse(legacyItem)).toMatchObject({
       category: "other",
       genres: [],
+      publisherLinks: { website: null, x: null, discord: null, telegram: null },
       releaseUpdatedAt: null
     });
   });

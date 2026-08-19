@@ -2,19 +2,28 @@ import { z } from "zod";
 import {
   CATALOG_CATEGORIES,
   CATALOG_SORTS,
+  EMPTY_PUBLISHER_LINKS,
   GAME_GENRES,
+  PUBLISHER_LINK_TYPES,
   type CatalogCategory,
   type CatalogChannel,
   type CatalogSort,
-  type GameGenre
+  type GameGenre,
+  type PublisherLinks
 } from "@hub/domain";
 
-export { CATALOG_CATEGORIES, CATALOG_SORTS, GAME_GENRES };
-export type { CatalogCategory, CatalogChannel, CatalogSort, GameGenre };
+export { CATALOG_CATEGORIES, CATALOG_SORTS, EMPTY_PUBLISHER_LINKS, GAME_GENRES, PUBLISHER_LINK_TYPES };
+export type { CatalogCategory, CatalogChannel, CatalogSort, GameGenre, PublisherLinks };
 
 export const catalogCategorySchema = z.enum(CATALOG_CATEGORIES);
 export const catalogSortSchema = z.enum(CATALOG_SORTS);
 export const gameGenreSchema = z.enum(GAME_GENRES);
+export const publisherLinksDtoSchema = z.object({
+  website: z.url().nullable(),
+  x: z.url().nullable(),
+  discord: z.url().nullable(),
+  telegram: z.url().nullable()
+}).default(EMPTY_PUBLISHER_LINKS);
 
 export const trustFactsDtoSchema = z.object({
   publisherControl: z.literal("verified"),
@@ -53,6 +62,7 @@ export const catalogAppDtoSchema = z.object({
   featureGraphicUrl: z.url().nullable().default(null),
   category: catalogCategorySchema.default("other"),
   genres: z.array(gameGenreSchema).default([]),
+  publisherLinks: publisherLinksDtoSchema,
   releaseUpdatedAt: z.iso.datetime().nullable().default(null),
   latestRelease: releaseDtoSchema
 });

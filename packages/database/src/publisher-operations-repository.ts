@@ -1,4 +1,4 @@
-import type { AppEnvironment, CatalogCategory, GameGenre } from "@hub/domain";
+import type { AppEnvironment, CatalogCategory, GameGenre, PublisherLinks } from "@hub/domain";
 import type { HubSql } from "./client";
 
 export interface PublisherAppSummary {
@@ -14,6 +14,7 @@ export interface PublisherAppSummary {
   releaseCount: string;
   category: CatalogCategory;
   genres: readonly GameGenre[];
+  publisherLinks: PublisherLinks;
 }
 
 export class PublisherOperationsRepository {
@@ -24,20 +25,26 @@ export class PublisherOperationsRepository {
       id: string; app_mint: string; slug: string; name: string; package_name: string; claim_status: string;
       distribution_enabled: boolean; release_policy: string; consent_status: string | null; release_count: string;
       primary_category: CatalogCategory | null; tags: GameGenre[] | null;
+      publisher_links: unknown;
     }[]>`
       select a.id, a.app_mint, a.slug, a.name, a.package_name, a.claim_status, a.distribution_enabled, a.release_policy,
         consent.status as consent_status, count(r.id)::text as release_count,
-        classification.primary_category, classification.tags
+        classification.primary_category, classification.tags,
+        coalesce(publisher_links.links, '{}'::jsonb) as publisher_links
       from hub.apps a
       left join hub.releases r on r.app_id = a.id
       left join hub.app_classifications classification on classification.app_id = a.id
+      left join lateral (
+        select jsonb_object_agg(link.link_type::text, link.url) as links
+        from hub.app_publisher_links link where link.app_id = a.id
+      ) publisher_links on true
       left join lateral (
         select status from hub.distribution_consents where app_id = a.id
           and environment = ${environment}::hub.app_environment and superseded_at is null
         order by created_at desc limit 1
       ) consent on true
       where a.publisher_id = ${publisherId}
-      group by a.id, consent.status, classification.primary_category, classification.tags order by a.updated_at desc
+      group by a.id, consent.status, classification.primary_category, classification.tags, publisher_links.links order by a.updated_at desc
     `;
     return rows.map((row) => ({
       id: row.id,
@@ -51,7 +58,8 @@ export class PublisherOperationsRepository {
       consentStatus: row.consent_status,
       releaseCount: row.release_count,
       category: row.primary_category ?? "other",
-      genres: row.tags ?? []
+      genres: row.tags ?? [],
+      publisherLinks: mapPublisherLinks(row.publisher_links)
     }));
   }
 
@@ -118,4 +126,10 @@ export class PublisherOperationsRepository {
     `;
     return request?.id ?? null;
   }
+}
+
+function mapPublisherLinks(value: unknown): PublisherLinks {
+  const links = value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
+  const link = (type: keyof PublisherLinks) => typeof links[type] === "string" ? links[type] : null;
+  return { website: link("website"), x: link("x"), discord: link("discord"), telegram: link("telegram") };
 }

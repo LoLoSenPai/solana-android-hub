@@ -33,6 +33,22 @@ export type AppEnvironment = "local" | "staging" | "production";
 export type ReleasePolicy = "automatic" | "manual";
 export type ApprovalStatus = "unknown" | "verified_approved" | "rejected";
 export type ReleaseAuthenticity = "development_preview" | "server_binary_valid";
+export const PUBLISHER_LINK_TYPES = ["website", "x", "discord", "telegram"] as const;
+export type PublisherLinkType = typeof PUBLISHER_LINK_TYPES[number];
+
+export interface PublisherLinks {
+  website: string | null;
+  x: string | null;
+  discord: string | null;
+  telegram: string | null;
+}
+
+export const EMPTY_PUBLISHER_LINKS: PublisherLinks = {
+  website: null,
+  x: null,
+  discord: null,
+  telegram: null
+};
 
 export interface TrustFacts {
   publisherControl: "verified";

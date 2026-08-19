@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { AuthRepository, PublisherRepository, type PublisherAppRecord, type SessionRecord } from "@hub/database";
 import { buildDistributionConsentMessage, DISTRIBUTION_SCOPES, type ReleasePolicy } from "@hub/domain";
-import type { CatalogCategory, GameGenre } from "@hub/domain";
+import type { CatalogCategory, GameGenre, PublisherLinks } from "@hub/domain";
 import {
   createHeliusFinalizedAccountReader,
   createHeliusReleaseDiscovery,
@@ -159,6 +159,21 @@ export async function updatePublisherClassification(input: {
     walletAddress: input.session.walletAddress,
     category: input.category,
     genres: input.category === "games" ? input.genres : []
+  });
+}
+
+export async function updatePublisherLinks(input: {
+  session: SessionRecord;
+  appId: string;
+  links: PublisherLinks;
+}): Promise<boolean> {
+  const app = await requirePublisherApp(input.session, input.appId);
+  await reverifyAuthority(input.session, app);
+  return publisherRepository.savePublisherLinks({
+    appId: app.id,
+    publisherId: input.session.publisherId,
+    walletAddress: input.session.walletAddress,
+    links: input.links
   });
 }
 

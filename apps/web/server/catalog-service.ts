@@ -92,6 +92,7 @@ function toDto(record: CatalogAppRecord): CatalogAppDto {
     featureGraphicUrl: record.featureGraphicUri,
     category: record.category,
     genres: [...record.genres],
+    publisherLinks: record.publisherLinks,
     releaseUpdatedAt: record.releaseUpdatedAt.toISOString(),
     latestRelease: {
       id: record.release.id,

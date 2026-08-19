@@ -1,6 +1,6 @@
 "use client";
 
-import { CATALOG_CATEGORIES, GAME_GENRES, type CatalogCategory, type GameGenre } from "@hub/api-client";
+import { CATALOG_CATEGORIES, EMPTY_PUBLISHER_LINKS, GAME_GENRES, type CatalogCategory, type GameGenre, type PublisherLinks } from "@hub/api-client";
 import { SolanaSignMessage, type SolanaSignMessageFeature } from "@solana/wallet-standard-features";
 import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount, WalletWithFeatures } from "@wallet-standard/base";
@@ -40,6 +40,7 @@ interface ClaimedApp extends DiscoveredApp {
   releaseCount?: number;
   category?: CatalogCategory;
   genres?: readonly GameGenre[];
+  publisherLinks?: PublisherLinks;
 }
 
 interface PublisherRelease {
@@ -156,6 +157,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       consentStatus: string | null;
       category: CatalogCategory;
       genres: readonly GameGenre[];
+      publisherLinks: PublisherLinks;
     }[] }>("/api/v1/publisher/apps");
     setClaims(Object.fromEntries(existing.apps.map((app) => [app.appMint, {
       id: app.id,
@@ -171,7 +173,8 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       releasePolicy: app.releasePolicy,
       releaseCount: Number(app.releaseCount),
       category: app.category,
-      genres: app.genres
+      genres: app.genres,
+      publisherLinks: app.publisherLinks
     }])));
     const releaseEntries = await Promise.all(existing.apps.map(async (app) => {
       const response = await api<{ releases: readonly PublisherRelease[] }>(`/api/v1/publisher/apps/${app.id}/releases`);
@@ -219,7 +222,8 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       consentStatus: null,
       distributionEnabled: false,
       releasePolicy: policy,
-      releaseCount: 0
+      releaseCount: 0,
+      publisherLinks: { ...EMPTY_PUBLISHER_LINKS }
     } }));
     setStatus(`${candidate.name} is claimed. Distribution is still disabled until a separate consent message is signed.`);
   });
@@ -292,6 +296,15 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     await api(`/api/v1/publisher/apps/${candidate.id}/classification`, mutation({ category, genres }));
     setClaims((current) => ({ ...current, [candidate.appMint]: { ...candidate, category, genres } }));
     setStatus(`${candidate.name} will appear in ${categoryLabel(category)}${genres.length ? ` · ${genres.map(genreLabel).join(", ")}` : ""}.`);
+  });
+
+  const saveLinks = (candidate: ClaimedApp, links: PublisherLinks) => run(async () => {
+    const response = await api<{ publisherLinks: PublisherLinks }>(`/api/v1/publisher/apps/${candidate.id}/links`, mutation(links));
+    setClaims((current) => ({
+      ...current,
+      [candidate.appMint]: { ...candidate, publisherLinks: response.publisherLinks }
+    }));
+    setStatus(`${candidate.name} community links are updated.`);
   });
 
   function run(action: () => Promise<void>): Promise<void> {
@@ -461,12 +474,15 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
 
           <div className="panel publisher-step-panel">
             <div className="publisher-step-heading">
-              <span>03</span><div><p className="step-label">Store appearance</p><h2>Help people find the right app.</h2></div>
+              <span>03</span><div><p className="step-label">Store appearance</p><h2>Help people find and follow the right app.</h2></div>
             </div>
-            <p className="muted">Choose the consumer category used by Dapport. Games can include up to four useful genre filters.</p>
+            <p className="muted">Choose the consumer category used by Dapport, then add the official places where people can follow or contact the project.</p>
             <div className="operation-list">
               {claimList.map((candidate) => (
-                <ClassificationEditor key={candidate.id} app={candidate} disabled={busy} onSave={(category, genres) => void classify(candidate, category, genres)} />
+                <div className="publisher-storefront-editor" key={candidate.id}>
+                  <ClassificationEditor app={candidate} disabled={busy} onSave={(category, genres) => void classify(candidate, category, genres)} />
+                  <PublisherLinksEditor app={candidate} disabled={busy} onSave={(links) => void saveLinks(candidate, links)} />
+                </div>
               ))}
               {claimList.length === 0 && <p className="muted">Your storefront controls appear after an app is added.</p>}
             </div>
@@ -508,6 +524,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
               const latest = appReleases[0];
               const liveRelease = appReleases.find((release) => release.publication_status === "published");
               const revoked = candidate.consentStatus === "revoked";
+              const linkCount = Object.values(candidate.publisherLinks ?? EMPTY_PUBLISHER_LINKS).filter(Boolean).length;
               return (
                 <article className="publisher-app-card" key={candidate.id}>
                   <header>
@@ -520,6 +537,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
                     <div><dt>Publication</dt><dd>{latest ? releaseStatusLabel(latest) : "No release found"}</dd></div>
                     <div><dt>Release policy</dt><dd>{candidate.releasePolicy === "automatic" ? "Automatic" : "Manual"}</dd></div>
                   </dl>
+                  <div className="publisher-app-links-summary"><strong>Official links</strong><span>{linkCount > 0 ? `${linkCount} added` : "None added yet"}</span></div>
                   <div className="publisher-app-actions">
                     {revoked ? (
                       <button type="button" onClick={() => void consent(candidate, candidate.releasePolicy ?? policy)} disabled={busy}><CheckCircle aria-hidden="true" /> Reauthorize app</button>
@@ -550,6 +568,44 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       ) : null}
       <p className="status-line" role="status">{busy ? "Waiting for verified operation…" : status}</p>
     </section>
+  );
+}
+
+function PublisherLinksEditor({
+  app,
+  disabled,
+  onSave
+}: {
+  app: ClaimedApp;
+  disabled: boolean;
+  onSave: (links: PublisherLinks) => void;
+}) {
+  const initial = app.publisherLinks ?? EMPTY_PUBLISHER_LINKS;
+  const [website, setWebsite] = useState(initial.website ?? "");
+  const [x, setX] = useState(initial.x ?? "");
+  const [discord, setDiscord] = useState(initial.discord ?? "");
+  const [telegram, setTelegram] = useState(initial.telegram ?? "");
+  const links = {
+    website: website.trim() || null,
+    x: x.trim() || null,
+    discord: discord.trim() || null,
+    telegram: telegram.trim() || null
+  } satisfies PublisherLinks;
+
+  return (
+    <div className="publisher-links-editor">
+      <div className="publisher-links-heading">
+        <div><strong>Official links</strong><small>Displayed as publisher-provided links on the store page.</small></div>
+        <span>Optional</span>
+      </div>
+      <div className="publisher-link-fields">
+        <label>Website<input type="url" inputMode="url" placeholder="https://yourapp.com" value={website} onChange={(event) => setWebsite(event.target.value)} disabled={disabled} /></label>
+        <label>X<input type="url" inputMode="url" placeholder="https://x.com/yourapp" value={x} onChange={(event) => setX(event.target.value)} disabled={disabled} /></label>
+        <label>Discord<input type="url" inputMode="url" placeholder="https://discord.gg/yourapp" value={discord} onChange={(event) => setDiscord(event.target.value)} disabled={disabled} /></label>
+        <label>Telegram<input type="url" inputMode="url" placeholder="https://t.me/yourapp" value={telegram} onChange={(event) => setTelegram(event.target.value)} disabled={disabled} /></label>
+      </div>
+      <button type="button" onClick={() => onSave(links)} disabled={disabled}>Save official links</button>
+    </div>
   );
 }
 

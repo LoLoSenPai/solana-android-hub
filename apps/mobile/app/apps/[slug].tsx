@@ -1,5 +1,6 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import { AppInstaller, type InstalledPackageInfo } from "@hub/app-installer";
+import * as Linking from "expo-linking";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
@@ -73,6 +74,12 @@ export default function AppDetailScreen() {
   const removedPermissions = isUpdate ? installedPermissions.filter((permission) => !release.permissions.includes(permission)) : [];
   const coverArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
   const badgeLabel = releaseBadgeLabel(release.previewOnly, release.trust.solanaMobileApproval);
+  const publisherLinks = [
+    { label: "Website", url: app.publisherLinks.website, icon: "public" as const },
+    { label: "X", url: app.publisherLinks.x, icon: "alternate_email" as const },
+    { label: "Discord", url: app.publisherLinks.discord, icon: "forum" as const },
+    { label: "Telegram", url: app.publisherLinks.telegram, icon: "send" as const }
+  ].flatMap((link) => link.url ? [{ ...link, url: link.url }] : []);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -149,6 +156,29 @@ export default function AppDetailScreen() {
             <>
               <SectionTitle title="About this app" />
               <Text className="text-[17px] leading-7 text-ink">{app.description ?? app.shortDescription}</Text>
+            </>
+          ) : null}
+
+          {publisherLinks.length > 0 ? (
+            <>
+              <SectionTitle title="Follow & support" />
+              <View className="overflow-hidden rounded-[26px] border border-line bg-surface">
+                {publisherLinks.map((link, index) => (
+                  <Pressable
+                    accessibilityRole="link"
+                    className={`flex-row items-center px-5 py-4 active:bg-raised${index < publisherLinks.length - 1 ? " border-b border-line" : ""}`}
+                    key={link.label}
+                    onPress={() => void Linking.openURL(link.url)}
+                  >
+                    <View className="h-10 w-10 items-center justify-center rounded-2xl bg-raised">
+                      <HubSymbol name={link.icon} size={21} color="#77A7FF" />
+                    </View>
+                    <Text className="ml-3 flex-1 text-base font-semibold text-ink">{link.label}</Text>
+                    <HubSymbol name="open_in_new" size={19} color="#95A5B7" />
+                  </Pressable>
+                ))}
+              </View>
+              <Text className="mt-3 text-xs leading-5 text-muted">Links provided by the current publisher.</Text>
             </>
           ) : null}
 

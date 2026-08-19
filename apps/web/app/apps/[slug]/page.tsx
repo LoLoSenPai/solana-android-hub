@@ -2,10 +2,14 @@ import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise"
 import { Compass } from "@phosphor-icons/react/dist/ssr/Compass";
 import { DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
 import { Fingerprint } from "@phosphor-icons/react/dist/ssr/Fingerprint";
+import { DiscordLogo } from "@phosphor-icons/react/dist/ssr/DiscordLogo";
+import { GlobeHemisphereWest } from "@phosphor-icons/react/dist/ssr/GlobeHemisphereWest";
 import { SealCheck } from "@phosphor-icons/react/dist/ssr/SealCheck";
 import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 import { Signature } from "@phosphor-icons/react/dist/ssr/Signature";
 import { UserFocus } from "@phosphor-icons/react/dist/ssr/UserFocus";
+import { TelegramLogo } from "@phosphor-icons/react/dist/ssr/TelegramLogo";
+import { XLogo } from "@phosphor-icons/react/dist/ssr/XLogo";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -39,6 +43,12 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
   const authenticity = app.latestRelease.previewOnly ? "Development preview" : "Server-validated release";
   const approval = approvalLabel(app.latestRelease.trust.solanaMobileApproval);
   const heroArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
+  const publisherLinks = [
+    { label: "Website", url: app.publisherLinks.website, Icon: GlobeHemisphereWest },
+    { label: "X", url: app.publisherLinks.x, Icon: XLogo },
+    { label: "Discord", url: app.publisherLinks.discord, Icon: DiscordLogo },
+    { label: "Telegram", url: app.publisherLinks.telegram, Icon: TelegramLogo }
+  ].flatMap((link) => link.url ? [{ ...link, url: link.url }] : []);
 
   return (
     <main className="app-detail-page">
@@ -106,6 +116,23 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
           </div>
           <div className="detail-about-copy"><p>{app.description ?? app.shortDescription ?? "The publisher has not provided a longer description for this release yet."}</p></div>
         </section>
+
+        {publisherLinks.length > 0 ? (
+          <section className="detail-publisher-links" aria-labelledby="publisher-links-heading">
+            <div>
+              <p className="eyebrow">Publisher-provided</p>
+              <h2 id="publisher-links-heading">Follow &amp; support</h2>
+              <p>Official destinations supplied by the current publisher of {app.name}.</p>
+            </div>
+            <div className="detail-publisher-link-list">
+              {publisherLinks.map(({ label, url, Icon }) => (
+                <a href={url} target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" key={label}>
+                  <Icon aria-hidden="true" weight="duotone" /><span>{label}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {app.screenshots.length > 0 ? (
           <section className="screenshot-section" aria-labelledby="screenshots-heading">

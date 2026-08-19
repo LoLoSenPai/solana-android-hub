@@ -127,6 +127,7 @@ function app(input: {
     featureGraphicUrl: null,
     category: input.category,
     genres: input.category === "games" ? ["puzzle"] : [],
+    publisherLinks: { website: null, x: null, discord: null, telegram: null },
     releaseUpdatedAt: input.updatedAt,
     latestRelease: {
       id: `${input.id}-release`,

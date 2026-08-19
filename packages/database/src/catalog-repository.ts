@@ -6,6 +6,7 @@ import {
   type ApprovalStatus,
   type CatalogCategory,
   type GameGenre,
+  type PublisherLinks,
   type ReleaseCandidate
 } from "@hub/domain";
 import type { HubSql } from "./client";
@@ -24,6 +25,7 @@ export interface CatalogAppRecord {
   featureGraphicUri: string | null;
   category: CatalogCategory;
   genres: readonly GameGenre[];
+  publisherLinks: PublisherLinks;
   eligibility: AppEligibility;
   release: ReleaseCandidate;
   binary: {
@@ -51,6 +53,7 @@ interface CatalogRow {
   source_category: string | null;
   hub_category: string | null;
   hub_tags: unknown;
+  publisher_links: unknown;
   claim_status: AppEligibility["claimStatus"];
   authority_address: string | null;
   distribution_enabled: boolean;
@@ -92,6 +95,7 @@ export class CatalogRepository {
         r.feature_graphic_uri,
         classification.primary_category as hub_category,
         classification.tags as hub_tags,
+        coalesce(publisher_links.links, '{}'::jsonb) as publisher_links,
         coalesce(
           nullif(r.source_snapshot #>> '{releaseMetadata,properties,category}', ''),
           nullif(a.source_snapshot #>> '{appMetadata,properties,category}', '')
@@ -136,6 +140,11 @@ export class CatalogRepository {
         limit 1
       ) approval on true
       left join hub.app_classifications classification on classification.app_id = a.id
+      left join lateral (
+        select jsonb_object_agg(link.link_type::text, link.url) as links
+        from hub.app_publisher_links link
+        where link.app_id = a.id
+      ) publisher_links on true
       where a.claim_status = 'verified'
         and a.distribution_enabled = true
         and a.revoked_at is null
@@ -164,6 +173,7 @@ function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
     featureGraphicUri: row.feature_graphic_uri,
     category: normalizeCatalogCategory(row.hub_category ?? row.source_category),
     genres: normalizeGameGenres(row.hub_tags),
+    publisherLinks: mapPublisherLinks(row.publisher_links),
     eligibility: {
       appMint: row.app_mint,
       claimStatus: row.claim_status,
@@ -194,4 +204,10 @@ function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
     },
     releaseUpdatedAt: row.release_updated_at
   };
+}
+
+function mapPublisherLinks(value: unknown): PublisherLinks {
+  const links = value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
+  const link = (type: keyof PublisherLinks) => typeof links[type] === "string" ? links[type] : null;
+  return { website: link("website"), x: link("x"), discord: link("discord"), telegram: link("telegram") };
 }

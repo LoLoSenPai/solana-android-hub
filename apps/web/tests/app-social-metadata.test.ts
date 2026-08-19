@@ -15,6 +15,7 @@ const app = {
   featureGraphicUrl: "https://cdn.example.com/feature.png",
   category: "games",
   genres: ["puzzle"],
+  publisherLinks: { website: "https://degenmerge.example/", x: null, discord: null, telegram: null },
   releaseUpdatedAt: "2026-08-09T12:00:00.000Z",
   latestRelease: {
     id: "22222222-2222-4222-8222-222222222222",

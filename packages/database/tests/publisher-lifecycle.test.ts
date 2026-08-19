@@ -8,11 +8,12 @@ interface SqlCall {
 
 function sqlHarness(respond: (call: SqlCall) => unknown): { sql: HubSql; calls: SqlCall[] } {
   const calls: SqlCall[] = [];
-  const tag = (strings: TemplateStringsArray, ...values: unknown[]) => {
+  const baseTag = (strings: TemplateStringsArray, ...values: unknown[]) => {
     const call = { text: strings.join("?"), values };
     calls.push(call);
     return Promise.resolve(respond(call));
   };
+  const tag = Object.assign(baseTag, { json: (value: unknown) => value });
   const sql = Object.assign(tag, {
     begin: (operation: (transaction: typeof tag) => unknown) => Promise.resolve(operation(tag))
   }) as unknown as HubSql;
@@ -82,6 +83,30 @@ describe("publisher removal lifecycle", () => {
     await expect(repository.recordConsent(consentInput())).resolves.toBe("new-consent-id");
 
     expect(harness.calls.some((call) => call.text.includes("publication_status = case"))).toBe(false);
+  });
+});
+
+describe("publisher storefront links", () => {
+  it("replaces all links atomically and records an append-only snapshot", async () => {
+    const harness = sqlHarness((call) => {
+      if (call.text.includes("select id from hub.apps")) return [{ id: "app-id" }];
+      if (call.text.includes("jsonb_object_agg")) return [{ links: { website: "https://old.example/" } }];
+      return [];
+    });
+    const repository = new PublisherRepository(harness.sql);
+    const saved = await repository.savePublisherLinks({
+      appId: "app-id",
+      publisherId: "publisher-id",
+      walletAddress: "D2FDh5vdxdnnTXaZcHjF3sqoAKt5xTxACgRSVqfZbdrw",
+      links: { website: "https://new.example/", x: "https://x.com/example", discord: null, telegram: null }
+    });
+
+    expect(saved).toBe(true);
+    const statements = harness.calls.map((call) => call.text).join("\n");
+    expect(statements).toContain("for update");
+    expect(statements).toContain("delete from hub.app_publisher_links");
+    expect(statements.match(/insert into hub\.app_publisher_links/gu)).toHaveLength(2);
+    expect(statements).toContain("insert into hub.app_publisher_link_audit");
   });
 });
 

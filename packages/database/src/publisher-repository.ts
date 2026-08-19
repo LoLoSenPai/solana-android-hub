@@ -1,4 +1,4 @@
-import type { AppEnvironment, CatalogCategory, GameGenre, ReleasePolicy } from "@hub/domain";
+import { PUBLISHER_LINK_TYPES, type AppEnvironment, type CatalogCategory, type GameGenre, type PublisherLinks, type ReleasePolicy } from "@hub/domain";
 import type { AuthorityProofEvidence } from "@hub/solana";
 import type { HubSql } from "./client";
 import { parseJsonValue } from "./json";
@@ -214,6 +214,44 @@ export class PublisherRepository {
       returning app_id
     `;
     return Boolean(classification);
+  }
+
+  public async savePublisherLinks(input: {
+    appId: string;
+    publisherId: string;
+    walletAddress: string;
+    links: PublisherLinks;
+  }): Promise<boolean> {
+    return this.sql.begin(async (tx) => {
+      const [app] = await tx<{ id: string }[]>`
+        select id from hub.apps
+        where id = ${input.appId} and publisher_id = ${input.publisherId} and claim_status = 'verified'
+        for update
+      `;
+      if (!app) return false;
+      const [current] = await tx<{ links: unknown }[]>`
+        select coalesce(jsonb_object_agg(link_type::text, url), '{}'::jsonb) as links
+        from hub.app_publisher_links where app_id = ${input.appId}
+      `;
+      await tx`delete from hub.app_publisher_links where app_id = ${input.appId}`;
+      for (const linkType of PUBLISHER_LINK_TYPES) {
+        const url = input.links[linkType];
+        if (url === null) continue;
+        await tx`
+          insert into hub.app_publisher_links (app_id, link_type, url, updated_by_wallet)
+          values (${input.appId}, ${linkType}::hub.publisher_link_type, ${url}, ${input.walletAddress})
+        `;
+      }
+      await tx`
+        insert into hub.app_publisher_link_audit (app_id, actor_wallet, previous_links, next_links)
+        values (
+          ${input.appId}, ${input.walletAddress},
+          ${tx.json(parseJsonValue(JSON.stringify(current?.links && typeof current.links === "object" ? current.links : {})))},
+          ${tx.json(parseJsonValue(JSON.stringify(Object.fromEntries(PUBLISHER_LINK_TYPES.flatMap((type) => input.links[type] ? [[type, input.links[type]]] : [])))))}
+        )
+      `;
+      return true;
+    });
   }
 }
 
