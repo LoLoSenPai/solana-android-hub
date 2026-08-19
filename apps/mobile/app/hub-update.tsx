@@ -1,10 +1,11 @@
 import { AppInstaller } from "@hub/app-installer";
-import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Pressable, ScrollView, Text, View } from "react-native";
 import { HubSymbol } from "@/components/HubSymbol";
 import { type HubReleaseManifest } from "@/features/hub-update/model";
 import { checkForHubUpdate, expectedHubUpdateRelease } from "@/features/hub-update/service";
+import { installErrorMessage } from "@/features/installer/errors";
+import { InstallProgress } from "@/features/installer/InstallProgress";
 
 type UpdateStage = "checking" | "current" | "permission" | "ready" | "downloading" | "submitted" | "complete" | "error";
 
@@ -13,6 +14,7 @@ export default function HubUpdateScreen() {
   const [manifest, setManifest] = useState<HubReleaseManifest | null>(null);
   const [currentVersion, setCurrentVersion] = useState("—");
   const [detail, setDetail] = useState("Checking the latest signed Dapport release…");
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const operationId = useMemo(() => `hub_update_${Date.now()}_${Math.random().toString(36).slice(2)}`, []);
 
   const load = useCallback(async () => {
@@ -39,23 +41,38 @@ export default function HubUpdateScreen() {
     const capability = await AppInstaller.getInstallCapability();
     if (!capability.canRequestPackageInstalls) {
       setStage("permission");
-      setDetail("Allow Dapport to install its signed update, then return here.");
+      setDetail("Allow updates from Dapport once, then return here.");
     } else {
       setStage("ready");
-      setDetail(`Version ${result.manifest.versionName} is ready to download and verify.`);
+      setDetail(`Version ${result.manifest.versionName} is ready.`);
     }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  useFocusEffect(useCallback(() => {
+  useEffect(() => {
     if (stage !== "permission") return;
-    void AppInstaller.getInstallCapability().then((capability) => {
-      if (!capability.canRequestPackageInstalls) return;
-      setStage("ready");
-      setDetail(`Version ${manifest?.versionName ?? ""} is ready to download and verify.`);
+    const refreshPermission = () => {
+      void AppInstaller.getInstallCapability().then((capability) => {
+        if (!capability.canRequestPackageInstalls) return;
+        setStage("ready");
+        setDetail(`Version ${manifest?.versionName ?? ""} is ready.`);
+      });
+    };
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") refreshPermission();
     });
-  }, [manifest?.versionName, stage]));
+    refreshPermission();
+    return () => subscription.remove();
+  }, [manifest?.versionName, stage]);
+
+  useEffect(() => {
+    const subscription = AppInstaller.addListener("onDownloadProgress", (event) => {
+      if (event.operationId !== operationId) return;
+      setDownloadProgress(event.fraction);
+    });
+    return () => subscription.remove();
+  }, [operationId]);
 
   useEffect(() => {
     if (stage !== "submitted") return;
@@ -83,20 +100,22 @@ export default function HubUpdateScreen() {
     if (!manifest) return;
     try {
       setStage("downloading");
-      setDetail("Downloading into private storage and checking every release invariant…");
+      setDownloadProgress(0);
+      setDetail("Downloading the update…");
       const prepared = await AppInstaller.prepareInstall(operationId, expectedHubUpdateRelease(manifest));
-      setDetail("Package, version, SHA-256 and signing certificate match. Opening Android’s updater…");
+      setDetail("Download complete. Opening Android…");
       await AppInstaller.installPrepared(prepared.preparedId);
       setStage("submitted");
     } catch (cause) {
       setStage("error");
-      setDetail(cause instanceof Error ? cause.message : "The Dapport update could not be installed.");
+      setDetail(installErrorMessage(cause));
     }
   };
 
   const cancel = async () => {
     await AppInstaller.cancel(operationId);
     setStage("ready");
+    setDownloadProgress(0);
     setDetail(`Version ${manifest?.versionName ?? ""} is ready when you are.`);
   };
 
@@ -108,8 +127,8 @@ export default function HubUpdateScreen() {
         <HubSymbol name="system_update" size={29} color="#77A7FF" />
       </View>
       <Text className="mt-5 text-xs font-bold uppercase tracking-[1.8px] text-mint">Dapport</Text>
-      <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">Keep Dapport current.</Text>
-      <Text className="mt-3 leading-6 text-muted">Updates use the same permanent signing identity and Android’s supported installer.</Text>
+      <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">Update Dapport.</Text>
+      <Text className="mt-3 leading-6 text-muted">Download the new version here, then confirm the update in Android.</Text>
 
       <View className="mt-7 overflow-hidden rounded-[26px] border border-line bg-surface">
         <VersionRow label="Installed" value={currentVersion} />
@@ -129,12 +148,19 @@ export default function HubUpdateScreen() {
         </View>
       ) : null}
 
+      {stage === "downloading" ? (
+        <InstallProgress
+          fraction={downloadProgress}
+          label={downloadProgress >= 1 ? "Checking update" : "Downloading"}
+        />
+      ) : null}
+
       <View className={stage === "error" ? "mt-5 flex-row rounded-[22px] border border-warning bg-surface p-4" : "mt-5 flex-row rounded-[22px] border border-line bg-raised p-4"}>
         <HubSymbol name={stage === "error" ? "error" : stage === "current" || stage === "complete" ? "check_circle" : "info"} size={22} color={stage === "error" ? "#FFC857" : "#77A7FF"} />
         <Text className={stage === "error" ? "ml-3 flex-1 leading-6 text-warning" : "ml-3 flex-1 leading-6 text-muted"}>{detail}</Text>
       </View>
 
-      {busy ? <ActivityIndicator className="mt-6" color="#77A7FF" /> : null}
+      {busy && stage !== "downloading" ? <ActivityIndicator className="mt-6" color="#77A7FF" /> : null}
       {stage === "permission" ? (
         <Pressable className="mt-7 rounded-[18px] bg-mint p-4 active:opacity-80" onPress={() => void AppInstaller.openUnknownSourcesSettings()}>
           <Text className="text-center font-bold text-canvas">Allow Dapport updates</Text>

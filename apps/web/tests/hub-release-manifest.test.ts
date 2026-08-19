@@ -10,11 +10,9 @@ const validEnvironment = {
   HUB_ANDROID_APK_CERTIFICATE_SHA256: "02F204B9CBED11E59F85B2A6DBCB34AD6F0A4658C639D58B2C27FB3BE2AD0E09",
   HUB_ANDROID_APK_PERMISSIONS_JSON: JSON.stringify([
     "android.permission.INTERNET",
-    "android.permission.READ_EXTERNAL_STORAGE",
     "android.permission.REQUEST_INSTALL_PACKAGES",
     "android.permission.SYSTEM_ALERT_WINDOW",
     "android.permission.VIBRATE",
-    "android.permission.WRITE_EXTERNAL_STORAGE",
     "com.lololabs.solanaandroidhub.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
   ]),
   HUB_ANDROID_APK_RELEASE_NOTES_JSON: JSON.stringify([

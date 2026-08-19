@@ -23,6 +23,7 @@ class AppInstallerModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("AppInstaller")
+    Events("onDownloadProgress")
 
     AsyncFunction("getCurrentAppInfo") {
       val context = requireContext()
@@ -63,7 +64,22 @@ class AppInstallerModule : Module() {
       cancellations[operationId] = cancellation
       val destination = File(context.cacheDir, "hub-prepared-${UUID.randomUUID()}.apk")
       try {
-        val downloaded = SecureApkDownloader.download(expected.downloadUrl, destination, expected.byteSize, cancellation)
+        val downloaded = SecureApkDownloader.download(
+          expected.downloadUrl,
+          destination,
+          expected.byteSize,
+          cancellation
+        ) { downloadedBytes, totalBytes ->
+          sendEvent(
+            "onDownloadProgress",
+            mapOf(
+              "operationId" to operationId,
+              "downloadedBytes" to downloadedBytes.toDouble(),
+              "totalBytes" to totalBytes.toDouble(),
+              "fraction" to downloadedBytes.toDouble().div(totalBytes.toDouble()).coerceIn(0.0, 1.0)
+            )
+          )
+        }
         if (downloaded.byteSize != expected.byteSize) throw InstallerException("APK_SIZE_MISMATCH", "APK size does not match Release metadata")
         if (downloaded.sha256 != normalizeDigest(expected.sha256)) throw InstallerException("APK_HASH_MISMATCH", "APK SHA-256 does not match Release metadata")
         val inspected = ApkInspector.inspectAndValidate(context, destination, expected)

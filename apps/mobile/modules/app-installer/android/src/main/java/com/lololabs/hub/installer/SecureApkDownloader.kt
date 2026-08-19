@@ -20,7 +20,8 @@ internal object SecureApkDownloader {
     initialUrl: String,
     destination: File,
     expectedBytes: Long,
-    cancelled: AtomicBoolean
+    cancelled: AtomicBoolean,
+    onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> }
   ): DownloadedApk {
     require(expectedBytes in 1..(500L * 1024L * 1024L)) { "APK_SIZE_INVALID" }
     var current = URL(initialUrl)
@@ -47,6 +48,8 @@ internal object SecureApkDownloader {
 
         val digest = MessageDigest.getInstance("SHA-256")
         var total = 0L
+        var lastProgressBytes = 0L
+        onProgress(0, expectedBytes)
         connection.inputStream.use { input ->
           destination.outputStream().buffered().use { output ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -58,9 +61,14 @@ internal object SecureApkDownloader {
               if (total > expectedBytes) throw InstallerException("APK_TOO_LARGE", "APK exceeds the expected byte size")
               digest.update(buffer, 0, count)
               output.write(buffer, 0, count)
+              if (total == expectedBytes || total - lastProgressBytes >= 256L * 1024L) {
+                onProgress(total, expectedBytes)
+                lastProgressBytes = total
+              }
             }
           }
         }
+        if (lastProgressBytes != total) onProgress(total, expectedBytes)
         return DownloadedApk(destination, digest.digest().toHex(), total)
       } finally {
         connection.disconnect()

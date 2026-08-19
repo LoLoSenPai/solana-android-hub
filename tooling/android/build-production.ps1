@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-  [string]$VersionName = "0.5.0",
-  [int]$VersionCode = 7,
+  [string]$VersionName = "0.5.1",
+  [int]$VersionCode = 8,
   [string]$ShortWorkspace = "C:\hubb03"
 )
 
@@ -145,6 +145,7 @@ try {
   Assert-ApkDexContains $artifactPath @(
     "getCurrentAppInfo",
     "getInstallCapability",
+    "onDownloadProgress",
     "prepareInstall",
     "installPrepared"
   )

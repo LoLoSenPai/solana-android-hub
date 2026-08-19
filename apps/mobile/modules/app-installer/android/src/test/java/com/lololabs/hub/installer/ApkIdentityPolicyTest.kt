@@ -49,6 +49,20 @@ class ApkIdentityPolicyTest {
     ApkIdentityPolicy.validateExpected(actual, expected.copy(permissions = emptyList()))
   }
 
+  @Test fun legacyMetadataPermissionSupersetPasses() {
+    ApkIdentityPolicy.validateExpected(
+      actual,
+      expected.copy(permissions = actual.permissions + "android.permission.READ_EXTERNAL_STORAGE")
+    )
+  }
+
+  @Test fun unlistedApkPermissionBlocks() = assertFailure("permissions") {
+    ApkIdentityPolicy.validateExpected(
+      actual.copy(permissions = actual.permissions + "android.permission.CAMERA"),
+      expected
+    )
+  }
+
   @Test fun installedDifferentEditionBlocks() = assertFailure("different signer") {
     ApkIdentityPolicy.validateInstalledEdition(actual, 1, "ef".repeat(32))
   }

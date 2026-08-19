@@ -1,24 +1,27 @@
 import { AppInstaller, type InstallOperation } from "@hub/app-installer";
 import type { CatalogAppDto } from "@hub/api-client";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Pressable, ScrollView, Text, View } from "react-native";
 import { HubSymbol } from "@/components/HubSymbol";
 import { loadCatalogApp } from "@/features/catalog/api";
+import { installErrorMessage } from "@/features/installer/errors";
+import { InstallProgress } from "@/features/installer/InstallProgress";
 import { saveInstalledApp } from "@/storage/database";
 
-type InstallStage = "loading" | "ready" | "permission" | "validating" | "submitted" | "complete" | "error";
+type InstallStage = "loading" | "ready" | "permission" | "downloading" | "checking" | "submitted" | "complete" | "error";
 
 export default function InstallScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [app, setApp] = useState<CatalogAppDto | null>(null);
   const [stage, setStage] = useState<InstallStage>("loading");
-  const [detail, setDetail] = useState("Loading release evidence…");
+  const [detail, setDetail] = useState("Loading app…");
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const operationId = useMemo(() => `install_${Date.now()}_${Math.random().toString(36).slice(2)}`, []);
 
   const showError = useCallback((cause: unknown) => {
     setStage("error");
-    setDetail(cause instanceof Error ? cause.message : "Secure installation failed");
+    setDetail(installErrorMessage(cause));
   }, []);
 
   useEffect(() => {
@@ -29,23 +32,41 @@ export default function InstallScreen() {
       const capability = await AppInstaller.getInstallCapability();
       if (!capability.canRequestPackageInstalls) {
         setStage("permission");
-        setDetail("Allow Dapport to request APK installation in Android settings, then return here.");
+        setDetail("Allow installs from Dapport once, then return here.");
       } else {
         setStage("ready");
-        setDetail("The APK will be downloaded into private temporary storage and fully validated.");
+        setDetail("Ready to download.");
       }
     }).catch(showError);
   }, [showError, slug]);
 
-  useFocusEffect(useCallback(() => {
-    if (stage === "permission") {
+  useEffect(() => {
+    if (stage !== "permission") return;
+    const refreshPermission = () => {
       void AppInstaller.getInstallCapability().then((capability) => {
         if (!capability.canRequestPackageInstalls) return;
         setStage("ready");
-        setDetail("The APK will be downloaded into private temporary storage and fully validated.");
+        setDetail("Ready to download.");
       }).catch(showError);
-    }
-  }, [showError, stage]));
+    };
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") refreshPermission();
+    });
+    refreshPermission();
+    return () => subscription.remove();
+  }, [showError, stage]);
+
+  useEffect(() => {
+    const subscription = AppInstaller.addListener("onDownloadProgress", (event) => {
+      if (event.operationId !== operationId) return;
+      setDownloadProgress(event.fraction);
+      if (event.fraction >= 1) {
+        setStage("checking");
+        setDetail("Download complete. Checking the app…");
+      }
+    });
+    return () => subscription.remove();
+  }, [operationId]);
 
   const beginInstall = async () => {
     if (!app) return;
@@ -53,9 +74,10 @@ export default function InstallScreen() {
     try {
       const installed = await AppInstaller.getInstalledPackageInfo(release.packageName);
       if (installed.status === "visibility_unknown") {
-        setDetail("Another edition may already be installed. The target APK will still be fully validated; Android will enforce any signer conflict.");
+        setDetail("Downloading app…");
       }
-      setStage("validating");
+      setStage("downloading");
+      setDownloadProgress(0);
       const prepared = await AppInstaller.prepareInstall(operationId, {
         downloadUrl: release.apkUrl,
         byteSize: release.apkSize,
@@ -66,7 +88,8 @@ export default function InstallScreen() {
         certificateSha256: release.certificateSha256,
         permissions: release.permissions
       });
-      setDetail("All APK invariants match. Opening Android’s installer…");
+      setStage("checking");
+      setDetail("App is ready. Opening Android…");
       await AppInstaller.installPrepared(prepared.preparedId);
       setStage("submitted");
       await awaitInstallResult(app, operationId, setDetail);
@@ -79,22 +102,24 @@ export default function InstallScreen() {
   return (
     <ScrollView className="flex-1 bg-canvas" contentContainerClassName="p-5 pb-14" showsVerticalScrollIndicator={false}>
       <View className="mt-2 h-14 w-14 items-center justify-center rounded-[20px] bg-raised">
-        <HubSymbol name="shield_lock" size={29} color="#77A7FF" />
+        <HubSymbol name="download" size={29} color="#77A7FF" />
       </View>
-      <Text className="mt-5 text-xs font-bold uppercase tracking-[1.8px] text-mint">On-device security boundary</Text>
-      <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">{app?.name ?? "Secure install"}</Text>
-      <Text className="mt-3 leading-6 text-muted">Nothing reaches Android’s installer until every release invariant matches.</Text>
-      <View className="my-7 overflow-hidden rounded-[26px] border border-line bg-surface px-5 py-2">
-        <StageRow label="Download over hardened HTTPS" active={stage === "validating"} done={["submitted", "complete"].includes(stage)} />
-        <StageRow label="Verify SHA-256 and AOSP signature" active={stage === "validating"} done={["submitted", "complete"].includes(stage)} />
-        <StageRow label="Match package, version, certificate, permissions" active={stage === "validating"} done={["submitted", "complete"].includes(stage)} />
-        <StageRow label="Android PackageInstaller confirmation" active={stage === "submitted"} done={stage === "complete"} last />
-      </View>
-      <View className={stage === "error" ? "flex-row rounded-[22px] border border-warning bg-surface p-4" : "flex-row rounded-[22px] border border-line bg-raised p-4"}>
+      <Text className="mt-5 text-xs font-bold uppercase tracking-[1.8px] text-mint">Install from Dapport</Text>
+      <Text className="mt-2 text-[34px] font-bold leading-[38px] tracking-[-0.8px] text-ink">{app?.name ?? "Install app"}</Text>
+      <Text className="mt-3 leading-6 text-muted">Dapport downloads the app, checks it, then Android asks you to confirm.</Text>
+
+      {stage === "downloading" || stage === "checking" ? (
+        <InstallProgress
+          fraction={downloadProgress}
+          label={stage === "checking" ? "Checking app" : "Downloading"}
+        />
+      ) : null}
+
+      <View className={stage === "error" ? "mt-5 flex-row rounded-[22px] border border-warning bg-surface p-4" : "mt-5 flex-row rounded-[22px] border border-line bg-raised p-4"}>
         <HubSymbol name={stage === "error" ? "error" : stage === "complete" ? "check_circle" : "info"} size={22} color={stage === "error" ? "#FFC857" : stage === "complete" ? "#77A7FF" : "#95A5B7"} />
         <Text className={stage === "error" ? "ml-3 flex-1 leading-6 text-warning" : "ml-3 flex-1 leading-6 text-muted"}>{detail}</Text>
       </View>
-      {stage === "loading" || stage === "validating" || stage === "submitted" ? <ActivityIndicator className="mt-6" color="#77A7FF" /> : null}
+      {stage === "loading" || stage === "submitted" ? <ActivityIndicator className="mt-6" color="#77A7FF" /> : null}
       {stage === "permission" && (
         <Pressable className="mt-7 rounded-[18px] bg-mint p-4 active:opacity-80" onPress={() => void AppInstaller.openUnknownSourcesSettings()}>
           <Text className="text-center font-bold text-canvas">Open Android settings</Text>
@@ -102,23 +127,10 @@ export default function InstallScreen() {
       )}
       {(stage === "ready" || stage === "error") && app && (
         <Pressable className="mt-7 rounded-[18px] bg-mint p-4 active:opacity-80" onPress={() => void beginInstall()}>
-          <Text className="text-center font-bold text-canvas">{stage === "error" ? "Try again" : "Validate and install"}</Text>
+          <Text className="text-center font-bold text-canvas">{stage === "error" ? "Try again" : "Install"}</Text>
         </Pressable>
       )}
     </ScrollView>
-  );
-}
-
-function StageRow({ label, active, done, last = false }: { label: string; active: boolean; done: boolean; last?: boolean }) {
-  return (
-    <View className={last ? "flex-row items-center py-4" : "flex-row items-center border-b border-line py-4"}>
-      <HubSymbol
-        name={done ? "check_circle" : active ? "progress_activity" : "radio_button_unchecked"}
-        size={21}
-        color={done ? "#77A7FF" : active ? "#F4F7FB" : "#718399"}
-      />
-      <Text className={done ? "ml-3 flex-1 text-sm font-semibold text-mint" : active ? "ml-3 flex-1 text-sm font-semibold text-ink" : "ml-3 flex-1 text-sm text-muted"}>{label}</Text>
-    </View>
   );
 }
 
@@ -132,7 +144,7 @@ async function awaitInstallResult(
     const operation = await AppInstaller.getInstallOperation(operationId);
     if (!operation || operation.status === "submitted") continue;
     if (operation.status !== "success") throw new Error(operation.statusMessage ?? `Android install ${operation.status}`);
-    setDetail("Android confirmed installation. Dapport stored only the local installation record.");
+    setDetail(`${app.name} is installed.`);
     await saveInstalledApp({
       packageName: app.latestRelease.packageName,
       appId: app.id,

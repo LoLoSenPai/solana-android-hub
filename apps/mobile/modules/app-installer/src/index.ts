@@ -52,6 +52,13 @@ export interface InstallOperation {
   updatedAt: number;
 }
 
+export interface DownloadProgressEvent {
+  operationId: string;
+  downloadedBytes: number;
+  totalBytes: number;
+  fraction: number;
+}
+
 interface NativeAppInstallerModule {
   // Optional at runtime so a mismatched legacy binary can fail with a useful
   // recovery message instead of throwing "undefined is not a function".
@@ -64,6 +71,7 @@ interface NativeAppInstallerModule {
   getInstallOperation(operationId: string): Promise<InstallOperation | null>;
   cancel(operationId: string): Promise<void>;
   discardPrepared(preparedId: string): Promise<void>;
+  addListener(eventName: "onDownloadProgress", listener: (event: DownloadProgressEvent) => void): { remove(): void };
 }
 
 export const AppInstaller = requireNativeModule<NativeAppInstallerModule>("AppInstaller");
