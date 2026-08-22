@@ -1,10 +1,18 @@
 # Dapport
 
-An independent, opt-in Android distribution platform for apps published through the public Solana Mobile publishing format.
+A third-party, opt-in Android distribution platform for apps published through the public Solana Mobile publishing format.
 
 The canonical public web and API origin is `https://dapport.app`. Local development deliberately keeps using the emulator/localhost values from `.env.example`; production builds use the fail-closed `.env.production.example` contract and the corresponding Vercel/EAS environment variables.
 
 The project keeps four facts separate: publisher control, Release/APK authenticity, distribution consent, and independently verified Solana Mobile approval.
+
+## Production publisher onboarding
+
+Production onboarding is open at [dapport.app/publisher](https://dapport.app/publisher) for an initial group of external publishers. Dapport uses the App and Release NFTs that publishers already created through Solana Mobile; it does not ask them to create another NFT, upload another APK, or maintain a second release channel.
+
+A publisher connects the wallet holding the current App NFT publishing authority and signs two plain-text messages: a short-lived authentication challenge, then a separate app-specific distribution consent. Neither message is a transaction, transfers an asset, or grants Dapport on-chain authority. Consent is bound to the production origin, App mint, release policy and current terms version, and it can be revoked or renewed by the publisher.
+
+Every production release must pass the server-side APK validator before it can enter the catalogue. The Android app independently checks the downloaded APK again on the user's device before handing it to Android's system installer. Solana Mobile approval, when available, remains a separate status and is never implied by publisher consent or Dapport validation.
 
 ## Development
 
@@ -39,7 +47,7 @@ The checked-in v1/v2 and negative APK fixtures live in `fixtures/apks/hub-test-a
 
 Local and staging builds may expose explicitly allowlisted releases as `development_preview`. Production refuses preview mode and requires both server-side and on-device APK validation.
 
-The public origin is not a signal that publisher onboarding is open. Until production terms, signing, secrets, admin wallets, and the server validation gate are finalized, any deployed catalogue must remain visibly staging/development preview and must not collect production consent. Consent created for a previous origin or brand is never promoted to the Dapport production environment.
+The production terms, Android signing, runtime secrets, admin wallet configuration, Helius verification and server validation gate are operational. Local and staging consent remains isolated and can never be promoted to production; consent created for a previous origin or brand is likewise never reused by Dapport production.
 
 ## Publication boundary
 
