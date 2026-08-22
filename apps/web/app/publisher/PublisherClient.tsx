@@ -54,6 +54,8 @@ interface PublisherRelease {
   validation_failure_codes?: readonly string[];
 }
 
+const VALIDATION_TIME_ESTIMATE = "Usually about 1 minute";
+
 export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const registry = useMemo(getWallets, []);
   const [wallets, setWallets] = useState<readonly CompatibleWallet[]>([]);
@@ -283,7 +285,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     await refreshReleases(candidate.id);
     notify(result.status === "published"
       ? `${candidate.name} ${release.version_name} is published.`
-      : `Dapport is checking ${candidate.name} ${release.version_name}. This page updates automatically.`);
+      : `Dapport is checking ${candidate.name} ${release.version_name}. Recent checks took 40–80 seconds; this page updates automatically.`);
   });
 
   const revoke = (candidate: ClaimedApp) => run(async () => {
@@ -558,7 +560,12 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
                         <div className="operation-row" key={release.id}>
                           <div><strong>{selectedClaim.name} {release.version_name}</strong><small>{releaseStatusLabel(release)}</small></div>
                           <div className="control-row compact">
-                            {release.validation_status === "validating_binary" ? <span className="validation-live"><i />Updating automatically</span> : null}
+                            {release.validation_status === "validating_binary" ? (
+                              <span className="validation-live" role="status">
+                                <i aria-hidden="true" />
+                                <span>Updating automatically<small>{VALIDATION_TIME_ESTIMATE}</small></span>
+                              </span>
+                            ) : null}
                             {releaseActionLabel(release) ? <button type="button" onClick={() => void validateOrPublish(selectedClaim, release)} disabled={busy || Boolean(release.quarantine_code)}>{releaseActionLabel(release)}</button> : null}
                           </div>
                         </div>
@@ -781,7 +788,7 @@ function releaseStatusLabel(release: PublisherRelease): string {
   if (release.publication_status === "withdrawn") return "Removed from the catalogue";
   if (release.publication_status === "ignored") return "Ignored by publisher";
   if (release.publication_status === "published") return "Published in the production catalogue";
-  if (release.validation_status === "validating_binary") return "Dapport checks in progress";
+  if (release.validation_status === "validating_binary") return `Dapport checks in progress · ${VALIDATION_TIME_ESTIMATE.toLowerCase()}`;
   if (release.validation_status === "server_binary_valid") return "Dapport checks passed · ready to publish";
   if (release.validation_status === "metadata_valid" && release.validation_failure_codes?.length) {
     return `Checks need attention · ${validationFailureLabel(release.validation_failure_codes[0] ?? "VALIDATION_FAILED")}`;

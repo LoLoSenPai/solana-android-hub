@@ -381,6 +381,8 @@ h3 { font-size: 1.35rem; line-height: 1.05; }
 .publisher-terms-version { display: block; margin: -.35rem 0 1rem; color: #7788a3; font-size: .68rem; }
 .validation-live { display: inline-flex; align-items: center; gap: .5rem; color: #afc0ef; font-size: .76rem; font-weight: 700; }
 .validation-live i { width: .55rem; height: .55rem; border-radius: 50%; background: #78a0ff; box-shadow: 0 0 0 .3rem rgba(120,160,255,.1); animation: validation-pulse 1.6s ease-in-out infinite; }
+.validation-live > span { display: grid; gap: .1rem; }
+.validation-live small { color: #7788a3; font-size: .68rem; font-weight: 600; }
 .publisher-apps-panel { padding: clamp(1.25rem,3vw,2rem); border: 1px solid var(--line); border-radius: 1.4rem; background: linear-gradient(145deg, rgba(12,22,39,.94), rgba(8,15,28,.98)); }
 .publisher-panel-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; }
 .publisher-panel-heading h2 { margin: .1rem 0 .35rem; font-size: clamp(2rem,4vw,3.4rem); }
