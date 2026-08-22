@@ -7,7 +7,9 @@ import {
   FinalizedMetadataVerifier
 } from "@hub/solana";
 import { normalizeReleaseMetadata, type NormalizedReleaseMetadata } from "@hub/validation";
+import { shouldRequestAutomaticValidation } from "./automatic-validation";
 import { database, hubConfig } from "./runtime";
+import { requestBinaryValidation } from "./validation-service";
 
 const publisherRepository = new PublisherRepository(database);
 const releaseRepository = new ReleaseRepository(database);
@@ -97,7 +99,15 @@ export async function syncPublisherApp(
       releases,
       failures
     }, maxReleaseSlot);
-    return { status: "completed" as const, releases, failures };
+    const validationFailures: Array<{ releaseId: string; code: string }> = [];
+    for (const release of releases.filter((item) => shouldRequestAutomaticValidation(app.releasePolicy, item))) {
+      try {
+        await requestBinaryValidation(session, release.id);
+      } catch (error) {
+        validationFailures.push({ releaseId: release.id, code: errorCode(error) });
+      }
+    }
+    return { status: "completed" as const, releases, failures, validationFailures };
   } catch (error) {
     const code = errorCode(error);
     if (authorityLossCodes.has(code)) await releaseRepository.suspendForAuthorityLoss(app.id, code);

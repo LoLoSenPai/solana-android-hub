@@ -22,8 +22,8 @@ export interface AcquiredSyncJob {
 export interface SavedRelease {
   id: string;
   releaseMint: string;
-  validationStatus: "metadata_valid" | "quarantined";
-  publicationStatus: "preview" | "unpublished";
+  validationStatus: "metadata_valid" | "validating_binary" | "server_binary_valid" | "quarantined";
+  publicationStatus: "preview" | "unpublished" | "published" | "ignored" | "withdrawn";
   quarantineCode: string | null;
 }
 
@@ -181,7 +181,8 @@ export class ReleaseRepository {
         order by version_code desc limit 1
       `;
       if (!quarantineCode && highest && highest.certificate_sha256 !== input.normalized.certificateSha256) quarantineCode = "certificate_changed";
-      if (!quarantineCode && !input.initialBackfill && highest && input.normalized.versionCode <= BigInt(highest.version_code)) quarantineCode = "version_regression";
+      if (!quarantineCode && !existing && !input.initialBackfill && highest
+        && input.normalized.versionCode <= BigInt(highest.version_code)) quarantineCode = "version_regression";
 
       const [duplicate] = await tx<{ id: string }[]>`
         select id from hub.releases
@@ -191,9 +192,25 @@ export class ReleaseRepository {
       `;
       if (!quarantineCode && duplicate) quarantineCode = "duplicate_binary_identity";
 
-      const validationStatus = quarantineCode ? "quarantined" : "metadata_valid";
+      const [successfulBinaryRun] = existing && !quarantineCode
+        ? await tx<{ present: boolean }[]>`
+            select true as present from hub.release_validation_runs
+            where release_id = ${existing.id} and stage = 'binary' and status = 'succeeded'
+            order by completed_at desc limit 1
+          `
+        : [];
+      const validationStatus = quarantineCode
+        ? "quarantined"
+        : successfulBinaryRun
+          ? "server_binary_valid"
+          : "metadata_valid";
       const publicationStatus = !quarantineCode && input.environment !== "production" && input.previewAllowed ? "preview" : "unpublished";
-      const [release] = await tx<{ id: string }[]>`
+      const [release] = await tx<{
+        id: string;
+        validation_status: SavedRelease["validationStatus"];
+        publication_status: SavedRelease["publicationStatus"];
+        quarantine_code: string | null;
+      }[]>`
         insert into hub.releases (
           app_id, release_mint, metadata_uri, source_snapshot, source_snapshot_hash, package_name, version_name,
           version_code, apk_uri, apk_size, apk_sha256, certificate_sha256, min_sdk, target_sdk, permissions, locales,
@@ -215,7 +232,8 @@ export class ReleaseRepository {
           icon_uri = excluded.icon_uri, screenshots = excluded.screenshots,
           banner_uri = excluded.banner_uri, feature_graphic_uri = excluded.feature_graphic_uri,
           validation_status = case
-            when hub.releases.validation_status = 'server_binary_valid' and excluded.validation_status = 'metadata_valid'
+            when hub.releases.validation_status in ('validating_binary', 'server_binary_valid')
+              and excluded.validation_status = 'metadata_valid'
               then hub.releases.validation_status
             else excluded.validation_status end,
           publication_status = case
@@ -223,7 +241,7 @@ export class ReleaseRepository {
             else excluded.publication_status end,
           quarantine_code = excluded.quarantine_code, quarantine_detail = excluded.quarantine_detail,
           validated_at = now(), updated_at = now()
-        returning id
+        returning id, validation_status, publication_status, quarantine_code
       `;
       if (!release) throw new Error("RELEASE_NOT_SAVED");
       const expected = {
@@ -247,9 +265,9 @@ export class ReleaseRepository {
       return {
         id: release.id,
         releaseMint: input.releaseMint,
-        validationStatus,
-        publicationStatus,
-        quarantineCode
+        validationStatus: release.validation_status,
+        publicationStatus: release.publication_status,
+        quarantineCode: release.quarantine_code
       };
     });
   }

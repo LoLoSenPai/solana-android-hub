@@ -3,12 +3,14 @@ import { database, hubConfig } from "./runtime";
 
 const repository = new ValidationRepository(database);
 
-export async function requestBinaryValidation(session: SessionRecord, releaseId: string) {
+export async function requestBinaryValidation(session: Pick<SessionRecord, "publisherId">, releaseId: string) {
   if (hubConfig.appEnvironment === "local" && !hubConfig.githubRepository) {
     throw new Error("VALIDATOR_NOT_CONFIGURED");
   }
   if (!hubConfig.githubRepository || !hubConfig.githubActionsToken) throw new Error("VALIDATOR_NOT_CONFIGURED");
-  const manifest = await repository.createBinaryRun(releaseId, session.publisherId);
+  const request = await repository.createBinaryRun(releaseId, session.publisherId);
+  const { manifest } = request;
+  if (!request.created) return { status: "validating_binary" as const, runId: manifest.runId };
   try {
     await dispatchValidation(manifest);
   } catch (error) {

@@ -119,7 +119,8 @@ function consentInput() {
       publisherCollectionMint: null,
       packageName: "com.example.app",
       metadataUri: "https://example.com/app.json",
-      claimStatus: "verified" as const
+      claimStatus: "verified" as const,
+      releasePolicy: "automatic" as const
     },
     publisherWalletId: "publisher-wallet-id",
     walletAddress: "wallet",

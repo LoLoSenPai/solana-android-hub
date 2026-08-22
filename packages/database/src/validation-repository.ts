@@ -24,6 +24,11 @@ export interface BinaryValidationResult {
   logDigest?: string;
 }
 
+export interface BinaryValidationRequest {
+  manifest: BinaryValidationManifest;
+  created: boolean;
+}
+
 interface ValidationRow {
   correlation_id: string;
   expected: JSONValue;
@@ -33,7 +38,7 @@ interface ValidationRow {
 export class ValidationRepository {
   public constructor(private readonly sql: HubSql) {}
 
-  public async createBinaryRun(releaseId: string, publisherId: string): Promise<BinaryValidationManifest> {
+  public async createBinaryRun(releaseId: string, publisherId: string): Promise<BinaryValidationRequest> {
     return this.sql.begin(async (tx) => {
       const [release] = await tx<{
         release_id: string;
@@ -67,7 +72,7 @@ export class ValidationRepository {
       `;
       if (active) {
         const restored = decodeBinaryValidationManifest(active.expected, active.correlation_id);
-        if (restored) return restored;
+        if (restored) return { manifest: restored, created: false };
         await tx`
           update hub.release_validation_runs set status = 'failed', completed_at = now(),
             failure_codes = array['MANIFEST_INVALID']
@@ -93,7 +98,7 @@ export class ValidationRepository {
           ${tx.json(parseJsonValue(JSON.stringify(manifest)))})
       `;
       await tx`update hub.releases set validation_status = 'validating_binary', updated_at = now() where id = ${releaseId}`;
-      return manifest;
+      return { manifest, created: true };
     });
   }
 
