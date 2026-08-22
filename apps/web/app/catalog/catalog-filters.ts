@@ -1,6 +1,6 @@
 import type { CatalogAppDto, CatalogCategory, GameGenre } from "@hub/api-client";
 
-export type CatalogTrustFilter = "all" | "approved" | "checked" | "preview";
+export type CatalogTrustFilter = "all" | "checked" | "preview";
 export type CatalogSortMode = "recent" | "name";
 
 export function filterCatalogApps(apps: readonly CatalogAppDto[], input: {
@@ -18,7 +18,6 @@ export function filterCatalogApps(apps: readonly CatalogAppDto[], input: {
       .filter((value): value is string => Boolean(value))
       .some((value) => value.toLocaleLowerCase().includes(normalizedQuery)))
     .filter((app) => {
-      if (input.trust === "approved") return app.latestRelease.trust.solanaMobileApproval === "verified_approved";
       if (input.trust === "checked") return app.latestRelease.trust.releaseAuthenticity === "server_binary_valid";
       if (input.trust === "preview") return app.latestRelease.previewOnly;
       return true;

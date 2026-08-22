@@ -56,7 +56,10 @@ export async function getCatalogChannel(): Promise<CatalogChannel> {
   const database = await databasePromise;
   await initializeLocalDatabase();
   const row = await database.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'catalog_channel'");
-  return row?.value === "approved" ? "approved" : "trusted";
+  if (row?.value === "approved") {
+    await database.runAsync("UPDATE settings SET value = 'trusted' WHERE key = 'catalog_channel'");
+  }
+  return "trusted";
 }
 
 export async function setCatalogChannel(channel: CatalogChannel): Promise<void> {

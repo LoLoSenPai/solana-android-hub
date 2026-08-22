@@ -9,7 +9,6 @@ import { AppWindow } from "@phosphor-icons/react/dist/csr/AppWindow";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { CloudArrowUp } from "@phosphor-icons/react/dist/csr/CloudArrowUp";
-import { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 import { ListChecks } from "@phosphor-icons/react/dist/csr/ListChecks";
 import { PlusCircle } from "@phosphor-icons/react/dist/csr/PlusCircle";
 import { Storefront } from "@phosphor-icons/react/dist/csr/Storefront";
@@ -21,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type CompatibleWallet = WalletWithFeatures<StandardConnectFeature & SolanaSignMessageFeature>;
 type ReleasePolicy = "automatic" | "manual";
 type WorkspaceTab = "setup" | "apps";
+type NoticeTone = "success" | "error" | "info";
 
 interface DiscoveredApp {
   appMint: string;
@@ -64,10 +64,11 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const [claims, setClaims] = useState<Record<string, ClaimedApp>>({});
   const [releases, setReleases] = useState<Record<string, readonly PublisherRelease[]>>({});
   const [manualMint, setManualMint] = useState("");
-  const [policy, setPolicy] = useState<ReleasePolicy>("manual");
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("setup");
+  const [selectedAppMint, setSelectedAppMint] = useState<string | null>(null);
   const [revokingAppMint, setRevokingAppMint] = useState<string | null>(null);
-  const [status, setStatus] = useState("Connect a Wallet Standard wallet that supports Ed25519 message signing.");
+  const [status, setStatus] = useState<string | null>(null);
+  const [noticeTone, setNoticeTone] = useState<NoticeTone>("info");
   const [busy, setBusy] = useState(false);
   const walletPickerTrigger = useRef<HTMLButtonElement>(null);
   const walletPickerDialog = useRef<HTMLElement>(null);
@@ -110,6 +111,17 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [walletPickerOpen]);
+
+  useEffect(() => {
+    if (!status || busy) return;
+    const timer = window.setTimeout(() => setStatus(null), noticeTone === "error" ? 10_000 : 5_000);
+    return () => window.clearTimeout(timer);
+  }, [busy, noticeTone, status]);
+
+  const notify = (message: string, tone: NoticeTone = "success") => {
+    setNoticeTone(tone);
+    setStatus(message);
+  };
 
   const validatingAppIds = useMemo(() => Object.entries(releases)
     .filter(([, appReleases]) => appReleases.some((release) => release.validation_status === "validating_binary"))
@@ -184,7 +196,8 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     setActiveWallet(wallet);
     setAccount(nextAccount);
     setWorkspaceTab(existing.apps.length > 0 ? "apps" : "setup");
-    setStatus(`Authenticated with ${wallet.name} as ${shortAddress(nextAccount.address)}. ${existing.apps.length} claimed app${existing.apps.length === 1 ? "" : "s"} loaded.`);
+    setSelectedAppMint(existing.apps[0]?.appMint ?? null);
+    notify(`Connected with ${wallet.name}. ${existing.apps.length || "No"} app${existing.apps.length === 1 ? "" : "s"} loaded.`);
   });
 
   const requestConnection = () => {
@@ -197,7 +210,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       setWalletPickerOpen(true);
       return;
     }
-    setStatus("No compatible wallet was detected. Install or unlock a Wallet Standard wallet, then retry.");
+    notify("No compatible wallet was detected. Install or unlock a Wallet Standard wallet, then retry.", "error");
   };
 
   function closeWalletPicker() {
@@ -208,9 +221,9 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const discover = () => run(async () => {
     const response = await api<{ apps: readonly DiscoveredApp[] }>("/api/v1/publisher/discover-apps");
     setApps(response.apps);
-    setStatus(response.apps.length === 0
+    notify(response.apps.length === 0
       ? "No authorized App NFT was found yet. If you just minted one in the Solana Mobile Publisher Portal, wait a few seconds and retry."
-      : `Discovered ${response.apps.length} authorized App NFT(s).`);
+      : `Found ${response.apps.length} app${response.apps.length === 1 ? "" : "s"} this wallet can publish.`, response.apps.length === 0 ? "info" : "success");
   });
 
   const claim = (candidate: DiscoveredApp) => run(async () => {
@@ -221,11 +234,13 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       slug: "",
       consentStatus: null,
       distributionEnabled: false,
-      releasePolicy: policy,
+      releasePolicy: "manual",
       releaseCount: 0,
       publisherLinks: { ...EMPTY_PUBLISHER_LINKS }
     } }));
-    setStatus(`${candidate.name} is claimed. Distribution is still disabled until a separate consent message is signed.`);
+    setSelectedAppMint(candidate.appMint);
+    setWorkspaceTab("apps");
+    notify(`${candidate.name} was added. Choose its distribution and store settings next.`);
   });
 
   const claimMint = async () => {
@@ -234,7 +249,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     await claim({ appMint: mint, publisherCollectionMint: null, name: `App ${shortAddress(mint)}`, packageName: "Pending finalized verification", authorityPath: "finalized verification" });
   };
 
-  const consent = (candidate: ClaimedApp, consentPolicy: ReleasePolicy = policy) => run(async () => {
+  const consent = (candidate: ClaimedApp, consentPolicy: ReleasePolicy = candidate.releasePolicy ?? "manual") => run(async () => {
     if (!activeWallet || !account) throw new Error("Reconnect the signing wallet.");
     const wasRevoked = candidate.consentStatus === "revoked";
     const challenge = await api<{ challengeId: string; message: string }>(`/api/v1/publisher/apps/${candidate.id}/consent/challenge`, mutation({ releasePolicy: consentPolicy }));
@@ -252,7 +267,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       releasePolicy: consentPolicy
     } }));
     await refreshReleases(candidate.id);
-    setStatus(wasRevoked
+    notify(wasRevoked
       ? `${candidate.name} is available on Dapport again.`
       : `Environment-bound ${consentPolicy} distribution consent is active for ${candidate.name}.`);
   });
@@ -260,13 +275,13 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const sync = (candidate: ClaimedApp) => run(async () => {
     const result = await api<{ releases: readonly { releaseMint: string }[] }>(`/api/v1/publisher/apps/${candidate.id}/sync`, mutation());
     await refreshReleases(candidate.id);
-    setStatus(`Release synchronization completed with ${result.releases.length} normalized Release NFT(s).`);
+    notify(`Found ${result.releases.length} release${result.releases.length === 1 ? "" : "s"} for ${candidate.name}.`);
   });
 
   const validateOrPublish = (candidate: ClaimedApp, release: PublisherRelease) => run(async () => {
     const result = await api<{ status: "validating_binary" | "published" }>(`/api/v1/publisher/releases/${release.id}/publish`, mutation());
     await refreshReleases(candidate.id);
-    setStatus(result.status === "published"
+    notify(result.status === "published"
       ? `${candidate.name} ${release.version_name} is published.`
       : `Dapport is checking ${candidate.name} ${release.version_name}. This page updates automatically.`);
   });
@@ -284,7 +299,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       [candidate.id]: (current[candidate.id] ?? []).map((release) => ({ ...release, publication_status: "withdrawn" }))
     }));
     setRevokingAppMint(null);
-    setStatus(`${candidate.name} has been removed from Dapport. Existing installations are not affected.`);
+    notify(`${candidate.name} has been removed from Dapport. Existing installations are not affected.`);
   });
 
   async function refreshReleases(appId: string): Promise<void> {
@@ -292,24 +307,22 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     setReleases((current) => ({ ...current, [appId]: response.releases }));
   }
 
-  const classify = (candidate: ClaimedApp, category: CatalogCategory, genres: readonly GameGenre[]) => run(async () => {
-    await api(`/api/v1/publisher/apps/${candidate.id}/classification`, mutation({ category, genres }));
-    setClaims((current) => ({ ...current, [candidate.appMint]: { ...candidate, category, genres } }));
-    setStatus(`${candidate.name} will appear in ${categoryLabel(category)}${genres.length ? ` · ${genres.map(genreLabel).join(", ")}` : ""}.`);
-  });
-
-  const saveLinks = (candidate: ClaimedApp, links: PublisherLinks) => run(async () => {
-    const response = await api<{ publisherLinks: PublisherLinks }>(`/api/v1/publisher/apps/${candidate.id}/links`, mutation(links));
+  const saveStorefront = (candidate: ClaimedApp, category: CatalogCategory, genres: readonly GameGenre[], links: PublisherLinks) => run(async () => {
+    const [, response] = await Promise.all([
+      api(`/api/v1/publisher/apps/${candidate.id}/classification`, mutation({ category, genres })),
+      api<{ publisherLinks: PublisherLinks }>(`/api/v1/publisher/apps/${candidate.id}/links`, mutation(links))
+    ]);
     setClaims((current) => ({
       ...current,
-      [candidate.appMint]: { ...candidate, publisherLinks: response.publisherLinks }
+      [candidate.appMint]: { ...candidate, category, genres, publisherLinks: response.publisherLinks }
     }));
-    setStatus(`${candidate.name} community links are updated.`);
+    notify(`${candidate.name} store details are saved.`);
   });
 
   function run(action: () => Promise<void>): Promise<void> {
+    setStatus(null);
     setBusy(true);
-    return action().catch((error: unknown) => setStatus(error instanceof Error ? error.message : "Publisher operation failed."))
+    return action().catch((error: unknown) => notify(error instanceof Error ? error.message : "Publisher operation failed.", "error"))
       .finally(() => setBusy(false));
   }
 
@@ -317,6 +330,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const activeClaims = claimList.filter((candidate) => candidate.consentStatus !== "revoked");
   const publishedCount = claimList.filter((candidate) => (releases[candidate.id] ?? [])
     .some((release) => release.publication_status === "published")).length;
+  const selectedClaim = (selectedAppMint ? claims[selectedAppMint] : undefined) ?? claimList[0] ?? null;
   const progressSteps = [
     { label: "Wallet connected", complete: Boolean(account), icon: CheckCircle },
     { label: "App claimed", complete: claimList.length > 0, icon: AppWindow },
@@ -324,6 +338,8 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     { label: "Live in catalogue", complete: publishedCount > 0, icon: Storefront }
   ];
   const currentProgressIndex = progressSteps.findIndex((step) => !step.complete);
+  const selectedReleases = selectedClaim ? releases[selectedClaim.id] ?? [] : [];
+  const selectedLiveRelease = selectedReleases.find((release) => release.publication_status === "published");
   return (
     <section className="publisher-workspace" aria-busy={busy}>
       <details className="panel publisher-first-app">
@@ -445,146 +461,183 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
               ))}
             </div>
           </div>
-
-          <div className="panel publisher-step-panel">
-            <div className="publisher-step-heading">
-              <span>02</span><div><p className="step-label">Allow distribution</p><h2>Choose how releases reach Dapport.</h2></div>
-            </div>
-            <p className="muted">Review the <a href="/publisher/distribution-terms" target="_blank" rel="noreferrer">distribution terms</a>, then sign a separate consent message. No transaction is sent.</p>
-            <small className="publisher-terms-version">Current terms: {termsVersion}</small>
-            <label>Release policy
-              <select value={policy} onChange={(event) => setPolicy(event.target.value as ReleasePolicy)} disabled={busy}>
-                <option value="manual">I publish each release manually</option>
-                <option value="automatic">Publish automatically after checks pass</option>
-              </select>
-            </label>
-            <div className="operation-list">
-              {claimList.map((candidate) => (
-                <div key={candidate.id} className="operation-row">
-                  <div><strong>{candidate.name}</strong><small>{candidate.consented ? "Distribution allowed" : candidate.consentStatus === "revoked" ? "Removed — sign again to restore it" : "Waiting for your consent"}</small></div>
-                  <div className="control-row compact">
-                    <button type="button" className="secondary" onClick={() => void consent(candidate)} disabled={busy || candidate.consented}>{candidate.consentStatus === "revoked" ? "Review and reauthorize" : "Review and sign"}</button>
-                    <button type="button" className="secondary" onClick={() => void sync(candidate)} disabled={busy || !candidate.consented}>Find releases</button>
-                  </div>
-                </div>
-              ))}
-              {claimList.length === 0 && <p className="muted">Add an app first, then its consent controls will appear here.</p>}
-            </div>
-          </div>
-
-          <div className="panel publisher-step-panel">
-            <div className="publisher-step-heading">
-              <span>03</span><div><p className="step-label">Store appearance</p><h2>Help people find and follow the right app.</h2></div>
-            </div>
-            <p className="muted">Choose the consumer category used by Dapport, then add the official places where people can follow or contact the project.</p>
-            <div className="operation-list">
-              {claimList.map((candidate) => (
-                <div className="publisher-storefront-editor" key={candidate.id}>
-                  <ClassificationEditor app={candidate} disabled={busy} onSave={(category, genres) => void classify(candidate, category, genres)} />
-                  <PublisherLinksEditor app={candidate} disabled={busy} onSave={(links) => void saveLinks(candidate, links)} />
-                </div>
-              ))}
-              {claimList.length === 0 && <p className="muted">Your storefront controls appear after an app is added.</p>}
-            </div>
-          </div>
-
-          <div className="panel publisher-step-panel">
-            <div className="publisher-step-heading">
-              <span>04</span><div><p className="step-label">Check and publish</p><h2>Confirm the downloadable file, then go live.</h2></div>
-            </div>
-            <p className="muted">Dapport downloads the APK referenced by the Release NFT and checks that its hash, package, version and signing certificate still match what was published on-chain.</p>
-            <div className="operation-list">
-              {activeClaims.flatMap((candidate) => (releases[candidate.id] ?? []).map((release) => (
-                <div className="operation-row" key={release.id}>
-                  <div><strong>{candidate.name} {release.version_name}</strong><small>{releaseStatusLabel(release)}</small></div>
-                  <div className="control-row compact">
-                    {release.validation_status === "validating_binary" ? <span className="validation-live"><i />Updating automatically</span> : null}
-                    {releaseActionLabel(release) ? (
-                      <button type="button" onClick={() => void validateOrPublish(candidate, release)} disabled={busy || Boolean(release.quarantine_code)}>{releaseActionLabel(release)}</button>
-                    ) : null}
-                  </div>
-                </div>
-              )))}
-              {activeClaims.length > 0 && activeClaims.every((candidate) => (releases[candidate.id] ?? []).length === 0) ? <p className="muted">Use “Find releases” above to load the Release NFTs for your app.</p> : null}
-              {activeClaims.length === 0 ? <p className="muted">Add an app and allow distribution before publishing a release.</p> : null}
-            </div>
-          </div>
         </div>
       ) : null}
 
       {account && workspaceTab === "apps" ? (
         <section className="publisher-tab-panel publisher-apps-panel" role="tabpanel" aria-labelledby="publisher-apps-title">
           <div className="publisher-panel-heading">
-            <div><p className="step-label">Your catalogue</p><h2 id="publisher-apps-title">My apps</h2><p>See what is live, continue an incomplete setup, or remove an app from Dapport.</p></div>
+            <div><p className="step-label">Your catalogue</p><h2 id="publisher-apps-title">My apps</h2><p>Choose one app, then manage its distribution, store page and releases without mixing projects together.</p></div>
             <button type="button" onClick={() => setWorkspaceTab("setup")}><PlusCircle aria-hidden="true" /> Add another app</button>
           </div>
-          <div className="publisher-app-grid">
-            {claimList.map((candidate) => {
-              const appReleases = releases[candidate.id] ?? [];
-              const latest = appReleases[0];
-              const liveRelease = appReleases.find((release) => release.publication_status === "published");
-              const revoked = candidate.consentStatus === "revoked";
-              const linkCount = Object.values(candidate.publisherLinks ?? EMPTY_PUBLISHER_LINKS).filter(Boolean).length;
-              return (
-                <article className="publisher-app-card" key={candidate.id}>
-                  <header>
+          {claimList.length > 0 ? (
+            <>
+              <div className="publisher-app-switcher" role="tablist" aria-label="Choose an app to manage">
+                {claimList.map((candidate) => {
+                  const appReleases = releases[candidate.id] ?? [];
+                  const live = appReleases.some((release) => release.publication_status === "published");
+                  const revoked = candidate.consentStatus === "revoked";
+                  return (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={selectedClaim?.appMint === candidate.appMint}
+                      className="secondary"
+                      onClick={() => setSelectedAppMint(candidate.appMint)}
+                    >
+                      <AppWindow aria-hidden="true" />
+                      <span><strong>{candidate.name}</strong><small>{live ? "Live" : revoked ? "Removed" : "Setup in progress"}</small></span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedClaim ? (
+                <article className="publisher-app-manager" key={selectedClaim.id}>
+                  <header className="publisher-manager-header">
                     <div className="publisher-app-symbol"><AppWindow aria-hidden="true" /></div>
-                    <div><span className={`publisher-app-state ${liveRelease ? "live" : revoked ? "revoked" : "pending"}`}>{liveRelease ? "Live" : revoked ? "Removed" : "Setup in progress"}</span><h3>{candidate.name}</h3><p>{candidate.packageName}</p></div>
+                    <div className="publisher-manager-title">
+                      <span className={`publisher-app-state ${selectedLiveRelease ? "live" : selectedClaim.consentStatus === "revoked" ? "revoked" : "pending"}`}>{selectedLiveRelease ? "Live" : selectedClaim.consentStatus === "revoked" ? "Removed" : "Setup in progress"}</span>
+                      <h3>{selectedClaim.name}</h3>
+                      <p>{selectedClaim.packageName}</p>
+                    </div>
+                    <div className="publisher-manager-actions">
+                      {selectedLiveRelease && selectedClaim.slug ? <Link href={`/apps/${selectedClaim.slug}`}>View store page <ArrowSquareOut aria-hidden="true" /></Link> : null}
+                      {selectedClaim.consentStatus !== "revoked" && selectedClaim.consented ? <button type="button" className="danger-quiet" onClick={() => setRevokingAppMint(selectedClaim.appMint)}><TrashSimple aria-hidden="true" /> Remove</button> : null}
+                    </div>
                   </header>
-                  <dl>
-                    <div><dt>Latest release</dt><dd>{latest ? `v${latest.version_name}` : "Not synced"}</dd></div>
-                    <div><dt>Category</dt><dd>{categoryLabel(candidate.category ?? "other")}</dd></div>
-                    <div><dt>Publication</dt><dd>{latest ? releaseStatusLabel(latest) : "No release found"}</dd></div>
-                    <div><dt>Release policy</dt><dd>{candidate.releasePolicy === "automatic" ? "Automatic" : "Manual"}</dd></div>
-                  </dl>
-                  <div className="publisher-app-links-summary"><strong>Official links</strong><span>{linkCount > 0 ? `${linkCount} added` : "None added yet"}</span></div>
-                  <div className="publisher-app-actions">
-                    {revoked ? (
-                      <button type="button" onClick={() => void consent(candidate, candidate.releasePolicy ?? policy)} disabled={busy}><CheckCircle aria-hidden="true" /> Reauthorize app</button>
-                    ) : (
-                      <button type="button" className="secondary" onClick={() => setWorkspaceTab("setup")}><GearSix aria-hidden="true" /> Manage setup</button>
-                    )}
-                    {liveRelease && candidate.slug ? <Link href={`/apps/${candidate.slug}`}>View store page <ArrowSquareOut aria-hidden="true" /></Link> : null}
-                    {!revoked && candidate.consented ? <button type="button" className="danger-quiet" onClick={() => setRevokingAppMint(candidate.appMint)}><TrashSimple aria-hidden="true" /> Remove from Dapport</button> : null}
-                  </div>
-                  {revokingAppMint === candidate.appMint ? (
+
+                  {revokingAppMint === selectedClaim.appMint ? (
                     <div className="publisher-revoke-confirm">
-                      <strong>Remove {candidate.name} from Dapport?</strong>
+                      <strong>Remove {selectedClaim.name} from Dapport?</strong>
                       <p>Its catalogue listing and future Dapport updates stop immediately. Apps already installed on phones are not removed.</p>
                       <div className="control-row compact">
-                        <button type="button" className="danger" disabled={busy} onClick={() => void revoke(candidate)} autoFocus>Confirm removal</button>
+                        <button type="button" className="danger" disabled={busy} onClick={() => void revoke(selectedClaim)} autoFocus>Confirm removal</button>
                         <button type="button" className="secondary" onClick={() => setRevokingAppMint(null)}>Cancel</button>
                       </div>
                     </div>
                   ) : null}
+
+                  <section className="publisher-manager-section" aria-labelledby={`distribution-${selectedClaim.id}`}>
+                    <div className="publisher-manager-section-heading">
+                      <div><p className="step-label">Distribution</p><h3 id={`distribution-${selectedClaim.id}`}>Choose how releases reach Dapport.</h3></div>
+                      <span>{selectedClaim.consented ? "Allowed" : selectedClaim.consentStatus === "revoked" ? "Removed" : "Action needed"}</span>
+                    </div>
+                    <p>Review the <a href="/publisher/distribution-terms" target="_blank" rel="noreferrer">distribution terms</a>, then sign an app-specific consent message. No transaction is sent.</p>
+                    <DistributionEditor
+                      key={`${selectedClaim.id}-${selectedClaim.releasePolicy}-${selectedClaim.consentStatus}`}
+                      app={selectedClaim}
+                      termsVersion={termsVersion}
+                      disabled={busy}
+                      onConsent={(nextPolicy) => void consent(selectedClaim, nextPolicy)}
+                      onSync={() => void sync(selectedClaim)}
+                    />
+                  </section>
+
+                  <section className="publisher-manager-section" aria-labelledby={`storefront-${selectedClaim.id}`}>
+                    <div className="publisher-manager-section-heading">
+                      <div><p className="step-label">Store page</p><h3 id={`storefront-${selectedClaim.id}`}>Help people find and follow this app.</h3></div>
+                    </div>
+                    <StorefrontEditor
+                      key={selectedClaim.id}
+                      app={selectedClaim}
+                      disabled={busy}
+                      onSave={(category, genres, links) => void saveStorefront(selectedClaim, category, genres, links)}
+                    />
+                  </section>
+
+                  <section className="publisher-manager-section" aria-labelledby={`releases-${selectedClaim.id}`}>
+                    <div className="publisher-manager-section-heading">
+                      <div><p className="step-label">Releases</p><h3 id={`releases-${selectedClaim.id}`}>APK checks and publication.</h3></div>
+                      <button type="button" className="secondary" onClick={() => void sync(selectedClaim)} disabled={busy || !selectedClaim.consented}>Refresh releases</button>
+                    </div>
+                    <p>Dapport checks the APK referenced by each Release NFT before it can be installed from the catalogue.</p>
+                    <div className="operation-list">
+                      {selectedReleases.map((release) => (
+                        <div className="operation-row" key={release.id}>
+                          <div><strong>{selectedClaim.name} {release.version_name}</strong><small>{releaseStatusLabel(release)}</small></div>
+                          <div className="control-row compact">
+                            {release.validation_status === "validating_binary" ? <span className="validation-live"><i />Updating automatically</span> : null}
+                            {releaseActionLabel(release) ? <button type="button" onClick={() => void validateOrPublish(selectedClaim, release)} disabled={busy || Boolean(release.quarantine_code)}>{releaseActionLabel(release)}</button> : null}
+                          </div>
+                        </div>
+                      ))}
+                      {selectedReleases.length === 0 ? <p className="muted">{selectedClaim.consented ? "No release loaded yet. Refresh releases to check again." : "Allow distribution before loading releases."}</p> : null}
+                    </div>
+                  </section>
                 </article>
-              );
-            })}
-            {claimList.length === 0 ? (
-              <div className="publisher-empty-apps"><CloudArrowUp aria-hidden="true" /><h3>No apps here yet.</h3><p>Start with the App NFT published from your wallet.</p><button type="button" onClick={() => setWorkspaceTab("setup")}>Add your first app</button></div>
-            ) : null}
-          </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="publisher-empty-apps"><CloudArrowUp aria-hidden="true" /><h3>No apps here yet.</h3><p>Start with the App NFT published from your wallet.</p><button type="button" onClick={() => setWorkspaceTab("setup")}>Add your first app</button></div>
+          )}
         </section>
       ) : null}
-      <p className="status-line" role="status">{busy ? "Waiting for verified operation…" : status}</p>
+      {busy || status ? <p className={`publisher-toast ${noticeTone}`} role={noticeTone === "error" ? "alert" : "status"}>{busy ? "Working…" : status}</p> : null}
     </section>
   );
 }
 
-function PublisherLinksEditor({
+function DistributionEditor({
+  app,
+  termsVersion,
+  disabled,
+  onConsent,
+  onSync
+}: {
+  app: ClaimedApp;
+  termsVersion: string;
+  disabled: boolean;
+  onConsent: (policy: ReleasePolicy) => void;
+  onSync: () => void;
+}) {
+  const [policy, setPolicy] = useState<ReleasePolicy>(app.releasePolicy ?? "manual");
+  const policyChanged = app.consented && policy !== app.releasePolicy;
+  const actionLabel = app.consentStatus === "revoked"
+    ? "Review and reauthorize"
+    : policyChanged
+      ? "Review and update consent"
+      : app.consented
+        ? "Distribution active"
+        : "Review and allow distribution";
+
+  return (
+    <div className="publisher-distribution-editor">
+      <label>Release policy
+        <select value={policy} onChange={(event) => setPolicy(event.target.value as ReleasePolicy)} disabled={disabled}>
+          <option value="manual">I publish each release manually</option>
+          <option value="automatic">Publish automatically after Dapport checks pass</option>
+        </select>
+      </label>
+      <small className="publisher-terms-version">Terms: {termsVersion}</small>
+      <div className="control-row compact">
+        <button type="button" onClick={() => onConsent(policy)} disabled={disabled || (app.consented && !policyChanged)}>{actionLabel}</button>
+        <button type="button" className="secondary" onClick={onSync} disabled={disabled || !app.consented}>Find latest releases</button>
+      </div>
+    </div>
+  );
+}
+
+function StorefrontEditor({
   app,
   disabled,
   onSave
 }: {
   app: ClaimedApp;
   disabled: boolean;
-  onSave: (links: PublisherLinks) => void;
+  onSave: (category: CatalogCategory, genres: readonly GameGenre[], links: PublisherLinks) => void;
 }) {
+  const [category, setCategory] = useState<CatalogCategory>(app.category ?? "other");
+  const [genres, setGenres] = useState<readonly GameGenre[]>(app.genres ?? []);
   const initial = app.publisherLinks ?? EMPTY_PUBLISHER_LINKS;
   const [website, setWebsite] = useState(initial.website ?? "");
   const [x, setX] = useState(initial.x ?? "");
   const [discord, setDiscord] = useState(initial.discord ?? "");
   const [telegram, setTelegram] = useState(initial.telegram ?? "");
+  const toggleGenre = (genre: GameGenre) => setGenres((current) => current.includes(genre)
+    ? current.filter((item) => item !== genre)
+    : current.length < 4 ? [...current, genre] : current);
   const links = {
     website: website.trim() || null,
     x: x.trim() || null,
@@ -593,71 +646,55 @@ function PublisherLinksEditor({
   } satisfies PublisherLinks;
 
   return (
-    <div className="publisher-links-editor">
-      <div className="publisher-links-heading">
-        <div><strong>Official links</strong><small>Displayed as publisher-provided links on the store page.</small></div>
-        <span>Optional</span>
+    <div className="publisher-storefront-form">
+      <div className="publisher-category-editor">
+        <label>Primary category
+          <select
+            value={category}
+            disabled={disabled}
+            onChange={(event) => {
+              const next = event.target.value as CatalogCategory;
+              setCategory(next);
+              if (next !== "games") setGenres([]);
+            }}
+          >
+            {CATALOG_CATEGORIES.map((item) => <option value={item} key={item}>{categoryLabel(item)}</option>)}
+          </select>
+        </label>
+        {category === "games" ? (
+          <fieldset className="genre-picker">
+            <legend>Game genres · choose up to 4</legend>
+            <div>
+              {GAME_GENRES.map((genre) => (
+                <button
+                  type="button"
+                  className={genres.includes(genre) ? "is-selected" : "secondary"}
+                  aria-pressed={genres.includes(genre)}
+                  disabled={disabled || (!genres.includes(genre) && genres.length >= 4)}
+                  onClick={() => toggleGenre(genre)}
+                  key={genre}
+                >{genreLabel(genre)}</button>
+              ))}
+            </div>
+          </fieldset>
+        ) : <p className="muted publisher-category-note">Focused categories stay simple. Extra genre filters appear only for games.</p>}
       </div>
-      <div className="publisher-link-fields">
-        <label>Website<input type="url" inputMode="url" placeholder="https://yourapp.com" value={website} onChange={(event) => setWebsite(event.target.value)} disabled={disabled} /></label>
-        <label>X<input type="url" inputMode="url" placeholder="https://x.com/yourapp" value={x} onChange={(event) => setX(event.target.value)} disabled={disabled} /></label>
-        <label>Discord<input type="url" inputMode="url" placeholder="https://discord.gg/yourapp" value={discord} onChange={(event) => setDiscord(event.target.value)} disabled={disabled} /></label>
-        <label>Telegram<input type="url" inputMode="url" placeholder="https://t.me/yourapp" value={telegram} onChange={(event) => setTelegram(event.target.value)} disabled={disabled} /></label>
+      <div className="publisher-links-editor">
+        <div className="publisher-links-heading">
+          <div><strong>Official links</strong><small>Displayed as publisher-provided links on the store page.</small></div>
+          <span>Optional</span>
+        </div>
+        <div className="publisher-link-fields">
+          <label>Website<input type="url" inputMode="url" placeholder="https://yourapp.com" value={website} onChange={(event) => setWebsite(event.target.value)} disabled={disabled} /></label>
+          <label>X<input type="url" inputMode="url" placeholder="https://x.com/yourapp" value={x} onChange={(event) => setX(event.target.value)} disabled={disabled} /></label>
+          <label>Discord<input type="url" inputMode="url" placeholder="https://discord.gg/yourapp" value={discord} onChange={(event) => setDiscord(event.target.value)} disabled={disabled} /></label>
+          <label>Telegram<input type="url" inputMode="url" placeholder="https://t.me/yourapp" value={telegram} onChange={(event) => setTelegram(event.target.value)} disabled={disabled} /></label>
+        </div>
       </div>
-      <button type="button" onClick={() => onSave(links)} disabled={disabled}>Save official links</button>
-    </div>
-  );
-}
-
-function ClassificationEditor({
-  app,
-  disabled,
-  onSave
-}: {
-  app: ClaimedApp;
-  disabled: boolean;
-  onSave: (category: CatalogCategory, genres: readonly GameGenre[]) => void;
-}) {
-  const [category, setCategory] = useState<CatalogCategory>(app.category ?? "other");
-  const [genres, setGenres] = useState<readonly GameGenre[]>(app.genres ?? []);
-  const toggleGenre = (genre: GameGenre) => setGenres((current) => current.includes(genre)
-    ? current.filter((item) => item !== genre)
-    : current.length < 4 ? [...current, genre] : current);
-
-  return (
-    <div className="classification-editor">
-      <div><strong>{app.name}</strong><small>{app.packageName}</small></div>
-      <label>Primary category
-        <select
-          value={category}
-          disabled={disabled}
-          onChange={(event) => {
-            const next = event.target.value as CatalogCategory;
-            setCategory(next);
-            if (next !== "games") setGenres([]);
-          }}
-        >
-          {CATALOG_CATEGORIES.map((item) => <option value={item} key={item}>{categoryLabel(item)}</option>)}
-        </select>
-      </label>
-      {category === "games" ? (
-        <fieldset className="genre-picker">
-          <legend>Game genres · choose up to 4</legend>
-          <div>
-            {GAME_GENRES.map((genre) => (
-              <button
-                type="button"
-                className={genres.includes(genre) ? "is-selected" : "secondary"}
-                aria-pressed={genres.includes(genre)}
-                disabled={disabled || (!genres.includes(genre) && genres.length >= 4)}
-                onClick={() => toggleGenre(genre)}
-                key={genre}
-              >{genreLabel(genre)}</button>
-            ))}
-          </div>
-        </fieldset>
-      ) : null}
-      <button type="button" onClick={() => onSave(category, genres)} disabled={disabled}>Save storefront</button>
+      <div className="publisher-storefront-save">
+        <span>Category, game genres and official links are saved together.</span>
+        <button type="button" onClick={() => onSave(category, genres, links)} disabled={disabled}>Save store page</button>
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import type { LocalInstallRecord } from "@/storage/database";
 export type CatalogCategory = CatalogAppDto["category"];
 export type BrowseCategory = CatalogCategory | "all";
 export type AvailabilityFilter = "all" | "not-installed" | "installed" | "updates";
-export type TrustFilter = "all" | "approved" | "server-checked" | "preview";
+export type TrustFilter = "all" | "server-checked";
 export type BrowseSort = "recent" | "name" | "trust";
 export type AppLocalStatus = "available" | "installed" | "update";
 export type GenreFilter = "all" | GameGenre;
@@ -84,18 +84,14 @@ export function filterAndSortApps(input: {
     })
     .filter((app) => {
       if (input.trust === "all") return true;
-      if (input.trust === "approved") return app.latestRelease.trust.solanaMobileApproval === "verified_approved";
-      if (input.trust === "server-checked") return app.latestRelease.trust.releaseAuthenticity === "server_binary_valid";
-      return app.latestRelease.previewOnly;
+      return input.trust === "server-checked"
+        ? app.latestRelease.trust.releaseAuthenticity === "server_binary_valid"
+        : true;
     })
     .sort((left, right) => {
       if (input.sort === "name") return left.name.localeCompare(right.name);
       if (input.sort === "trust") {
-        const trustScore = (app: CatalogAppDto) => {
-          if (app.latestRelease.trust.solanaMobileApproval === "verified_approved") return 2;
-          if (app.latestRelease.trust.releaseAuthenticity === "server_binary_valid") return 1;
-          return 0;
-        };
+        const trustScore = (app: CatalogAppDto) => app.latestRelease.trust.releaseAuthenticity === "server_binary_valid" ? 1 : 0;
         const byTrust = trustScore(right) - trustScore(left);
         if (byTrust !== 0) return byTrust;
       }

@@ -50,7 +50,7 @@ describe("mobile catalogue discovery", () => {
       category: "games",
       query: "orbit",
       availability: "updates",
-      trust: "approved",
+      trust: "server-checked",
       sort: "recent",
       installedByPackage: new Map([[installed.packageName, installed]])
     });

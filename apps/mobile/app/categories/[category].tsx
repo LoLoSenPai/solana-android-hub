@@ -26,15 +26,13 @@ const AVAILABILITY_FILTERS: readonly { id: AvailabilityFilter; label: string }[]
 
 const TRUST_FILTERS: readonly { id: TrustFilter; label: string }[] = [
   { id: "all", label: "All available" },
-  { id: "approved", label: "Approved" },
-  { id: "server-checked", label: "Checked release" },
-  { id: "preview", label: "Preview releases" }
+  { id: "server-checked", label: "Dapport checked" }
 ];
 
 const SORTS: readonly { id: BrowseSort; label: string }[] = [
   { id: "recent", label: "Recently updated" },
   { id: "name", label: "Name A–Z" },
-  { id: "trust", label: "Trust signal" }
+  { id: "trust", label: "Dapport checked first" }
 ];
 
 export default function CategoryScreen() {
@@ -140,8 +138,8 @@ export default function CategoryScreen() {
           {isGames ? <CompactFilter label={genre === "all" ? "All genres" : genreLabel(genre)} selected={genre !== "all"} onPress={() => setFiltersOpen(true)} /> : null}
           <CompactFilter label={availability === "installed" ? "Installed" : "Installed"} selected={availability === "installed"} onPress={() => setAvailability((current) => current === "installed" ? "all" : "installed")} />
           {updateCount > 0 ? <CompactFilter label={`Updates ${updateCount}`} selected={availability === "updates"} onPress={() => setAvailability((current) => current === "updates" ? "all" : "updates")} /> : null}
-          <CompactFilter label="Approved" selected={trust === "approved"} onPress={() => setTrust((current) => current === "approved" ? "all" : "approved")} />
-          <CompactFilter label={sort === "recent" ? "Recent" : sort === "name" ? "A–Z" : "Trust"} selected={sort !== "recent"} icon="sort" onPress={() => setFiltersOpen(true)} />
+          <CompactFilter label="Dapport checked" selected={trust === "server-checked"} onPress={() => setTrust((current) => current === "server-checked" ? "all" : "server-checked")} />
+          <CompactFilter label={sort === "recent" ? "Recent" : sort === "name" ? "A–Z" : "Checked first"} selected={sort !== "recent"} icon="sort" onPress={() => setFiltersOpen(true)} />
           <CompactFilter label={activeFilterCount ? `Filters ${activeFilterCount}` : "Filters"} selected={activeFilterCount > 0} icon="tune" onPress={() => setFiltersOpen(true)} />
         </ScrollView>
 

@@ -30,7 +30,7 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
     ? genreParam as GameGenre
     : "all";
   const trustParam = params.get("trust");
-  const trust: CatalogTrustFilter = trustParam === "approved" || trustParam === "checked" || (previewEnvironment && trustParam === "preview")
+  const trust: CatalogTrustFilter = trustParam === "checked" || (previewEnvironment && trustParam === "preview")
     ? trustParam
     : "all";
   const sort: CatalogSortMode = params.get("sort") === "name" ? "name" : "recent";
@@ -82,8 +82,7 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
           </label>
           <label className="select-control"><span>Show</span><span className="select-shell"><select value={trust} onChange={(event) => update("trust", event.target.value)}>
             <option value="all">All available apps</option>
-            <option value="approved">Approved</option>
-            <option value="checked">Checked releases</option>
+            <option value="checked">Dapport checked</option>
             {previewEnvironment ? <option value="preview">Preview releases</option> : null}
           </select><CaretDown aria-hidden="true" /></span></label>
           <label className="select-control"><span>Sort</span><span className="select-shell"><select value={sort} onChange={(event) => update("sort", event.target.value)}>

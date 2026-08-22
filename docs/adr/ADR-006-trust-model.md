@@ -16,3 +16,5 @@ Each fact has a different authority and revocation path. A generic verified flag
 ## Consequences
 
 Approval never overrides authenticity or consent. Preview releases are not labeled verified publisher releases.
+
+The current Solana Mobile `In Review`/`Live` portal state is not present in App or Release NFT metadata and has no documented public verification API. Dapport therefore leaves approval `unknown` and hides approval-channel filters unless a future provider can supply verifiable evidence. Scraping the Publisher Portal or treating Release immutability as approval is explicitly rejected.
