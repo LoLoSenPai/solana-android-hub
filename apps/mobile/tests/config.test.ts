@@ -23,12 +23,12 @@ describe("standalone Android distribution configuration", () => {
     process.env.RELEASE_PUBLICATION_GATE = "server_and_device";
     const { default: config } = await import("../app.config.js");
     expect(config.name).toBe("Dapport");
-    expect(config.scheme).toEqual(["dapport", "solanaandroidhub"]);
+    expect(config.scheme).toBe("dapport");
     expect(config.android?.package).toBe("com.lololabs.solanaandroidhub");
     expect(config.android?.adaptiveIcon?.foregroundImage).toBe("./assets/adaptive-icon.png");
     expect(config.android?.adaptiveIcon?.monochromeImage).toBe("./assets/monochrome-icon.png");
-    expect(config.version).toBe("0.5.2");
-    expect(config.android?.versionCode).toBe(9);
+    expect(config.version).toBe("0.5.3");
+    expect(config.android?.versionCode).toBe(10);
     expect(config.android?.blockedPermissions).toEqual([
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE"

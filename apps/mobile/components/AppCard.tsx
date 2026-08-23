@@ -26,9 +26,7 @@ export function AppCard({ app, localStatus = "available", showCategory = true }:
         <View className="ml-4 min-w-0 flex-1">
           <View className="flex-row items-start justify-between gap-2">
             <Text className="min-w-0 flex-1 text-[17px] font-bold text-ink" numberOfLines={1}>{app.name}</Text>
-            <Text className={preview ? "text-[11px] font-semibold text-warning" : "text-[11px] font-semibold text-mint"}>
-              {preview ? "Preview" : "Checked"}
-            </Text>
+            {preview ? <Text className="text-[11px] font-semibold text-warning">Preview</Text> : null}
           </View>
           <Text className="mt-1 text-sm leading-5 text-muted" numberOfLines={2}>
             {app.shortDescription ?? "Discover this Solana app"}

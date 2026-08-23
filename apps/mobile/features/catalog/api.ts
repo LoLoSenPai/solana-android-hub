@@ -2,7 +2,8 @@ import { HubApiClient, type CatalogAppDto } from "@hub/api-client";
 import Constants from "expo-constants";
 import { getCatalogChannel, type CatalogChannel } from "@/storage/database";
 
-const origin = String(Constants.expoConfig?.extra?.hubOrigin ?? "http://10.0.2.2:3000");
+const origin = process.env.EXPO_PUBLIC_HUB_ORIGIN
+  ?? String(Constants.expoConfig?.extra?.hubOrigin ?? "http://10.0.2.2:3000");
 const client = new HubApiClient(origin);
 
 export async function loadCatalog(channel?: CatalogChannel): Promise<readonly CatalogAppDto[]> {

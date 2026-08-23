@@ -2,9 +2,9 @@ import type { CatalogAppDto } from "@hub/api-client";
 import { AppInstaller, type InstalledPackageInfo } from "@hub/app-installer";
 import * as Linking from "expo-linking";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
-import { ActivityIndicator, Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ActivityIndicator, Animated, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppArtwork } from "@/components/AppArtwork";
 import { HubSymbol } from "@/components/HubSymbol";
 import { categoryDefinition } from "@/features/catalog/discovery";
@@ -15,7 +15,10 @@ import { listInstalledApps } from "@/storage/database";
 
 export default function AppDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { width: viewportWidth } = useWindowDimensions();
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [app, setApp] = useState<CatalogAppDto | null>(null);
   const [installed, setInstalled] = useState<InstalledPackageInfo | null>(null);
   const [installedPermissions, setInstalledPermissions] = useState<readonly string[]>([]);
@@ -80,45 +83,85 @@ export default function AppDetailScreen() {
     { label: "Discord", url: app.publisherLinks.discord, icon: "forum" as const },
     { label: "Telegram", url: app.publisherLinks.telegram, icon: "send" as const }
   ].flatMap((link) => link.url ? [{ ...link, url: link.url }] : []);
+  const expandedHeroHeight = viewportWidth / 2;
+  const collapsedHeroHeight = insets.top + 76;
+  const collapseDistance = 120;
+  const heroHeight = scrollY.interpolate({
+    inputRange: [0, collapseDistance],
+    outputRange: [expandedHeroHeight, collapsedHeroHeight],
+    extrapolate: "clamp"
+  });
+  const sharpHeroOpacity = scrollY.interpolate({
+    inputRange: [0, 72],
+    outputRange: [1, 0],
+    extrapolate: "clamp"
+  });
+  const blurredHeroOpacity = scrollY.interpolate({
+    inputRange: [6, 72],
+    outputRange: [0, 1],
+    extrapolate: "clamp"
+  });
+  const heroShadeOpacity = scrollY.interpolate({
+    inputRange: [0, 105],
+    outputRange: [0.16, 0.72],
+    extrapolate: "clamp"
+  });
+  const compactHeaderOpacity = scrollY.interpolate({
+    inputRange: [52, 100],
+    outputRange: [0, 1],
+    extrapolate: "clamp"
+  });
+  const compactHeaderTranslateY = scrollY.interpolate({
+    inputRange: [52, 100],
+    outputRange: [8, 0],
+    extrapolate: "clamp"
+  });
+  const iconScale = scrollY.interpolate({
+    inputRange: [0, 82, collapseDistance],
+    outputRange: [1, 0.62, 0.26],
+    extrapolate: "clamp"
+  });
+  const iconOpacity = scrollY.interpolate({
+    inputRange: [0, 82, collapseDistance],
+    outputRange: [1, 0.72, 0],
+    extrapolate: "clamp"
+  });
+  const iconTranslateX = scrollY.interpolate({
+    inputRange: [0, collapseDistance],
+    outputRange: [0, -52],
+    extrapolate: "clamp"
+  });
+  const iconTranslateY = scrollY.interpolate({
+    inputRange: [0, collapseDistance],
+    outputRange: [0, -98],
+    extrapolate: "clamp"
+  });
+  const expandedButtonTop = expandedHeroHeight + 38;
+  const collapsedButtonTop = insets.top + 16;
+  const actionTranslateY = scrollY.interpolate({
+    inputRange: [0, collapseDistance],
+    outputRange: [0, collapsedButtonTop - expandedButtonTop],
+    extrapolate: "clamp"
+  });
+  const expandedBadgeOpacity = scrollY.interpolate({
+    inputRange: [0, 48],
+    outputRange: [1, 0],
+    extrapolate: "clamp"
+  });
 
   return (
     <View className="flex-1 bg-canvas">
-      <ScrollView className="flex-1" contentContainerClassName="pb-14" showsVerticalScrollIndicator={false}>
-        {coverArtwork ? (
-          <ImageBackground
-            source={{ uri: coverArtwork }}
-            resizeMode="cover"
-            style={{ width: "100%", aspectRatio: app.bannerUrl ? 2 : 16 / 9 }}
-          >
-            <View className="h-full justify-between px-4 pb-4 pt-12" style={{ backgroundColor: "rgba(5, 12, 21, 0.5)" }}>
-              <DetailHeader onBack={() => router.back()} statusLabel={badgeLabel} />
-              <View className="self-start rounded-full bg-canvas px-3 py-1.5">
-                <Text className="text-xs font-bold text-ink">{category.label}</Text>
-              </View>
-            </View>
-          </ImageBackground>
-        ) : (
-          <View className="h-[250px] justify-between bg-raised px-4 pb-8 pt-12">
-            <DetailHeader onBack={() => router.back()} statusLabel={badgeLabel} />
-            <View className="flex-row items-end justify-between">
-              <View>
-                <Text className="text-xs font-bold uppercase tracking-[1.6px] text-muted">{category.label}</Text>
-                <Text className="mt-2 max-w-[270px] text-[28px] font-bold leading-8 text-ink">Made for Android.</Text>
-              </View>
-              <HubSymbol name={category.icon} size={48} color={category.accent} />
-            </View>
-          </View>
-        )}
+      <Animated.ScrollView
+        className="flex-1"
+        contentContainerClassName="pb-14"
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ height: expandedHeroHeight }} />
 
-        <View className="-mt-2 rounded-t-[32px] bg-canvas px-5 pt-5">
-          <View className="flex-row items-end justify-between">
-            <View className="-mt-14 rounded-[26px] border-4 border-canvas bg-canvas">
-              <AppArtwork app={app} size={104} radius={26} />
-            </View>
-            <InstallButton app={app} action={installAction} compact />
-          </View>
-
-          <Text className="mt-5 text-[38px] font-bold leading-[42px] tracking-[-1px] text-ink">{app.name}</Text>
+        <View className="bg-canvas px-5" style={{ paddingTop: 108 }}>
+          <Text className="text-[32px] font-bold leading-[37px] tracking-[-0.7px] text-ink">{app.name}</Text>
           <Text className="mt-2 text-base leading-6 text-muted">{app.shortDescription ?? "Discover this Solana app"}</Text>
           {app.genres.length ? <View className="mt-4 flex-row flex-wrap gap-2">{app.genres.map((genre) => <View className="rounded-full border border-line bg-surface px-3 py-2" key={genre}><Text className="text-xs font-semibold text-muted">{genre === "rpg" ? "RPG" : `${genre.charAt(0).toUpperCase()}${genre.slice(1)}`}</Text></View>)}</View> : null}
           {isUpdate ? (
@@ -278,28 +321,150 @@ export default function AppDetailScreen() {
             <InstallButton app={app} action={installAction} />
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+
+      <CollapsingDetailHero
+        app={app}
+        artwork={coverArtwork}
+        badgeLabel={badgeLabel}
+        blurredArtworkOpacity={blurredHeroOpacity}
+        categoryIcon={category.icon}
+        categoryTone={category.accent}
+        contentOpacity={compactHeaderOpacity}
+        contentTranslateY={compactHeaderTranslateY}
+        expandedBadgeOpacity={expandedBadgeOpacity}
+        heroHeight={heroHeight}
+        shadeOpacity={heroShadeOpacity}
+        sharpArtworkOpacity={sharpHeroOpacity}
+        onBack={() => router.back()}
+        safeTop={insets.top}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          left: 20,
+          opacity: iconOpacity,
+          position: "absolute",
+          top: expandedHeroHeight - 24,
+          transform: [{ translateX: iconTranslateX }, { translateY: iconTranslateY }, { scale: iconScale }],
+          zIndex: 45
+        }}
+      >
+        <View className="rounded-[30px] border-4 border-canvas bg-canvas">
+          <AppArtwork app={app} size={120} radius={30} />
+        </View>
+      </Animated.View>
+      <Animated.View
+        style={{
+          position: "absolute",
+          right: 20,
+          top: expandedButtonTop,
+          transform: [{ translateY: actionTranslateY }],
+          zIndex: 50
+        }}
+      >
+        <InstallButton app={app} action={installAction} compact />
+      </Animated.View>
     </View>
   );
 }
 
-function DetailHeader({ onBack, statusLabel }: { onBack: () => void; statusLabel: string | null }) {
+function ReleaseBadge({ statusLabel }: { statusLabel: string | null }) {
+  if (!statusLabel) return null;
   const preview = statusLabel === "Preview release";
   return (
-    <View className="flex-row items-center justify-between">
-      <Pressable
-        accessibilityLabel="Go back"
-        className="h-12 w-12 items-center justify-center rounded-2xl bg-canvas active:bg-surface"
-        onPress={onBack}
-      >
-        <HubSymbol name="arrow_back" size={24} />
-      </Pressable>
-      {statusLabel ? (
-        <View className={preview ? "rounded-full bg-warning px-4 py-2" : "rounded-full bg-canvas px-4 py-2"}>
-          <Text className={preview ? "text-xs font-bold text-canvas" : "text-xs font-bold text-ink"}>{statusLabel}</Text>
-        </View>
-      ) : null}
+    <View className={preview ? "rounded-full bg-warning px-3 py-1.5" : "rounded-full bg-canvas px-3 py-1.5"}>
+      <Text className={preview ? "text-xs font-bold text-canvas" : "text-xs font-bold text-ink"}>{statusLabel}</Text>
     </View>
+  );
+}
+
+function CollapsingDetailHero({
+  app,
+  artwork,
+  badgeLabel,
+  blurredArtworkOpacity,
+  categoryIcon,
+  categoryTone,
+  contentOpacity,
+  contentTranslateY,
+  expandedBadgeOpacity,
+  heroHeight,
+  shadeOpacity,
+  sharpArtworkOpacity,
+  onBack,
+  safeTop
+}: {
+  app: CatalogAppDto;
+  artwork: string | undefined;
+  badgeLabel: string | null;
+  blurredArtworkOpacity: Animated.AnimatedInterpolation<number>;
+  categoryIcon: Parameters<typeof HubSymbol>[0]["name"];
+  categoryTone: string;
+  contentOpacity: Animated.AnimatedInterpolation<number>;
+  contentTranslateY: Animated.AnimatedInterpolation<number>;
+  expandedBadgeOpacity: Animated.AnimatedInterpolation<number>;
+  heroHeight: Animated.AnimatedInterpolation<number>;
+  shadeOpacity: Animated.AnimatedInterpolation<number>;
+  sharpArtworkOpacity: Animated.AnimatedInterpolation<number>;
+  onBack: () => void;
+  safeTop: number;
+}) {
+  return (
+    <Animated.View
+      pointerEvents="box-none"
+      style={{
+        backgroundColor: "#101A2A",
+        height: heroHeight,
+        left: 0,
+        overflow: "hidden",
+        position: "absolute",
+        right: 0,
+        top: 0,
+        zIndex: 40
+      }}
+    >
+      {artwork ? (
+        <>
+          <Animated.View pointerEvents="none" style={{ bottom: 0, left: 0, opacity: sharpArtworkOpacity, position: "absolute", right: 0, top: 0 }}>
+            <Image resizeMode="cover" source={{ uri: artwork }} style={{ height: "100%", width: "100%" }} />
+          </Animated.View>
+          <Animated.View pointerEvents="none" style={{ bottom: 0, left: 0, opacity: blurredArtworkOpacity, position: "absolute", right: 0, top: 0 }}>
+            <Image blurRadius={14} resizeMode="cover" source={{ uri: artwork }} style={{ height: "100%", width: "100%" }} />
+          </Animated.View>
+        </>
+      ) : (
+        <View className="h-full w-full items-end justify-end bg-raised p-6">
+          <HubSymbol name={categoryIcon} size={52} color={categoryTone} />
+        </View>
+      )}
+      <Animated.View
+        pointerEvents="none"
+        style={{ backgroundColor: "#010213", bottom: 0, left: 0, opacity: shadeOpacity, position: "absolute", right: 0, top: 0 }}
+      />
+
+      <Animated.View pointerEvents="none" style={{ bottom: 14, opacity: expandedBadgeOpacity, position: "absolute", right: 16 }}>
+        <ReleaseBadge statusLabel={badgeLabel} />
+      </Animated.View>
+
+      <View className="flex-row items-center px-4" style={{ height: 64, marginTop: safeTop + 8 }}>
+        <Pressable
+          accessibilityLabel="Go back"
+          className="h-12 w-12 items-center justify-center rounded-2xl bg-canvas active:bg-surface"
+          onPress={onBack}
+        >
+          <HubSymbol name="arrow_back" size={24} />
+        </Pressable>
+
+        <Animated.View
+          pointerEvents="none"
+          style={{ flex: 1, marginLeft: 12, marginRight: 132, opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }}
+        >
+          <Text className="text-base font-bold text-ink" numberOfLines={1}>{app.name}</Text>
+          <Text className="mt-0.5 text-xs text-muted" numberOfLines={1}>{app.shortDescription ?? "Discover this Solana app"}</Text>
+        </Animated.View>
+      </View>
+    </Animated.View>
   );
 }
 

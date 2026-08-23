@@ -37,9 +37,9 @@ export default function MyAppsScreen() {
     <SafeAreaView className="flex-1 bg-canvas" edges={["top"]}>
       <ScrollView className="flex-1" contentContainerClassName="px-4 pb-36" showsVerticalScrollIndicator={false}>
         <View className="mb-7 mt-4">
-          <Text className="text-xs font-bold uppercase tracking-[2px] text-mint">Private device library</Text>
-          <Text className="mt-2 text-[38px] font-bold tracking-[-1px] text-ink">My Apps</Text>
-          <Text className="mt-3 max-w-[350px] leading-6 text-muted">Only apps installed through Dapport appear here. Your installed-app inventory never leaves this device.</Text>
+          <Text className="text-xs font-bold uppercase tracking-[2px] text-mint">Installed with Dapport</Text>
+          <Text className="mt-2 text-[38px] font-bold tracking-[-1px] text-ink">Library</Text>
+          <Text className="mt-3 max-w-[350px] leading-6 text-muted">Find the apps you installed here and see when an update is ready.</Text>
         </View>
 
         {apps.length > 0 ? (

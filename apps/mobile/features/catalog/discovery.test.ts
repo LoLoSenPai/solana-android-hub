@@ -72,6 +72,22 @@ describe("mobile catalogue discovery", () => {
     expect(results.map((candidate) => candidate.id)).toEqual(["game", "wallet"]);
   });
 
+  it("supports consumer-facing newest, oldest, A–Z, and Z–A sorting", () => {
+    const base = {
+      apps: [wallet, game],
+      category: "all" as const,
+      query: "",
+      availability: "all" as const,
+      trust: "all" as const,
+      installedByPackage: new Map<string, LocalInstallRecord>()
+    };
+
+    expect(filterAndSortApps({ ...base, sort: "recent" }).map((candidate) => candidate.id)).toEqual(["game", "wallet"]);
+    expect(filterAndSortApps({ ...base, sort: "oldest" }).map((candidate) => candidate.id)).toEqual(["wallet", "game"]);
+    expect(filterAndSortApps({ ...base, sort: "name-asc" }).map((candidate) => candidate.id)).toEqual(["wallet", "game"]);
+    expect(filterAndSortApps({ ...base, sort: "name-desc" }).map((candidate) => candidate.id)).toEqual(["game", "wallet"]);
+  });
+
   it("filters Games by genre without affecting simple categories", () => {
     const games = filterAndSortApps({
       apps: [wallet, game],

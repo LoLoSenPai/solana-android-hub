@@ -32,13 +32,20 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Discover",
-          tabBarIcon: ({ color, focused }) => <HubSymbol name={focused ? "explore" : "search"} size={25} color={color} />
+          tabBarIcon: ({ color, focused }) => <HubSymbol name={focused ? "explore" : "home"} size={25} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="catalogue"
+        options={{
+          title: "Catalogue",
+          tabBarIcon: ({ color, focused }) => <HubSymbol name={focused ? "search" : "apps"} size={25} color={color} />
         }}
       />
       <Tabs.Screen
         name="my-apps"
         options={{
-          title: "My Apps",
+          title: "Library",
           tabBarIcon: ({ color, focused }) => <HubSymbol name={focused ? "apps" : "download_for_offline"} size={25} color={color} />
         }}
       />
@@ -46,6 +53,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "Settings",
+          href: null,
           tabBarIcon: ({ color }) => <HubSymbol name="settings" size={25} color={color} />
         }}
       />

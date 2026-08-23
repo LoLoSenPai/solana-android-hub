@@ -124,6 +124,31 @@ Residual P3: the external wallet extension's own approval window is controlled b
 
 final result: passed
 
+# Dapport static editorial hero QA — 2026-08-23
+
+## Scope and visual truth
+
+- Approved visual target: `C:/Users/loicd/.codex/generated_images/019fdd9c-4685-77b3-b7b9-29a05667e247/exec-d61c6eda-cd51-4ab4-ac6e-4ebbeca57157.png` (959 × 1639).
+- Implemented Android capture: `.artifacts/mobile-home-v2-final.png` (1080 × 2424, Pixel 9 API 36, dark theme).
+- Side-by-side comparison: `.artifacts/mobile-home-comparison.png`.
+- State: Discover selected; static full-bleed particle artwork; first category row visible; development warning overlay dismissed.
+
+## Findings
+
+- Composition: passed. The artwork is full-bleed rather than enclosed in a card, and its reflection transitions into the category section.
+- Header and CTA: passed. Branding, settings control, eyebrow, title, support copy, and primary action remain readable over the artwork.
+- Category discovery: passed after reducing the hero from 730dp to 610dp. The first category row is visible on initial load and retains compact two-column gradient cards.
+- Runtime behavior: passed after removing the blocking full-screen catalogue loader. The hero and categories now render immediately while local/database and network catalogue work continues independently.
+- Fidelity: passed with platform-appropriate differences for the Android status bar, persistent tab bar, and device viewport.
+
+## Verification
+
+- `pnpm --filter @hub/mobile typecheck`: passed.
+- `pnpm --filter @hub/mobile lint`: passed.
+- Real x86_64 native development build loaded through Metro and captured on the Pixel 9 emulator.
+
+final result: passed
+
 # App detail navigation and preview rail - design QA
 
 ## Scope and source visual truth

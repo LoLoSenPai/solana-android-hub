@@ -6,7 +6,7 @@ export type CatalogCategory = CatalogAppDto["category"];
 export type BrowseCategory = CatalogCategory | "all";
 export type AvailabilityFilter = "all" | "not-installed" | "installed" | "updates";
 export type TrustFilter = "all" | "server-checked";
-export type BrowseSort = "recent" | "name" | "trust";
+export type BrowseSort = "recent" | "oldest" | "name-asc" | "name-desc";
 export type AppLocalStatus = "available" | "installed" | "update";
 export type GenreFilter = "all" | GameGenre;
 
@@ -89,15 +89,15 @@ export function filterAndSortApps(input: {
         : true;
     })
     .sort((left, right) => {
-      if (input.sort === "name") return left.name.localeCompare(right.name);
-      if (input.sort === "trust") {
-        const trustScore = (app: CatalogAppDto) => app.latestRelease.trust.releaseAuthenticity === "server_binary_valid" ? 1 : 0;
-        const byTrust = trustScore(right) - trustScore(left);
-        if (byTrust !== 0) return byTrust;
-      }
+      if (input.sort === "name-asc") return left.name.localeCompare(right.name);
+      if (input.sort === "name-desc") return right.name.localeCompare(left.name);
       const leftTimestamp = Date.parse(left.releaseUpdatedAt ?? "") || 0;
       const rightTimestamp = Date.parse(right.releaseUpdatedAt ?? "") || 0;
-      if (rightTimestamp !== leftTimestamp) return rightTimestamp - leftTimestamp;
+      if (rightTimestamp !== leftTimestamp) {
+        return input.sort === "oldest"
+          ? leftTimestamp - rightTimestamp
+          : rightTimestamp - leftTimestamp;
+      }
       return right.name.localeCompare(left.name);
     });
 }

@@ -5,8 +5,8 @@ const production = appEnvironment === "production";
 const publicWebsiteOrigin = "https://dapport.app";
 const hubOrigin = environmentVariable("EXPO_PUBLIC_HUB_ORIGIN") ?? "http://10.0.2.2:3000";
 const publicationGate = environmentVariable("RELEASE_PUBLICATION_GATE") ?? "device_only_preview";
-const version = environmentVariable("HUB_APP_VERSION_NAME") ?? "0.5.2";
-const versionCode = positiveIntegerEnvironmentVariable("HUB_APP_VERSION_CODE") ?? 9;
+const version = environmentVariable("HUB_APP_VERSION_NAME") ?? "0.5.3";
+const versionCode = positiveIntegerEnvironmentVariable("HUB_APP_VERSION_CODE") ?? 10;
 const productionPackageName = "com.lololabs.solanaandroidhub";
 const releaseCertificateSha256 = "02F204B9CBED11E59F85B2A6DBCB34AD6F0A4658C639D58B2C27FB3BE2AD0E09";
 
@@ -22,7 +22,7 @@ const config: ExpoConfig = {
   version,
   icon: "./assets/icon.png",
   orientation: "portrait",
-  scheme: ["dapport", "solanaandroidhub"],
+  scheme: "dapport",
   userInterfaceStyle: "dark",
   android: {
     package: production ? productionPackageName : "com.lololabs.solanaandroidhub.dev",
@@ -34,7 +34,7 @@ const config: ExpoConfig = {
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       monochromeImage: "./assets/monochrome-icon.png",
-      backgroundColor: "#07111D"
+      backgroundColor: "#010213"
     }
   },
   plugins: [
