@@ -3,6 +3,7 @@ packages:
   - apps/*/modules/*
   - packages/*
   - tooling/*
+  - "!tooling/dapport-wave"
 
 onlyBuiltDependencies:
   - esbuild
