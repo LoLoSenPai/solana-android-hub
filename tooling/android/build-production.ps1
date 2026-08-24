@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-  [string]$VersionName = "0.5.3",
-  [int]$VersionCode = 10,
+  [string]$VersionName = "0.5.4",
+  [int]$VersionCode = 11,
   [string]$ShortWorkspace = "C:\hubb03"
 )
 

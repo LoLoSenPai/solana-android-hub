@@ -27,8 +27,8 @@ describe("standalone Android distribution configuration", () => {
     expect(config.android?.package).toBe("com.lololabs.solanaandroidhub");
     expect(config.android?.adaptiveIcon?.foregroundImage).toBe("./assets/adaptive-icon.png");
     expect(config.android?.adaptiveIcon?.monochromeImage).toBe("./assets/monochrome-icon.png");
-    expect(config.version).toBe("0.5.3");
-    expect(config.android?.versionCode).toBe(10);
+    expect(config.version).toBe("0.5.4");
+    expect(config.android?.versionCode).toBe(11);
     expect(config.android?.blockedPermissions).toEqual([
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE"
