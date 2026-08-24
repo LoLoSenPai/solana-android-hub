@@ -137,7 +137,7 @@ async function reconcileOfficialApproval(appId: string, packageName: string): Pr
       sourceReference: lookup.sourceReference,
       evidence: {
         provider: "solana_mobile_dapp_store_graphql",
-        query: "dAppByAndroidPackage.lastRelease.androidDetails.versionCode",
+        query: "explore.units.DAppsByCategoryUnit.dApps.lastRelease.androidDetails.versionCode",
         androidPackage: lookup.androidPackage,
         versionCode: lookup.status === "visible" ? lookup.versionCode.toString() : null,
         checkedAt: lookup.checkedAt,

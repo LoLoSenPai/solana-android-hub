@@ -123,7 +123,12 @@ export function CatalogClient({ apps, channel }: { apps: readonly CatalogAppDto[
 
         {filteredApps.length ? (
           <div className={`catalogue-grid${view === "list" ? " catalogue-grid-list" : ""}`}>
-            {filteredApps.map((app) => <StoreAppCard app={app} channel={channel} key={app.id} />)}
+            {view === "list" ? (
+              <div className="catalogue-list-header" aria-hidden="true">
+                <span>App</span><span>Category</span><span>Availability</span><span />
+              </div>
+            ) : null}
+            {filteredApps.map((app) => <StoreAppCard app={app} channel={channel} layout={view} key={app.id} />)}
             <aside className="catalogue-growing-card">
               <RocketLaunch aria-hidden="true" weight="duotone" />
               <p className="eyebrow">Catalogue in progress</p>

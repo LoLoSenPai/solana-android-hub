@@ -17,4 +17,6 @@ Each fact has a different authority and revocation path. A generic verified flag
 
 Approval never overrides authenticity or consent. Preview releases are not labeled verified publisher releases.
 
-The current Solana Mobile `In Review`/`Live` portal state is not present in App or Release NFT metadata and has no documented public verification API. Dapport therefore leaves approval `unknown` and hides approval-channel filters unless a future provider can supply verifiable evidence. Scraping the Publisher Portal or treating Release immutability as approval is explicitly rejected.
+The Solana Mobile `In Review`/`Live` portal state is not present in App or Release NFT metadata. Dapport therefore never infers approval from NFT existence, Release immutability, or a publisher-controlled assertion.
+
+For consumer-store inclusion, Dapport uses Solana Mobile's Seeker catalogue GraphQL as an `official_provider`. It reads only package names and visible release version codes from the catalogue discovery feed and discards entries that are not already publisher-consented Dapport apps. The detail resolver `dAppByAndroidPackage` is explicitly not accepted as proof because it can return portal-side records before they appear in the consumer catalogue. Provider failures preserve prior evidence; absence produces `unknown`, never `rejected`.
