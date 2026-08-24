@@ -1,4 +1,6 @@
 import * as SQLite from "expo-sqlite";
+import type { CatalogChannel } from "@hub/api-client";
+import { normalizeCatalogChannel } from "@/features/catalog/channel";
 
 const databasePromise = SQLite.openDatabaseAsync("solana-android-hub.db");
 
@@ -15,7 +17,7 @@ export interface LocalInstallRecord {
   installedAt: number;
 }
 
-export type CatalogChannel = "trusted" | "approved";
+export type { CatalogChannel } from "@hub/api-client";
 
 export interface HubUpdateCache {
   checkedAt: number;
@@ -56,10 +58,7 @@ export async function getCatalogChannel(): Promise<CatalogChannel> {
   const database = await databasePromise;
   await initializeLocalDatabase();
   const row = await database.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'catalog_channel'");
-  if (row?.value === "approved") {
-    await database.runAsync("UPDATE settings SET value = 'trusted' WHERE key = 'catalog_channel'");
-  }
-  return "trusted";
+  return normalizeCatalogChannel(row?.value);
 }
 
 export async function setCatalogChannel(channel: CatalogChannel): Promise<void> {

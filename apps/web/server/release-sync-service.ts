@@ -9,10 +9,12 @@ import {
 import { normalizeReleaseMetadata, type NormalizedReleaseMetadata } from "@hub/validation";
 import { shouldRequestAutomaticValidation } from "./automatic-validation";
 import { database, hubConfig } from "./runtime";
+import { OfficialSolanaMobileApprovalProvider } from "./solana-mobile-approval-provider";
 import { requestBinaryValidation } from "./validation-service";
 
 const publisherRepository = new PublisherRepository(database);
 const releaseRepository = new ReleaseRepository(database);
+const approvalProvider = new OfficialSolanaMobileApprovalProvider();
 
 interface VerifiedReleaseCandidate {
   mint: string;
@@ -92,12 +94,16 @@ export async function syncPublisherApp(
         initialBackfill
       }));
     }
+    const officialApproval = app.distributionEnabled
+      ? await reconcileOfficialApproval(app.id, app.packageName)
+      : { status: "skipped_no_consent" as const };
     const maxReleaseSlot = verified.reduce((slot, item) => item.evidence.finalizedSlot > slot ? item.evidence.finalizedSlot : slot, authority.finalizedSlot);
     await releaseRepository.completeSyncJob(job, {
       discovered: discovered.length,
       normalized: verified.length,
       releases,
-      failures
+      failures,
+      officialApproval
     }, maxReleaseSlot);
     const validationFailures: Array<{ releaseId: string; code: string }> = [];
     for (const release of releases.filter((item) => shouldRequestAutomaticValidation(app.releasePolicy, item))) {
@@ -113,6 +119,34 @@ export async function syncPublisherApp(
     if (authorityLossCodes.has(code)) await releaseRepository.suspendForAuthorityLoss(app.id, code);
     await releaseRepository.failSyncJob(job, code, error instanceof Error ? error.message : "Unknown sync failure");
     throw error;
+  }
+}
+
+async function reconcileOfficialApproval(appId: string, packageName: string): Promise<{
+  status: "verified" | "not_visible" | "release_not_found" | "unavailable";
+  errorCode?: string;
+}> {
+  const lookup = await approvalProvider.lookupLatestVisibleRelease(packageName);
+  if (lookup.status === "unavailable") return { status: "unavailable", errorCode: lookup.errorCode };
+
+  try {
+    const status = await releaseRepository.reconcileOfficialStoreApproval({
+      appId,
+      packageName,
+      versionCode: lookup.status === "visible" ? lookup.versionCode : null,
+      sourceReference: lookup.sourceReference,
+      evidence: {
+        provider: "solana_mobile_dapp_store_graphql",
+        query: "dAppByAndroidPackage.lastRelease.androidDetails.versionCode",
+        androidPackage: lookup.androidPackage,
+        versionCode: lookup.status === "visible" ? lookup.versionCode.toString() : null,
+        checkedAt: lookup.checkedAt,
+        systemContext: lookup.systemContext
+      }
+    });
+    return { status };
+  } catch (error) {
+    return { status: "unavailable", errorCode: errorCode(error) };
   }
 }
 

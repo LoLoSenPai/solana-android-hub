@@ -135,7 +135,9 @@ export class CatalogRepository {
       left join lateral (
         select ra.status
         from hub.release_approvals ra
-        where ra.release_id = r.id and ra.superseded_at is null
+        where ra.release_id = r.id
+          and ra.source = 'official_provider'
+          and ra.superseded_at is null
         order by ra.created_at desc
         limit 1
       ) approval on true

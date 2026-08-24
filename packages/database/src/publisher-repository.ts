@@ -13,6 +13,7 @@ export interface PublisherAppRecord {
   metadataUri: string;
   claimStatus: "pending" | "verified" | "suspended" | "revoked";
   releasePolicy: ReleasePolicy;
+  distributionEnabled: boolean;
 }
 
 interface AppRow {
@@ -24,6 +25,7 @@ interface AppRow {
   metadata_uri: string;
   claim_status: PublisherAppRecord["claimStatus"];
   release_policy: ReleasePolicy;
+  distribution_enabled: boolean;
 }
 
 export class PublisherRepository {
@@ -31,7 +33,7 @@ export class PublisherRepository {
 
   public async getAppForPublisher(appId: string, publisherId: string): Promise<PublisherAppRecord | null> {
     const [row] = await this.sql<AppRow[]>`
-      select id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy
+      select id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy, distribution_enabled
       from hub.apps where id = ${appId} and publisher_id = ${publisherId}
     `;
     return row ? mapApp(row) : null;
@@ -60,7 +62,7 @@ export class PublisherRepository {
     return this.sql.begin(async (tx) => {
       await tx`select pg_advisory_xact_lock(hashtext(${input.proof.appMint}))`;
       const [existing] = await tx<AppRow[]>`
-        select id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy
+        select id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy, distribution_enabled
         from hub.apps where app_mint = ${input.proof.appMint} for update
       `;
       if (existing && existing.publisher_id !== input.publisherId) throw new Error("APP_ALREADY_CLAIMED");
@@ -94,7 +96,7 @@ export class PublisherRepository {
           authority_last_verified_slot = excluded.authority_last_verified_slot,
           authority_last_verified_at = now(),
           updated_at = now()
-        returning id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy
+        returning id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy, distribution_enabled
       `;
       if (!app) throw new Error("APP_CLAIM_NOT_SAVED");
       await tx`update hub.app_claims set superseded_at = now() where app_id = ${app.id} and superseded_at is null`;
@@ -266,6 +268,7 @@ function mapApp(row: AppRow): PublisherAppRecord {
     packageName: row.package_name,
     metadataUri: row.metadata_uri,
     claimStatus: row.claim_status,
-    releasePolicy: row.release_policy
+    releasePolicy: row.release_policy,
+    distributionEnabled: row.distribution_enabled
   };
 }

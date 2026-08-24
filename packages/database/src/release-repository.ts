@@ -27,6 +27,8 @@ export interface SavedRelease {
   quarantineCode: string | null;
 }
 
+export type OfficialApprovalReconciliation = "verified" | "not_visible" | "release_not_found";
+
 export class ReleaseRepository {
   public constructor(private readonly sql: HubSql) {}
 
@@ -108,6 +110,87 @@ export class ReleaseRepository {
   public async countReleases(appId: string): Promise<number> {
     const [row] = await this.sql<{ count: string }[]>`select count(*)::text as count from hub.releases where app_id = ${appId}`;
     return Number(row?.count ?? 0);
+  }
+
+  public async reconcileOfficialStoreApproval(input: {
+    appId: string;
+    packageName: string;
+    versionCode: bigint | null;
+    sourceReference: string;
+    evidence: unknown;
+  }): Promise<OfficialApprovalReconciliation> {
+    const serializedEvidence: JSONValue = parseJsonValue(JSON.stringify(input.evidence));
+    return this.sql.begin(async (tx) => {
+      await tx`select pg_advisory_xact_lock(hashtext(${input.appId}))`;
+      const [app] = await tx<{ package_name: string }[]>`
+        select package_name from hub.apps where id = ${input.appId} for update
+      `;
+      if (!app) throw new Error("APP_NOT_FOUND");
+      if (app.package_name !== input.packageName) throw new Error("OFFICIAL_APPROVAL_PACKAGE_MISMATCH");
+
+      const currentOfficial = await tx<{ release_id: string }[]>`
+        select approval.release_id
+        from hub.release_approvals approval
+        join hub.releases release on release.id = approval.release_id
+        where release.app_id = ${input.appId}
+          and approval.source = 'official_provider'
+          and approval.status = 'verified_approved'
+          and approval.superseded_at is null
+        for update of approval
+      `;
+
+      const candidates = input.versionCode === null ? [] : await tx<{ id: string }[]>`
+        select id from hub.releases
+        where app_id = ${input.appId}
+          and package_name = ${input.packageName}
+          and version_code = ${input.versionCode.toString()}
+          and validation_status <> 'quarantined'
+        order by discovered_at desc
+        limit 2
+        for update
+      `;
+      const target = candidates.length === 1 ? candidates[0] : undefined;
+      const targetAlreadyCurrent = target !== undefined
+        && currentOfficial.length === 1
+        && currentOfficial[0]?.release_id === target.id;
+
+      if (targetAlreadyCurrent) {
+        await tx`
+          update hub.release_approvals
+          set source_reference = ${input.sourceReference}, evidence = ${tx.json(serializedEvidence)}, verified_at = now()
+          where release_id = ${target.id} and source = 'official_provider' and superseded_at is null
+        `;
+        return "verified";
+      }
+
+      await tx`
+        update hub.release_approvals approval
+        set superseded_at = now()
+        from hub.releases release
+        where release.id = approval.release_id
+          and release.app_id = ${input.appId}
+          and approval.source = 'official_provider'
+          and approval.superseded_at is null
+      `;
+
+      if (target) {
+        await tx`
+          update hub.release_approvals
+          set superseded_at = now()
+          where release_id = ${target.id} and superseded_at is null
+        `;
+        await tx`
+          insert into hub.release_approvals (release_id, status, source, source_reference, evidence, verified_at)
+          values (${target.id}, 'verified_approved', 'official_provider', ${input.sourceReference}, ${tx.json(serializedEvidence)}, now())
+        `;
+      }
+
+      if (currentOfficial.length > 0 || target) {
+        await tx`update hub.releases set updated_at = now() where app_id = ${input.appId}`;
+      }
+      if (input.versionCode === null) return "not_visible";
+      return target ? "verified" : "release_not_found";
+    });
   }
 
   public async listDueSyncTargets(environment: AppEnvironment, limit = 20): Promise<readonly ScheduledSyncTarget[]> {

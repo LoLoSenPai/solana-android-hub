@@ -24,9 +24,8 @@ const PERMISSION_NAMES: Readonly<Record<string, string>> = {
 };
 
 export function approvalLabel(value: ApprovalStatus): string {
-  if (value === "verified_approved") return "Approved";
-  if (value === "rejected") return "Rejected";
-  return "Not verified";
+  if (value === "verified_approved") return "Visible on Solana Mobile";
+  return "Not verified by Solana Mobile";
 }
 
 export function releaseBadgeLabel(previewOnly: boolean, approval: ApprovalStatus): string | null {

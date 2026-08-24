@@ -12,7 +12,6 @@ describe("web catalogue filters", () => {
     expect(filterCatalogApps([wallet, strategy, puzzle], {
       category: "games",
       genre: "puzzle",
-      trust: "all",
       sort: "recent",
       query: ""
     }).map((item) => item.slug)).toEqual(["puzzle"]);
@@ -22,7 +21,6 @@ describe("web catalogue filters", () => {
     expect(filterCatalogApps([wallet, strategy, puzzle], {
       category: "wallets",
       genre: "all",
-      trust: "all",
       sort: "recent",
       query: ""
     }).map((item) => item.slug)).toEqual(["wallet"]);

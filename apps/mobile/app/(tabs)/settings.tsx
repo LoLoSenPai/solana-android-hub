@@ -4,15 +4,19 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HubSymbol } from "@/components/HubSymbol";
 import { hubOrigin } from "@/features/catalog/api";
+import { CATALOG_CHANNEL_OPTIONS } from "@/features/catalog/channel";
 import { checkForHubUpdate, type HubUpdateCheck } from "@/features/hub-update/service";
+import { getCatalogChannel, setCatalogChannel, type CatalogChannel } from "@/storage/database";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [update, setUpdate] = useState<HubUpdateCheck | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(true);
+  const [catalogChannel, setCatalogChannelState] = useState<CatalogChannel>("trusted");
   useFocusEffect(useCallback(() => {
     setCheckingUpdate(true);
     void checkForHubUpdate().then(setUpdate).finally(() => setCheckingUpdate(false));
+    void getCatalogChannel().then(setCatalogChannelState);
   }, []));
 
   return (
@@ -21,6 +25,33 @@ export default function SettingsScreen() {
         <View className="mb-7 mt-4">
           <Text className="text-xs font-bold uppercase tracking-[2px] text-mint">Your experience</Text>
           <Text className="mt-2 text-[38px] font-bold tracking-[-1px] text-ink">Settings</Text>
+        </View>
+
+        <Text className="mb-3 text-xs font-bold uppercase tracking-[1.6px] text-muted">Catalogue</Text>
+        <View className="mb-7 overflow-hidden rounded-[24px] border border-line bg-surface">
+          {CATALOG_CHANNEL_OPTIONS.map((option, index) => {
+            const selected = catalogChannel === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                className={`${index > 0 ? "border-t border-line" : ""} flex-row items-center p-5 active:bg-raised`}
+                onPress={() => void chooseCatalogChannel(option.value, setCatalogChannelState)}
+              >
+                <View className={`h-11 w-11 items-center justify-center rounded-2xl ${selected ? "bg-[#172E57]" : "bg-raised"}`}>
+                  <HubSymbol name={option.value === "approved" ? "verified" : "apps"} size={23} color={selected ? "#77A7FF" : "#95A5B7"} />
+                </View>
+                <View className="ml-4 flex-1">
+                  <Text className="text-base font-bold text-ink">{option.title}</Text>
+                  <Text className="mt-1 text-sm leading-5 text-muted">{option.detail}</Text>
+                </View>
+                <View className={`ml-3 h-5 w-5 items-center justify-center rounded-full border ${selected ? "border-mint bg-mint" : "border-muted"}`}>
+                  {selected ? <View className="h-2 w-2 rounded-full bg-canvas" /> : null}
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
 
         <Text className="mb-3 text-xs font-bold uppercase tracking-[1.6px] text-muted">Dapport updates</Text>
@@ -62,6 +93,14 @@ export default function SettingsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+async function chooseCatalogChannel(
+  channel: CatalogChannel,
+  setChannel: (value: CatalogChannel) => void
+): Promise<void> {
+  setChannel(channel);
+  await setCatalogChannel(channel);
 }
 
 async function checkNow(

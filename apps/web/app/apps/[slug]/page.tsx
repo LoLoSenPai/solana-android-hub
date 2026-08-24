@@ -16,16 +16,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ScreenshotRail } from "../../components/ScreenshotRail";
+import { catalogChannelFromParam, catalogHref } from "../../catalog/catalog-channel";
 import { buildAppSocialMetadata } from "../../../server/app-social-metadata";
 import { getCatalogApp } from "../../../server/catalog-service";
 
 export const dynamic = "force-dynamic";
 
-const getTrustedCatalogApp = cache((slug: string) => getCatalogApp(slug, "trusted"));
+const getChannelCatalogApp = cache((slug: string, channel: "approved" | "trusted") => getCatalogApp(slug, channel));
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ channel?: string | string[] }>;
+}): Promise<Metadata> {
   const { slug } = await params;
-  const app = await getTrustedCatalogApp(slug);
+  const channel = catalogChannelFromParam((await searchParams).channel);
+  const app = await getChannelCatalogApp(slug, channel);
   if (!app) {
     return {
       title: "App unavailable",
@@ -35,9 +40,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return buildAppSocialMetadata(app);
 }
 
-export default async function AppDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function AppDetailPage({ params, searchParams }: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ channel?: string | string[] }>;
+}) {
   const { slug } = await params;
-  const app = await getTrustedCatalogApp(slug);
+  const channel = catalogChannelFromParam((await searchParams).channel);
+  const app = await getChannelCatalogApp(slug, channel);
   if (!app) notFound();
 
   const authenticity = app.latestRelease.previewOnly ? "Development preview" : "Server-validated release";
@@ -54,7 +63,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
     <main className="app-detail-page">
       <article>
         <div className="detail-back-row">
-          <Link className="text-link" href="/catalog">Back to catalogue</Link>
+          <Link className="text-link" href={catalogHref({ channel })}>Back to catalogue</Link>
           <span>{app.latestRelease.packageName}</span>
         </div>
 
@@ -159,7 +168,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             <div><UserFocus aria-hidden="true" weight="duotone" /><dt>Publisher control</dt><dd>Verified from current finalized authority evidence.</dd><strong>Verified</strong></div>
             <div><Signature aria-hidden="true" weight="duotone" /><dt>Distribution consent</dt><dd>A separate, environment-bound consent is active.</dd><strong>Active</strong></div>
             <div><Fingerprint aria-hidden="true" weight="duotone" /><dt>Release authenticity</dt><dd>The APK must match its published identity and certificate.</dd><strong>{authenticity}</strong></div>
-            <div><SealCheck aria-hidden="true" weight="duotone" /><dt>Independent approval</dt><dd>Approval cannot be asserted by the publisher.</dd><strong>{approval}</strong></div>
+            <div><SealCheck aria-hidden="true" weight="duotone" /><dt>Solana Mobile visibility</dt><dd>The current official release is matched by package and version.</dd><strong>{approval}</strong></div>
           </dl>
         </section>
 
@@ -222,9 +231,8 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 }
 
 function approvalLabel(status: "unknown" | "verified_approved" | "rejected"): string {
-  if (status === "verified_approved") return "Independently verified";
-  if (status === "rejected") return "Rejected";
-  return "Not asserted";
+  if (status === "verified_approved") return "Visible on Solana Mobile";
+  return "Not verified by Solana Mobile";
 }
 
 function categoryFromApp(category: string): string {

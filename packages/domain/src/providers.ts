@@ -1,5 +1,3 @@
-import type { ApprovalStatus } from "./types";
-
 export interface VerifiedAppReference {
   appMint: string;
   publisherCollectionMint: string | null;
@@ -27,8 +25,38 @@ export interface PublisherAuthorityVerifier {
   verifyAppAuthority(wallet: string, appMint: string): Promise<AuthorityProof>;
 }
 
+export interface OfficialStoreSystemContext {
+  locale: string;
+  platformSdk: number;
+  pixelDensity: number;
+  model: string;
+}
+
+export type OfficialStoreReleaseLookup =
+  | {
+      status: "visible";
+      androidPackage: string;
+      versionCode: bigint;
+      checkedAt: string;
+      systemContext: OfficialStoreSystemContext;
+      sourceReference: string;
+    }
+  | {
+      status: "not_visible";
+      androidPackage: string;
+      checkedAt: string;
+      systemContext: OfficialStoreSystemContext;
+      sourceReference: string;
+    }
+  | {
+      status: "unavailable";
+      androidPackage: string;
+      checkedAt: string;
+      errorCode: string;
+    };
+
 export interface SolanaMobileApprovalProvider {
-  getApprovalStatus(releaseMint: string): Promise<ApprovalStatus>;
+  lookupLatestVisibleRelease(androidPackage: string): Promise<OfficialStoreReleaseLookup>;
 }
 
 export interface ApkValidationManifest {

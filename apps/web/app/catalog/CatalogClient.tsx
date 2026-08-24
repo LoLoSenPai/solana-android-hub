@@ -5,20 +5,24 @@ import {
   GAME_GENRES,
   type CatalogAppDto,
   type CatalogCategory,
+  type CatalogChannel,
   type GameGenre
 } from "@hub/api-client";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { DeviceMobile } from "@phosphor-icons/react/dist/csr/DeviceMobile";
 import { GameController } from "@phosphor-icons/react/dist/csr/GameController";
+import { ListBullets } from "@phosphor-icons/react/dist/csr/ListBullets";
 import { RocketLaunch } from "@phosphor-icons/react/dist/csr/RocketLaunch";
+import { SquaresFour } from "@phosphor-icons/react/dist/csr/SquaresFour";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { CATEGORIES, categoryLabel, genreLabel } from "../components/catalog-config";
 import { StoreAppCard } from "../components/StoreAppCard";
-import { filterCatalogApps, type CatalogSortMode, type CatalogTrustFilter } from "./catalog-filters";
+import { catalogHref } from "./catalog-channel";
+import { filterCatalogApps, type CatalogSortMode } from "./catalog-filters";
 
-export function CatalogClient({ apps, previewEnvironment }: { apps: readonly CatalogAppDto[]; previewEnvironment: boolean }) {
+export function CatalogClient({ apps, channel }: { apps: readonly CatalogAppDto[]; channel: CatalogChannel }) {
   const router = useRouter();
   const params = useSearchParams();
   const categoryParam = params.get("category");
@@ -29,20 +33,24 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
   const genre: "all" | GameGenre = category === "games" && GAME_GENRES.includes(genreParam as GameGenre)
     ? genreParam as GameGenre
     : "all";
-  const trustParam = params.get("trust");
-  const trust: CatalogTrustFilter = trustParam === "checked" || (previewEnvironment && trustParam === "preview")
-    ? trustParam
-    : "all";
   const sort: CatalogSortMode = params.get("sort") === "name" ? "name" : "recent";
+  const view = params.get("view") === "list" ? "list" : "grid";
   const query = params.get("query") ?? "";
 
-  const filteredApps = useMemo(() => filterCatalogApps(apps, { category, genre, query, sort, trust }), [apps, category, genre, query, sort, trust]);
+  const filteredApps = useMemo(() => filterCatalogApps(apps, { category, genre, query, sort }), [apps, category, genre, query, sort]);
 
   const update = (key: string, value: string, defaults: readonly string[] = ["all", "recent", ""]) => {
     const next = new URLSearchParams(params.toString());
     if (defaults.includes(value)) next.delete(key);
     else next.set(key, value);
     if (key === "category" && value !== "games") next.delete("genre");
+    router.replace(next.size ? `/catalog?${next.toString()}` : "/catalog", { scroll: false });
+  };
+
+  const setApprovedOnly = (approvedOnly: boolean) => {
+    const next = new URLSearchParams(params.toString());
+    if (approvedOnly) next.set("channel", "approved");
+    else next.delete("channel");
     router.replace(next.size ? `/catalog?${next.toString()}` : "/catalog", { scroll: false });
   };
 
@@ -69,7 +77,7 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
           {CATEGORIES.map((item) => (
             <Link
               key={item.id}
-              href={item.id === "all" ? "/catalog" : `/catalog?category=${item.id}`}
+              href={catalogHref({ channel, category: item.id, view })}
               aria-current={category === item.id ? "page" : undefined}
             >{item.label}</Link>
           ))}
@@ -80,11 +88,14 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
             <span>Search</span>
             <input type="search" value={query} placeholder={`Search ${heading.toLocaleLowerCase()}`} onChange={(event) => update("query", event.target.value)} />
           </label>
-          <label className="select-control"><span>Show</span><span className="select-shell"><select value={trust} onChange={(event) => update("trust", event.target.value)}>
-            <option value="all">All available apps</option>
-            <option value="checked">Dapport checked</option>
-            {previewEnvironment ? <option value="preview">Preview releases</option> : null}
-          </select><CaretDown aria-hidden="true" /></span></label>
+          <label className="catalog-channel-toggle">
+            <span>Availability</span>
+            <span className="catalog-channel-toggle-control">
+              <input type="checkbox" checked={channel === "approved"} onChange={(event) => setApprovedOnly(event.target.checked)} />
+              <span aria-hidden="true" />
+              <strong>Solana Mobile approved only</strong>
+            </span>
+          </label>
           <label className="select-control"><span>Sort</span><span className="select-shell"><select value={sort} onChange={(event) => update("sort", event.target.value)}>
             <option value="recent">Recently updated</option>
             <option value="name">Name A–Z</option>
@@ -100,13 +111,19 @@ export function CatalogClient({ apps, previewEnvironment }: { apps: readonly Cat
         ) : null}
 
         <div className="catalog-results-heading">
-          <div><strong>{filteredApps.length}</strong><span>{filteredApps.length === 1 ? "app" : "apps"}</span></div>
-          {filteredApps.length > 0 && (category !== "all" || genre !== "all" || trust !== "all" || query) ? <button type="button" onClick={clear}>Clear filters</button> : null}
+          <div className="catalog-results-count"><strong>{filteredApps.length}</strong><span>{filteredApps.length === 1 ? "app" : "apps"}</span></div>
+          <div className="catalog-results-actions">
+            {filteredApps.length > 0 && (category !== "all" || genre !== "all" || channel === "approved" || query) ? <button className="catalog-clear-filters" type="button" onClick={clear}>Clear filters</button> : null}
+            <div className="catalog-view-toggle" role="group" aria-label="Catalogue layout">
+              <button type="button" aria-label="Compact grid" aria-pressed={view === "grid"} onClick={() => update("view", "grid", ["grid"])}><SquaresFour aria-hidden="true" /></button>
+              <button type="button" aria-label="List" aria-pressed={view === "list"} onClick={() => update("view", "list", ["grid"])}><ListBullets aria-hidden="true" /></button>
+            </div>
+          </div>
         </div>
 
         {filteredApps.length ? (
-          <div className="catalogue-grid">
-            {filteredApps.map((app) => <StoreAppCard app={app} key={app.id} />)}
+          <div className={`catalogue-grid${view === "list" ? " catalogue-grid-list" : ""}`}>
+            {filteredApps.map((app) => <StoreAppCard app={app} channel={channel} key={app.id} />)}
             <aside className="catalogue-growing-card">
               <RocketLaunch aria-hidden="true" weight="duotone" />
               <p className="eyebrow">Catalogue in progress</p>

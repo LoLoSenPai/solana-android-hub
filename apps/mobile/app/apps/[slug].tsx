@@ -297,7 +297,7 @@ export default function AppDetailScreen() {
                 last
               />
             </View>
-            <Text className="mt-3 text-xs leading-5 text-muted">Solana Mobile approval is shown only when independently verified. Dapport is independent from Solana Mobile.</Text>
+            <Text className="mt-3 text-xs leading-5 text-muted">This status is shown only when the package and version match the release currently visible on Solana Mobile.</Text>
           </DisclosureSection>
 
           <SectionTitle title="Details" />

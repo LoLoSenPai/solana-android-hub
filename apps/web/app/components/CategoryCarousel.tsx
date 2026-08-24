@@ -63,15 +63,17 @@ export function CategoryCarousel({ counts }: Readonly<{ counts: Readonly<Record<
           const rail = railRef.current;
           if (!rail) return;
           pointerRef.current = { active: true, moved: false, startX: event.clientX, startScroll: rail.scrollLeft };
-          rail.setPointerCapture(event.pointerId);
-          rail.classList.add("is-dragging");
         }}
         onPointerMove={(event) => {
           const rail = railRef.current;
           const pointer = pointerRef.current;
           if (!rail || !pointer.active) return;
           const distance = event.clientX - pointer.startX;
-          if (Math.abs(distance) > 5) pointer.moved = true;
+          if (Math.abs(distance) > 5 && !pointer.moved) {
+            pointer.moved = true;
+            rail.setPointerCapture(event.pointerId);
+            rail.classList.add("is-dragging");
+          }
           rail.scrollLeft = pointer.startScroll - distance;
         }}
         onPointerUp={(event) => {
@@ -83,6 +85,7 @@ export function CategoryCarousel({ counts }: Readonly<{ counts: Readonly<Record<
         }}
         onPointerCancel={() => {
           pointerRef.current.active = false;
+          pointerRef.current.moved = false;
           railRef.current?.classList.remove("is-dragging");
         }}
         onClickCapture={(event) => {

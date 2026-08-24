@@ -9,9 +9,9 @@ describe("release presentation", () => {
   });
 
   it("presents approval without implying missing evidence is approval", () => {
-    expect(approvalLabel("verified_approved")).toBe("Approved");
-    expect(approvalLabel("unknown")).toBe("Not verified");
-    expect(approvalLabel("rejected")).toBe("Rejected");
+    expect(approvalLabel("verified_approved")).toBe("Visible on Solana Mobile");
+    expect(approvalLabel("unknown")).toBe("Not verified by Solana Mobile");
+    expect(approvalLabel("rejected")).toBe("Not verified by Solana Mobile");
   });
 
   it("turns common Android permission identifiers into useful names", () => {
