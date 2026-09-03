@@ -2,7 +2,7 @@ import { HubApiClient, type CatalogAppDto } from "@hub/api-client";
 import Constants from "expo-constants";
 import { getCatalogChannel, type CatalogChannel } from "@/storage/database";
 
-const origin = process.env.EXPO_PUBLIC_HUB_ORIGIN
+const origin = readStringProperty(process.env, "EXPO_PUBLIC_HUB_ORIGIN")
   ?? readConfiguredOrigin(Constants)
   ?? "http://10.0.2.2:3000";
 const client = new HubApiClient(origin);
@@ -28,4 +28,10 @@ function readConfiguredOrigin(value: unknown): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function readStringProperty(value: unknown, key: string): string | undefined {
+  if (!isRecord(value)) return undefined;
+  const candidate = value[key];
+  return typeof candidate === "string" ? candidate : undefined;
 }
