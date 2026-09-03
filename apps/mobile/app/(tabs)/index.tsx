@@ -68,7 +68,7 @@ export default function DiscoverScreen() {
         showsVerticalScrollIndicator={false}
       >
         <PortalHero
-          onExplore={() => router.push("/catalogue" as Href)}
+          onExplore={() => router.push("./catalogue")}
           onSettings={() => router.push("/settings")}
         />
 
@@ -80,7 +80,7 @@ export default function DiscoverScreen() {
             ))}
           </View>
 
-          <SectionHeader title="New on Dapport" action="Full catalogue" onPress={() => router.push("/catalogue" as Href)} />
+          <SectionHeader title="New on Dapport" action="Full catalogue" onPress={() => router.push("./catalogue")} />
           {loading ? (
             <View className="items-center rounded-[26px] border border-line bg-surface px-7 py-10">
               <ActivityIndicator color="#77A7FF" />
