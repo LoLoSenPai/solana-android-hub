@@ -2,9 +2,9 @@ import { HubApiClient, type CatalogAppDto } from "@hub/api-client";
 import Constants from "expo-constants";
 import { getCatalogChannel, type CatalogChannel } from "@/storage/database";
 
-const configuredOrigin: unknown = Constants.expoConfig?.extra?.hubOrigin;
 const origin = process.env.EXPO_PUBLIC_HUB_ORIGIN
-  ?? (typeof configuredOrigin === "string" ? configuredOrigin : "http://10.0.2.2:3000");
+  ?? readConfiguredOrigin(Constants)
+  ?? "http://10.0.2.2:3000";
 const client = new HubApiClient(origin);
 
 export async function loadCatalog(channel?: CatalogChannel): Promise<readonly CatalogAppDto[]> {
@@ -16,3 +16,16 @@ export async function loadCatalogApp(slug: string): Promise<CatalogAppDto | unde
 }
 
 export const hubOrigin = origin;
+
+function readConfiguredOrigin(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  const expoConfig = value.expoConfig;
+  if (!isRecord(expoConfig)) return undefined;
+  const extra = expoConfig.extra;
+  if (!isRecord(extra)) return undefined;
+  return typeof extra.hubOrigin === "string" ? extra.hubOrigin : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
