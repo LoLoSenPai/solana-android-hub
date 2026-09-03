@@ -1438,7 +1438,7 @@ body {
   color: var(--muted);
   font-size: .84rem;
 }
-.solana-mobile-rating-detail strong { color: var(--ink); }
+.solana-mobile-rating-detail strong { color: var(--text); }
 
 .catalog-results-heading > .catalog-results-actions {
   display: flex;

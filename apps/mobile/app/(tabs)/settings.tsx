@@ -66,16 +66,17 @@ export default function SettingsScreen() {
             </View>
             {checkingUpdate ? <ActivityIndicator color="#77A7FF" /> : null}
           </View>
-          {!checkingUpdate ? (
-            <Pressable
-              className={update?.status === "available" ? "mt-5 rounded-[16px] bg-mint p-3.5 active:opacity-80" : "mt-5 rounded-[16px] border border-line p-3.5 active:bg-raised"}
-              onPress={() => update?.status === "available" ? router.push("/hub-update") : void checkNow(setUpdate, setCheckingUpdate)}
-            >
-              <Text className={update?.status === "available" ? "text-center font-bold text-canvas" : "text-center font-bold text-ink"}>
-                {update?.status === "available" ? "Update now" : "Check for updates"}
-              </Text>
-            </Pressable>
-          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: checkingUpdate, disabled: checkingUpdate }}
+            className={updateButtonClassName(update, checkingUpdate)}
+            disabled={checkingUpdate}
+            onPress={() => update?.status === "available" ? router.push("/hub-update") : void checkNow(setUpdate, setCheckingUpdate)}
+          >
+            <Text className={update?.status === "available" ? "text-center font-bold text-canvas" : "text-center font-bold text-ink"}>
+              {updateButtonLabel(update, checkingUpdate)}
+            </Text>
+          </Pressable>
         </View>
 
         <Text className="mb-3 text-xs font-bold uppercase tracking-[1.6px] text-muted">Privacy & security</Text>
@@ -129,6 +130,23 @@ function updateDetail(update: HubUpdateCheck | null): string {
   if (update.status === "current") return `Installed version ${update.current.versionName ?? update.current.versionCode}`;
   if (update.status === "disabled") return "Integrated updates are enabled in the production Dapport build.";
   return update.message;
+}
+
+function updateButtonClassName(update: HubUpdateCheck | null, checking: boolean): string {
+  if (update?.status === "available") {
+    return "mt-5 rounded-[16px] bg-mint p-3.5 active:opacity-80";
+  }
+  if (checking) {
+    return "mt-5 rounded-[16px] border border-line bg-raised p-3.5 opacity-60";
+  }
+  return "mt-5 rounded-[16px] border border-line p-3.5 active:bg-raised";
+}
+
+function updateButtonLabel(update: HubUpdateCheck | null, checking: boolean): string {
+  if (checking) return "Checking for updates…";
+  if (update?.status === "available") return "Update now";
+  if (update?.status === "current") return "Check again";
+  return "Check for updates";
 }
 
 function formatMegabytes(bytes: number): string {
