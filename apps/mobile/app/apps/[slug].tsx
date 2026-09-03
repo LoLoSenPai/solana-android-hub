@@ -7,6 +7,7 @@ import { ActivityIndicator, Animated, Image, Pressable, ScrollView, Text, useWin
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppArtwork } from "@/components/AppArtwork";
 import { HubSymbol } from "@/components/HubSymbol";
+import { SolanaMobileRating } from "@/components/SolanaMobileRating";
 import { categoryDefinition } from "@/features/catalog/discovery";
 import { loadCatalogApp } from "@/features/catalog/api";
 import { getInstallAction, type InstallAction } from "@/features/catalog/install-action";
@@ -163,6 +164,7 @@ export default function AppDetailScreen() {
         <View className="bg-canvas px-5" style={{ paddingTop: 108 }}>
           <Text className="text-[32px] font-bold leading-[37px] tracking-[-0.7px] text-ink">{app.name}</Text>
           <Text className="mt-2 text-base leading-6 text-muted">{app.shortDescription ?? "Discover this Solana app"}</Text>
+          <SolanaMobileRating rating={app.solanaMobileRating} detail />
           {app.genres.length ? <View className="mt-4 flex-row flex-wrap gap-2">{app.genres.map((genre) => <View className="rounded-full border border-line bg-surface px-3 py-2" key={genre}><Text className="text-xs font-semibold text-muted">{genre === "rpg" ? "RPG" : `${genre.charAt(0).toUpperCase()}${genre.slice(1)}`}</Text></View>)}</View> : null}
           {isUpdate ? (
             <View className="mt-4 flex-row items-center self-start rounded-full bg-coral px-4 py-2">

@@ -59,6 +59,27 @@ export interface SolanaMobileApprovalProvider {
   lookupLatestVisibleRelease(androidPackage: string): Promise<OfficialStoreReleaseLookup>;
 }
 
+export type OfficialStoreRatingLookup =
+  | {
+      status: "available";
+      androidPackage: string;
+      averageRating: number | null;
+      reviewsByRating: readonly number[];
+      checkedAt: string;
+      systemContext: OfficialStoreSystemContext;
+      sourceReference: string;
+    }
+  | {
+      status: "unavailable";
+      androidPackage: string;
+      checkedAt: string;
+      errorCode: string;
+    };
+
+export interface SolanaMobileRatingProvider {
+  lookupRating(androidPackage: string): Promise<OfficialStoreRatingLookup>;
+}
+
 export interface ApkValidationManifest {
   runId: string;
   apkUrl: string;

@@ -26,6 +26,10 @@ export interface CatalogAppRecord {
   category: CatalogCategory;
   genres: readonly GameGenre[];
   publisherLinks: PublisherLinks;
+  solanaMobileRating: {
+    averageRating: number;
+    reviewsByRating: readonly [number, number, number, number, number];
+  } | null;
   eligibility: AppEligibility;
   release: ReleaseCandidate;
   binary: {
@@ -54,6 +58,8 @@ interface CatalogRow {
   hub_category: string | null;
   hub_tags: unknown;
   publisher_links: unknown;
+  official_average_rating: number | null;
+  official_reviews_by_rating: unknown;
   claim_status: AppEligibility["claimStatus"];
   authority_address: string | null;
   distribution_enabled: boolean;
@@ -96,6 +102,8 @@ export class CatalogRepository {
         classification.primary_category as hub_category,
         classification.tags as hub_tags,
         coalesce(publisher_links.links, '{}'::jsonb) as publisher_links,
+        (store_rating.rating #>> '{averageRating}')::double precision as official_average_rating,
+        store_rating.rating #> '{reviewsByRating}' as official_reviews_by_rating,
         coalesce(
           nullif(r.source_snapshot #>> '{releaseMetadata,properties,category}', ''),
           nullif(a.source_snapshot #>> '{appMetadata,properties,category}', '')
@@ -143,6 +151,15 @@ export class CatalogRepository {
       ) approval on true
       left join hub.app_classifications classification on classification.app_id = a.id
       left join lateral (
+        select job.result #> '{officialRating}' as rating
+        from hub.sync_jobs job
+        where job.app_id = a.id
+          and job.status = 'succeeded'
+          and job.result #>> '{officialRating,status}' = 'available'
+        order by job.completed_at desc
+        limit 1
+      ) store_rating on true
+      left join lateral (
         select jsonb_object_agg(link.link_type::text, link.url) as links
         from hub.app_publisher_links link
         where link.app_id = a.id
@@ -176,6 +193,7 @@ function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
     category: normalizeCatalogCategory(row.hub_category ?? row.source_category),
     genres: normalizeGameGenres(row.hub_tags),
     publisherLinks: mapPublisherLinks(row.publisher_links),
+    solanaMobileRating: mapOfficialRating(row.official_average_rating, row.official_reviews_by_rating),
     eligibility: {
       appMint: row.app_mint,
       claimStatus: row.claim_status,
@@ -212,4 +230,22 @@ function mapPublisherLinks(value: unknown): PublisherLinks {
   const links = value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
   const link = (type: keyof PublisherLinks) => typeof links[type] === "string" ? links[type] : null;
   return { website: link("website"), x: link("x"), discord: link("discord"), telegram: link("telegram") };
+}
+
+function mapOfficialRating(averageRating: number | null, value: unknown): CatalogAppRecord["solanaMobileRating"] {
+  if (averageRating === null || !Number.isFinite(averageRating) || averageRating < 0 || averageRating > 5) return null;
+  if (!Array.isArray(value) || value.length !== 5) return null;
+  const reviewsByRating = value.map(Number);
+  if (reviewsByRating.some((count) => !Number.isInteger(count) || count < 0)) return null;
+  if (reviewsByRating.reduce((total, count) => total + count, 0) === 0) return null;
+  return {
+    averageRating,
+    reviewsByRating: [
+      reviewsByRating[0]!,
+      reviewsByRating[1]!,
+      reviewsByRating[2]!,
+      reviewsByRating[3]!,
+      reviewsByRating[4]!
+    ]
+  };
 }

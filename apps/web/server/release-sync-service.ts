@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { PublisherRepository, ReleaseRepository, type SavedRelease, type ScheduledSyncTarget, type SessionRecord } from "@hub/database";
+import { PublisherRepository, ReleaseRepository, type OfficialStoreRatingSnapshot, type SavedRelease, type ScheduledSyncTarget, type SessionRecord } from "@hub/database";
 import {
   createHeliusFinalizedAccountReader,
   createHeliusReleaseDiscovery,
@@ -15,6 +15,7 @@ import { requestBinaryValidation } from "./validation-service";
 const publisherRepository = new PublisherRepository(database);
 const releaseRepository = new ReleaseRepository(database);
 const approvalProvider = new OfficialSolanaMobileApprovalProvider();
+const OFFICIAL_RATING_REFRESH_MS = 6 * 60 * 60 * 1_000;
 
 interface VerifiedReleaseCandidate {
   mint: string;
@@ -94,16 +95,23 @@ export async function syncPublisherApp(
         initialBackfill
       }));
     }
-    const officialApproval = app.distributionEnabled
-      ? await reconcileOfficialApproval(app.id, app.packageName)
-      : { status: "skipped_no_consent" as const };
+    const [officialApproval, officialRating] = app.distributionEnabled
+      ? await Promise.all([
+          reconcileOfficialApproval(app.id, app.packageName),
+          reconcileOfficialRating(app.id, app.packageName)
+        ])
+      : [
+          { status: "skipped_no_consent" as const },
+          { status: "skipped_no_consent" as const }
+        ];
     const maxReleaseSlot = verified.reduce((slot, item) => item.evidence.finalizedSlot > slot ? item.evidence.finalizedSlot : slot, authority.finalizedSlot);
     await releaseRepository.completeSyncJob(job, {
       discovered: discovered.length,
       normalized: verified.length,
       releases,
       failures,
-      officialApproval
+      officialApproval,
+      officialRating
     }, maxReleaseSlot);
     const validationFailures: Array<{ releaseId: string; code: string }> = [];
     for (const release of releases.filter((item) => shouldRequestAutomaticValidation(app.releasePolicy, item))) {
@@ -148,6 +156,41 @@ async function reconcileOfficialApproval(appId: string, packageName: string): Pr
   } catch (error) {
     return { status: "unavailable", errorCode: errorCode(error) };
   }
+}
+
+async function reconcileOfficialRating(appId: string, packageName: string): Promise<{
+  status: "available";
+  averageRating: number | null;
+  reviewsByRating: readonly number[];
+  sourceReference: string;
+  checkedAt: string;
+} | {
+  status: "unavailable";
+  errorCode: string;
+}> {
+  let cached: OfficialStoreRatingSnapshot | null = null;
+  try {
+    cached = await releaseRepository.findLatestOfficialStoreRating(appId);
+    if (cached && Date.parse(cached.checkedAt) >= Date.now() - OFFICIAL_RATING_REFRESH_MS) {
+      return { status: "available", ...cached };
+    }
+  } catch {
+    // A failed freshness check should not prevent a best-effort provider refresh.
+  }
+
+  const lookup = await approvalProvider.lookupRating(packageName);
+  if (lookup.status === "unavailable") {
+    return cached
+      ? { status: "available", ...cached }
+      : { status: "unavailable", errorCode: lookup.errorCode };
+  }
+  return {
+    status: "available",
+    averageRating: lookup.averageRating,
+    reviewsByRating: lookup.reviewsByRating,
+    sourceReference: lookup.sourceReference,
+    checkedAt: lookup.checkedAt
+  };
 }
 
 const authorityLossCodes = new Set([

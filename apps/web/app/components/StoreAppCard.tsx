@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { appHref } from "../catalog/catalog-channel";
 import { categoryLabel, genreLabel } from "./catalog-config";
+import { SolanaMobileRating } from "./SolanaMobileRating";
 
 export function StoreAppCard({
   app,
@@ -28,6 +29,7 @@ export function StoreAppCard({
           <div>
             <h3><Link href={href}>{app.name}</Link></h3>
             <p>{app.shortDescription ?? "Discover this Solana app"}</p>
+            <SolanaMobileRating rating={app.solanaMobileRating} />
           </div>
         </div>
         <div className="catalogue-list-category">
@@ -56,7 +58,7 @@ export function StoreAppCard({
       <div className="catalogue-card-body">
         <div className="catalogue-card-title">
           <AppIcon app={app} />
-          <div><h3><Link href={href}>{app.name}</Link></h3><p>{app.shortDescription ?? "Discover this Solana app"}</p></div>
+          <div><h3><Link href={href}>{app.name}</Link></h3><p>{app.shortDescription ?? "Discover this Solana app"}</p><SolanaMobileRating rating={app.solanaMobileRating} /></div>
           <Link className="card-action" href={href}>View app</Link>
         </div>
         <div className="catalogue-card-meta">

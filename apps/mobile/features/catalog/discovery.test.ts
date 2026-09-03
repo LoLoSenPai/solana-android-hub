@@ -144,6 +144,7 @@ function app(input: {
     category: input.category,
     genres: input.category === "games" ? ["puzzle"] : [],
     publisherLinks: { website: null, x: null, discord: null, telegram: null },
+    solanaMobileRating: null,
     releaseUpdatedAt: input.updatedAt,
     latestRelease: {
       id: `${input.id}-release`,

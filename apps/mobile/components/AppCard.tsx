@@ -3,6 +3,7 @@ import { Link } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { AppArtwork } from "./AppArtwork";
 import { HubSymbol } from "./HubSymbol";
+import { SolanaMobileRating } from "./SolanaMobileRating";
 import { formatCategory, type AppLocalStatus } from "@/features/catalog/discovery";
 
 interface AppCardProps {
@@ -32,9 +33,12 @@ export function AppCard({ app, localStatus = "available", showCategory = true }:
             {app.shortDescription ?? "Discover this Solana app"}
           </Text>
           <View className="mt-3 flex-row items-center justify-between">
-            <Text className="text-xs text-muted">
-              {showCategory ? formatCategory(app.category) : app.genres[0] ? formatGenre(app.genres[0]) : `Version ${app.latestRelease.versionName}`}
-            </Text>
+            <View className="mr-2 min-w-0 flex-1 flex-row items-center gap-3">
+              <Text className="min-w-0 shrink text-xs text-muted" numberOfLines={1}>
+                {showCategory ? formatCategory(app.category) : app.genres[0] ? formatGenre(app.genres[0]) : `Version ${app.latestRelease.versionName}`}
+              </Text>
+              <SolanaMobileRating rating={app.solanaMobileRating} />
+            </View>
             <View className={localStatus === "update" ? "flex-row items-center rounded-full bg-coral px-3 py-1.5" : "flex-row items-center rounded-full bg-ink px-3 py-1.5"}>
               {localStatus === "update" ? <HubSymbol name="update" size={14} color="#091018" /> : null}
               <Text className={localStatus === "update" ? "ml-1 text-xs font-bold text-canvas" : "text-xs font-bold text-canvas"}>{actionLabel}</Text>

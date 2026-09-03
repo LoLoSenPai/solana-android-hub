@@ -188,7 +188,7 @@ h3 { font-size: 1.35rem; line-height: 1.05; }
 .detail-app-icon { position: relative; width: 9rem; height: 9rem; margin-top: -4.5rem; border: .55rem solid var(--ink); border-radius: 2.2rem; object-fit: cover; background: var(--ink); }
 .detail-title-copy h1 { font-size: clamp(3.3rem, 6vw, 6.5rem); }
 .detail-title-copy { min-width: 0; }
-.detail-title-copy > p:last-child { color: var(--muted); font-size: 1.05rem; margin: .8rem 0 0; }
+.detail-title-copy > p:not(.eyebrow) { color: var(--muted); font-size: 1.05rem; margin: .8rem 0 0; }
 .detail-primary-action { align-self: start; display: grid; gap: .65rem; justify-items: stretch; margin-top: 2rem; text-align: center; }
 .detail-primary-action small { color: var(--muted); line-height: 1.45; }
 .detail-primary-action .secondary-action { min-height: 3rem; }
@@ -1420,6 +1420,25 @@ body {
 .catalogue-card-meta .catalogue-status-dapport { color: #bfd0ff; border-color: rgba(126,158,235,.36); background: rgba(48,75,135,.24); }
 .catalogue-card-meta .catalogue-status-solana { color: #80eadc; border-color: rgba(74,211,194,.36); background: rgba(29,108,101,.23); }
 .catalogue-card-meta .catalogue-status-preview { color: #f3c879; border-color: rgba(223,174,83,.34); background: rgba(107,72,28,.25); }
+.solana-mobile-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+  margin-top: .28rem;
+  color: #8da9e5;
+  font-size: .7rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.solana-mobile-rating-stars { color: #ffc857; letter-spacing: .06em; }
+.solana-mobile-rating strong { color: #dbe6ff; font-weight: 760; }
+.solana-mobile-rating-detail {
+  gap: .42rem;
+  margin-top: .9rem;
+  color: var(--muted);
+  font-size: .84rem;
+}
+.solana-mobile-rating-detail strong { color: var(--ink); }
 
 .catalog-results-heading > .catalog-results-actions {
   display: flex;

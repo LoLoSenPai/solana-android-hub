@@ -41,7 +41,23 @@ describe("catalog API client", () => {
       category: "other",
       genres: [],
       publisherLinks: { website: null, x: null, discord: null, telegram: null },
+      solanaMobileRating: null,
       releaseUpdatedAt: null
+    });
+  });
+
+  it("parses the official rating aggregate without any review text", () => {
+    expect(catalogAppDtoSchema.parse({
+      ...legacyItem,
+      solanaMobileRating: {
+        averageRating: 4.2,
+        reviewCount: 16,
+        reviewsByRating: [0, 1, 3, 4, 8]
+      }
+    }).solanaMobileRating).toEqual({
+      averageRating: 4.2,
+      reviewCount: 16,
+      reviewsByRating: [0, 1, 3, 4, 8]
     });
   });
 

@@ -93,6 +93,11 @@ function toDto(record: CatalogAppRecord): CatalogAppDto {
     category: record.category,
     genres: [...record.genres],
     publisherLinks: record.publisherLinks,
+    solanaMobileRating: record.solanaMobileRating ? {
+      averageRating: record.solanaMobileRating.averageRating,
+      reviewCount: record.solanaMobileRating.reviewsByRating.reduce((total, count) => total + count, 0),
+      reviewsByRating: [...record.solanaMobileRating.reviewsByRating]
+    } : null,
     releaseUpdatedAt: record.releaseUpdatedAt.toISOString(),
     latestRelease: {
       id: record.release.id,

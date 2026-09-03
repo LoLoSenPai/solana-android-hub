@@ -46,6 +46,7 @@ function app(id: string, category: CatalogAppDto["category"], genres: CatalogApp
     category,
     genres,
     publisherLinks: { website: null, x: null, discord: null, telegram: null },
+    solanaMobileRating: null,
     releaseUpdatedAt,
     latestRelease: {
       id: "20000000-0000-4000-8000-000000000001",

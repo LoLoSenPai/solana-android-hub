@@ -49,6 +49,21 @@ export const releaseDtoSchema = z.object({
   trust: trustFactsDtoSchema
 });
 
+export const solanaMobileRatingDtoSchema = z.object({
+  averageRating: z.number().min(0).max(5),
+  reviewCount: z.int().nonnegative(),
+  reviewsByRating: z.tuple([
+    z.int().nonnegative(),
+    z.int().nonnegative(),
+    z.int().nonnegative(),
+    z.int().nonnegative(),
+    z.int().nonnegative()
+  ])
+}).refine(
+  (value) => value.reviewCount === value.reviewsByRating.reduce((total, count) => total + count, 0),
+  { message: "Review count must match the rating buckets", path: ["reviewCount"] }
+);
+
 export const catalogAppDtoSchema = z.object({
   id: z.uuid(),
   slug: z.string(),
@@ -63,6 +78,7 @@ export const catalogAppDtoSchema = z.object({
   category: catalogCategorySchema.default("other"),
   genres: z.array(gameGenreSchema).default([]),
   publisherLinks: publisherLinksDtoSchema,
+  solanaMobileRating: solanaMobileRatingDtoSchema.nullable().default(null),
   releaseUpdatedAt: z.iso.datetime().nullable().default(null),
   latestRelease: releaseDtoSchema
 });
@@ -82,6 +98,7 @@ export const publicConfigDtoSchema = z.object({
 
 export type TrustFactsDto = z.infer<typeof trustFactsDtoSchema>;
 export type ReleaseDto = z.infer<typeof releaseDtoSchema>;
+export type SolanaMobileRatingDto = z.infer<typeof solanaMobileRatingDtoSchema>;
 export type CatalogAppDto = z.infer<typeof catalogAppDtoSchema>;
 export type CatalogResponse = z.infer<typeof catalogResponseSchema>;
 export type PublicConfigDto = z.infer<typeof publicConfigDtoSchema>;

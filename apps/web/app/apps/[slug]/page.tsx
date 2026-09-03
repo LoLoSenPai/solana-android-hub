@@ -16,6 +16,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ScreenshotRail } from "../../components/ScreenshotRail";
+import { SolanaMobileRating } from "../../components/SolanaMobileRating";
 import { catalogChannelFromParam, catalogHref } from "../../catalog/catalog-channel";
 import { buildAppSocialMetadata } from "../../../server/app-social-metadata";
 import { getCatalogApp } from "../../../server/catalog-service";
@@ -76,6 +77,7 @@ export default async function AppDetailPage({ params, searchParams }: {
             <p className="eyebrow">{categoryFromApp(app.category)}</p>
             <h1 id="app-title">{app.name}</h1>
             <p>{app.shortDescription ?? "A publisher-authorized Android app for the Solana ecosystem."}</p>
+            <SolanaMobileRating rating={app.solanaMobileRating} detail />
           </div>
           <div className="detail-primary-action">
             <Link className="primary-action" href="/download">Install with Dapport</Link>

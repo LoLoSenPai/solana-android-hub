@@ -3,6 +3,7 @@ import {
   OfficialSolanaMobileApprovalProvider,
   SEEKER_STORE_CONTEXT,
   SOLANA_MOBILE_CATALOG_SOURCE,
+  SOLANA_MOBILE_RATING_SOURCE,
   type FetchLike
 } from "../server/solana-mobile-approval-provider";
 
@@ -90,6 +91,67 @@ describe("Solana Mobile official approval provider", () => {
     await expect(provider.lookupLatestVisibleRelease("com.example.game")).resolves.toMatchObject({
       status: "unavailable",
       errorCode: "OFFICIAL_PROVIDER_INVALID_RESPONSE"
+    });
+  });
+
+  it("returns the official average and five review buckets for one consented package", async () => {
+    const fetchImpl = vi.fn<FetchLike>().mockResolvedValue(jsonResponse({
+      data: {
+        dAppByAndroidPackage: {
+          androidPackage: "com.example.game",
+          rating: { rating: 4.2, reviewsByRating: [0, 1, 3, 4, 8] }
+        }
+      }
+    }));
+    const provider = new OfficialSolanaMobileApprovalProvider(fetchImpl, () => checkedAt);
+
+    await expect(provider.lookupRating("com.example.game")).resolves.toEqual({
+      status: "available",
+      androidPackage: "com.example.game",
+      averageRating: 4.2,
+      reviewsByRating: [0, 1, 3, 4, 8],
+      checkedAt: checkedAt.toISOString(),
+      systemContext: SEEKER_STORE_CONTEXT,
+      sourceReference: SOLANA_MOBILE_RATING_SOURCE
+    });
+
+    const [, init] = fetchImpl.mock.calls[0] ?? [];
+    if (typeof init?.body !== "string") throw new Error("Expected a JSON request body");
+    const body = JSON.parse(init.body) as { query: string };
+    expect(body.query).toContain("dAppByAndroidPackage");
+    expect(body.query).toContain("rating { rating reviewsByRating }");
+    expect(body.query).not.toMatch(/description|icon|screenshots|publisherDetails|lastRelease/);
+  });
+
+  it("normalizes a successful package response with no ratings", async () => {
+    const provider = new OfficialSolanaMobileApprovalProvider(
+      vi.fn<FetchLike>().mockResolvedValue(jsonResponse({
+        data: {
+          dAppByAndroidPackage: {
+            androidPackage: "com.example.game",
+            rating: null
+          }
+        }
+      })),
+      () => checkedAt
+    );
+
+    await expect(provider.lookupRating("com.example.game")).resolves.toMatchObject({
+      status: "available",
+      averageRating: null,
+      reviewsByRating: [0, 0, 0, 0, 0]
+    });
+  });
+
+  it("does not produce a rating update when the detail query fails", async () => {
+    const provider = new OfficialSolanaMobileApprovalProvider(
+      vi.fn<FetchLike>().mockResolvedValue(jsonResponse({ data: null, errors: [{ message: "error" }] })),
+      () => checkedAt
+    );
+
+    await expect(provider.lookupRating("com.example.game")).resolves.toMatchObject({
+      status: "unavailable",
+      errorCode: "OFFICIAL_PROVIDER_GRAPHQL_ERROR"
     });
   });
 });

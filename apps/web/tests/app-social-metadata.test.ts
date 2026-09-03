@@ -16,6 +16,7 @@ const app = {
   category: "games",
   genres: ["puzzle"],
   publisherLinks: { website: "https://degenmerge.example/", x: null, discord: null, telegram: null },
+  solanaMobileRating: { averageRating: 4.5, reviewCount: 12, reviewsByRating: [0, 0, 1, 4, 7] },
   releaseUpdatedAt: "2026-08-09T12:00:00.000Z",
   latestRelease: {
     id: "22222222-2222-4222-8222-222222222222",

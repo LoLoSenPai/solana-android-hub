@@ -29,6 +29,13 @@ export interface SavedRelease {
 
 export type OfficialApprovalReconciliation = "verified" | "not_visible" | "release_not_found";
 
+export interface OfficialStoreRatingSnapshot {
+  averageRating: number | null;
+  reviewsByRating: readonly [number, number, number, number, number];
+  sourceReference: string;
+  checkedAt: string;
+}
+
 export class ReleaseRepository {
   public constructor(private readonly sql: HubSql) {}
 
@@ -110,6 +117,44 @@ export class ReleaseRepository {
   public async countReleases(appId: string): Promise<number> {
     const [row] = await this.sql<{ count: string }[]>`select count(*)::text as count from hub.releases where app_id = ${appId}`;
     return Number(row?.count ?? 0);
+  }
+
+  public async findLatestOfficialStoreRating(appId: string): Promise<OfficialStoreRatingSnapshot | null> {
+    const [row] = await this.sql<{
+      average_rating: number | null;
+      reviews_by_rating: unknown;
+      source_reference: string;
+      checked_at: string;
+    }[]>`
+      select
+        (result #>> '{officialRating,averageRating}')::double precision as average_rating,
+        result #> '{officialRating,reviewsByRating}' as reviews_by_rating,
+        result #>> '{officialRating,sourceReference}' as source_reference,
+        result #>> '{officialRating,checkedAt}' as checked_at
+      from hub.sync_jobs
+      where app_id = ${appId}
+        and status = 'succeeded'
+        and result #>> '{officialRating,status}' = 'available'
+      order by completed_at desc
+      limit 1
+    `;
+    if (!row || !Array.isArray(row.reviews_by_rating) || row.reviews_by_rating.length !== 5) return null;
+    const reviewsByRating = row.reviews_by_rating.map(Number);
+    if (reviewsByRating.some((count) => !Number.isInteger(count) || count < 0)) return null;
+    if (row.average_rating !== null && (!Number.isFinite(row.average_rating) || row.average_rating < 0 || row.average_rating > 5)) return null;
+    if (!row.source_reference || !Number.isFinite(Date.parse(row.checked_at))) return null;
+    return {
+      averageRating: row.average_rating,
+      reviewsByRating: [
+        reviewsByRating[0]!,
+        reviewsByRating[1]!,
+        reviewsByRating[2]!,
+        reviewsByRating[3]!,
+        reviewsByRating[4]!
+      ],
+      sourceReference: row.source_reference,
+      checkedAt: row.checked_at
+    };
   }
 
   public async reconcileOfficialStoreApproval(input: {

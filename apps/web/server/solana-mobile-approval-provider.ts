@@ -1,12 +1,15 @@
 import type {
+  OfficialStoreRatingLookup,
   OfficialStoreReleaseLookup,
   OfficialStoreSystemContext,
-  SolanaMobileApprovalProvider
+  SolanaMobileApprovalProvider,
+  SolanaMobileRatingProvider
 } from "@hub/domain";
 import { z } from "zod";
 
 export const SOLANA_MOBILE_GRAPHQL_ENDPOINT = "https://dappstore.solanamobile.com/graphql";
 export const SOLANA_MOBILE_CATALOG_SOURCE = `${SOLANA_MOBILE_GRAPHQL_ENDPOINT}#explore`;
+export const SOLANA_MOBILE_RATING_SOURCE = `${SOLANA_MOBILE_GRAPHQL_ENDPOINT}#dAppByAndroidPackage.rating`;
 
 export const SEEKER_STORE_CONTEXT: OfficialStoreSystemContext = {
   locale: "en-US",
@@ -49,10 +52,23 @@ const exploreResponseSchema = z.object({
   }).nullable().optional(),
   errors: z.array(z.object({ message: z.string().optional() }).passthrough()).optional()
 }).passthrough();
+const ratingValueSchema = z.object({
+  rating: z.number().finite().min(0).max(5),
+  reviewsByRating: z.array(z.number().int().nonnegative()).max(5)
+}).nullable();
+const ratingResponseSchema = z.object({
+  data: z.object({
+    dAppByAndroidPackage: z.object({
+      androidPackage: androidPackageSchema,
+      rating: ratingValueSchema
+    }).nullable()
+  }).nullable().optional(),
+  errors: z.array(z.object({ message: z.string().optional() }).passthrough()).optional()
+}).passthrough();
 
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-export class OfficialSolanaMobileApprovalProvider implements SolanaMobileApprovalProvider {
+export class OfficialSolanaMobileApprovalProvider implements SolanaMobileApprovalProvider, SolanaMobileRatingProvider {
   private catalogPromise: Promise<Map<string, bigint>> | null = null;
   private catalogExpiresAt = 0;
 
@@ -89,6 +105,33 @@ export class OfficialSolanaMobileApprovalProvider implements SolanaMobileApprova
     } catch (error) {
       const code = error instanceof OfficialProviderError ? error.code : "OFFICIAL_PROVIDER_UNAVAILABLE";
       return unavailable(parsedPackage.data, checkedAt, code);
+    }
+  }
+
+  public async lookupRating(androidPackage: string): Promise<OfficialStoreRatingLookup> {
+    const checkedAt = this.now().toISOString();
+    const parsedPackage = androidPackageSchema.safeParse(androidPackage);
+    if (!parsedPackage.success) return ratingUnavailable(androidPackage, checkedAt, "INVALID_ANDROID_PACKAGE");
+
+    try {
+      const parsed = await this.fetchRating(parsedPackage.data);
+      const app = parsed.data?.dAppByAndroidPackage;
+      if (app && app.androidPackage !== parsedPackage.data) {
+        throw new OfficialProviderError("OFFICIAL_PROVIDER_PACKAGE_MISMATCH");
+      }
+      const reviewsByRating = normalizeRatingBuckets(app?.rating?.reviewsByRating ?? []);
+      return {
+        status: "available",
+        androidPackage: parsedPackage.data,
+        averageRating: app?.rating?.rating ?? null,
+        reviewsByRating,
+        checkedAt,
+        systemContext: SEEKER_STORE_CONTEXT,
+        sourceReference: SOLANA_MOBILE_RATING_SOURCE
+      };
+    } catch (error) {
+      const code = error instanceof OfficialProviderError ? error.code : "OFFICIAL_PROVIDER_UNAVAILABLE";
+      return ratingUnavailable(parsedPackage.data, checkedAt, code);
     }
   }
 
@@ -159,6 +202,42 @@ export class OfficialSolanaMobileApprovalProvider implements SolanaMobileApprova
     if (!parsed.data.data) throw new OfficialProviderError("OFFICIAL_PROVIDER_MISSING_DATA");
     return parsed.data;
   }
+
+  private async fetchRating(androidPackage: string): Promise<z.infer<typeof ratingResponseSchema>> {
+    const response = await this.fetchImpl(SOLANA_MOBILE_GRAPHQL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        origin: "https://dapport.app",
+        referer: "https://dapport.app/",
+        "user-agent": "Dapport/1.0 (+https://dapport.app)"
+      },
+      body: JSON.stringify({ query: buildRatingQuery(androidPackage) }),
+      redirect: "error",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+    if (!response.ok) throw new OfficialProviderError("OFFICIAL_PROVIDER_HTTP_ERROR");
+
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_RESPONSE_BYTES) throw new OfficialProviderError("OFFICIAL_PROVIDER_RESPONSE_TOO_LARGE");
+    const body = await response.text();
+    if (new TextEncoder().encode(body).byteLength > MAX_RESPONSE_BYTES) {
+      throw new OfficialProviderError("OFFICIAL_PROVIDER_RESPONSE_TOO_LARGE");
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(body);
+    } catch {
+      throw new OfficialProviderError("OFFICIAL_PROVIDER_INVALID_JSON");
+    }
+    const parsed = ratingResponseSchema.safeParse(json);
+    if (!parsed.success) throw new OfficialProviderError("OFFICIAL_PROVIDER_INVALID_RESPONSE");
+    if (parsed.data.errors?.length) throw new OfficialProviderError("OFFICIAL_PROVIDER_GRAPHQL_ERROR");
+    if (!parsed.data.data) throw new OfficialProviderError("OFFICIAL_PROVIDER_MISSING_DATA");
+    return parsed.data;
+  }
 }
 
 function buildExploreQuery(page: number): string {
@@ -189,6 +268,16 @@ function buildExploreQuery(page: number): string {
   }`;
 }
 
+function buildRatingQuery(androidPackage: string): string {
+  const context = `{locale: "${SEEKER_STORE_CONTEXT.locale}", platformSdk: ${SEEKER_STORE_CONTEXT.platformSdk}, pixelDensity: ${SEEKER_STORE_CONTEXT.pixelDensity}, model: "${SEEKER_STORE_CONTEXT.model}"}`;
+  return `query DapportOfficialRatingLookup {
+    dAppByAndroidPackage(systemContext: ${context}, androidPackage: ${JSON.stringify(androidPackage)}) {
+      androidPackage
+      rating { rating reviewsByRating }
+    }
+  }`;
+}
+
 class OfficialProviderError extends Error {
   public constructor(public readonly code: string) {
     super(code);
@@ -197,4 +286,12 @@ class OfficialProviderError extends Error {
 
 function unavailable(androidPackage: string, checkedAt: string, errorCode: string): OfficialStoreReleaseLookup {
   return { status: "unavailable", androidPackage, checkedAt, errorCode };
+}
+
+function ratingUnavailable(androidPackage: string, checkedAt: string, errorCode: string): OfficialStoreRatingLookup {
+  return { status: "unavailable", androidPackage, checkedAt, errorCode };
+}
+
+function normalizeRatingBuckets(values: readonly number[]): readonly number[] {
+  return Array.from({ length: 5 }, (_, index) => values[index] ?? 0);
 }
