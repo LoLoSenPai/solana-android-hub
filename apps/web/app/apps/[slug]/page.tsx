@@ -76,6 +76,11 @@ export default async function AppDetailPage({ params, searchParams }: {
           <div className="detail-title-copy">
             <p className="eyebrow">{categoryFromApp(app.category)}</p>
             <h1 id="app-title">{app.name}</h1>
+            {app.publisher ? (
+              <Link className="detail-publisher-profile" href={`/publishers/${encodeURIComponent(app.publisher.slug)}${channel === "approved" ? "?channel=approved" : ""}`}>
+                <UserFocus aria-hidden="true" /> {app.publisher.displayName ?? "View publisher profile"} <span aria-hidden="true">→</span>
+              </Link>
+            ) : null}
             <p>{app.shortDescription ?? "A publisher-authorized Android app for the Solana ecosystem."}</p>
             <SolanaMobileRating rating={app.solanaMobileRating} detail />
           </div>

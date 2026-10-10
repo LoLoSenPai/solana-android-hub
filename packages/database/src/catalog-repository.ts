@@ -13,6 +13,7 @@ import type { HubSql } from "./client";
 
 export interface CatalogAppRecord {
   id: string;
+  publisher?: { id: string; slug: string; displayName: string | null } | null;
   appMint: string;
   slug: string;
   packageName: string;
@@ -44,6 +45,9 @@ export interface CatalogAppRecord {
 
 interface CatalogRow {
   app_id: string;
+  publisher_id: string;
+  publisher_slug: string;
+  publisher_display_name: string | null;
   app_mint: string;
   slug: string;
   package_name: string;
@@ -85,10 +89,13 @@ interface CatalogRow {
 export class CatalogRepository {
   public constructor(private readonly sql: HubSql) {}
 
-  public async listReleaseCandidates(environment: AppEnvironment, query?: string, changedAfter?: Date): Promise<readonly CatalogAppRecord[]> {
+  public async listReleaseCandidates(environment: AppEnvironment, query?: string, changedAfter?: Date, publisherId?: string): Promise<readonly CatalogAppRecord[]> {
     const rows = await this.sql<CatalogRow[]>`
       select
         a.id as app_id,
+        p.id as publisher_id,
+        coalesce(p.profile_slug, p.id::text) as publisher_slug,
+        p.display_name as publisher_display_name,
         a.app_mint,
         a.slug,
         a.package_name,
@@ -129,6 +136,7 @@ export class CatalogRepository {
         approval.status as approval_status
         , r.updated_at as release_updated_at
       from hub.apps a
+      join hub.publishers p on p.id = a.publisher_id and p.status = 'active'
       join hub.releases r on r.app_id = a.id
       join lateral (
         select dc.status, dc.environment
@@ -168,6 +176,7 @@ export class CatalogRepository {
         and a.distribution_enabled = true
         and a.revoked_at is null
         and a.suspended_at is null
+        and (${publisherId ?? null}::uuid is null or a.publisher_id = ${publisherId ?? null}::uuid)
         and (${changedAfter ?? null}::timestamptz is null or r.updated_at > ${changedAfter ?? null})
         and (${query ?? null}::text is null or a.search_document @@ plainto_tsquery('simple', ${query ?? null}))
       order by a.name asc, r.version_code desc
@@ -180,6 +189,7 @@ export class CatalogRepository {
 function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
   return {
     id: row.app_id,
+    publisher: row.publisher_id ? { id: row.publisher_id, slug: row.publisher_slug, displayName: row.publisher_display_name } : null,
     appMint: row.app_mint,
     slug: row.slug,
     packageName: row.package_name,

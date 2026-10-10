@@ -3,6 +3,7 @@ export * from "./admin-repository";
 export * from "./catalog-repository";
 export * from "./client";
 export * from "./publisher-repository";
+export * from "./publisher-profile-repository";
 export * from "./publisher-operations-repository";
 export * from "./release-repository";
 export * from "./security-repository";

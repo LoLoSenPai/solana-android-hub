@@ -1,0 +1,10 @@
+.share { display: grid; gap: .6rem; max-width: 100%; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: .6rem; padding: .8rem 1.15rem; border: 1px solid rgba(157, 248, 212, .45); border-radius: 12px; background: rgba(157, 248, 212, .08); color: #a5f7d6; font: inherit; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.button:hover { background: rgba(157, 248, 212, .16); }
+.button:focus-visible, .fallback input:focus-visible { outline: 2px solid #a5f7d6; outline-offset: 4px; }
+.button:disabled { opacity: .65; cursor: wait; }
+.feedback { margin: 0; color: #b9c6cb; font-size: .8rem; }
+.feedback:empty { display: none; }
+.fallback { display: grid; gap: .4rem; width: min(100%, 30rem); }
+.fallback label { font-size: .8rem; color: #b9c6cb; }
+.fallback input { width: 100%; min-width: 0; padding: .7rem; border: 1px solid #34454e; border-radius: 8px; background: #101b24; color: #eef7f5; font: inherit; font-size: .85rem; }

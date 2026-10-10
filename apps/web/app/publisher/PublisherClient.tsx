@@ -4,7 +4,7 @@ import { CATALOG_CATEGORIES, EMPTY_PUBLISHER_LINKS, GAME_GENRES, type CatalogCat
 import { SolanaSignMessage, type SolanaSignMessageFeature } from "@solana/wallet-standard-features";
 import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount, WalletWithFeatures } from "@wallet-standard/base";
-import { StandardConnect, type StandardConnectFeature } from "@wallet-standard/features";
+import { StandardConnect, StandardEvents, type StandardConnectFeature, type StandardEventsFeature } from "@wallet-standard/features";
 import { AppWindow } from "@phosphor-icons/react/dist/csr/AppWindow";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
@@ -16,10 +16,11 @@ import { TrashSimple } from "@phosphor-icons/react/dist/csr/TrashSimple";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PublisherProfileEditor, type ProfileInput, type ProfileResponse } from "./PublisherProfileEditor";
 
 type CompatibleWallet = WalletWithFeatures<StandardConnectFeature & SolanaSignMessageFeature>;
 type ReleasePolicy = "automatic" | "manual";
-type WorkspaceTab = "setup" | "apps";
+type WorkspaceTab = "setup" | "apps" | "profile";
 type NoticeTone = "success" | "error" | "info";
 
 interface DiscoveredApp {
@@ -75,6 +76,27 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const walletPickerTrigger = useRef<HTMLButtonElement>(null);
   const walletPickerDialog = useRef<HTMLElement>(null);
   const firstWalletOption = useRef<HTMLButtonElement>(null);
+  const authenticationGeneration = useRef(0);
+
+  useEffect(() => {
+    if (!activeWallet || !account || !(StandardEvents in activeWallet.features)) return;
+    const events = (activeWallet as WalletWithFeatures<StandardEventsFeature & StandardConnectFeature & SolanaSignMessageFeature>).features[StandardEvents];
+    return events.on("change", (properties) => {
+      if (!properties.accounts) return;
+      const nextAccount = properties.accounts.find((candidate) => candidate.chains.includes("solana:mainnet")) ?? properties.accounts[0];
+      if (nextAccount?.address === account.address) return;
+      authenticationGeneration.current += 1;
+      setAccount(null);
+      setActiveWallet(null);
+      setApps([]);
+      setClaims({});
+      setReleases({});
+      setSelectedAppMint(null);
+      setWorkspaceTab("setup");
+      setStatus("Your wallet account changed. Connect and sign in again.");
+      setNoticeTone("info");
+    });
+  }, [activeWallet, account]);
 
   useEffect(() => {
     const update = () => {
@@ -321,6 +343,19 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     notify(`${candidate.name} store details are saved.`);
   });
 
+  const saveProfile = async (input: ProfileInput): Promise<ProfileResponse | null> => {
+    const generation = authenticationGeneration.current;
+    let result: ProfileResponse | null = null;
+    await run(async () => {
+      if (!account || !activeWallet) throw new Error("Reconnect your publisher wallet.");
+      const response = await api<ProfileResponse>("/api/v1/publisher/profile", mutation(input));
+      if (authenticationGeneration.current !== generation) return;
+      result = response;
+      notify("Your public profile is saved.");
+    });
+    return result;
+  };
+
   function run(action: () => Promise<void>): Promise<void> {
     setStatus(null);
     setBusy(true);
@@ -416,8 +451,13 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
           <button type="button" role="tab" aria-selected={workspaceTab === "apps"} onClick={() => setWorkspaceTab("apps")}>
             <AppWindow aria-hidden="true" /> My apps <span>{claimList.length}</span>
           </button>
+          <button id="publisher-profile-tab" type="button" role="tab" aria-selected={workspaceTab === "profile"} onClick={() => setWorkspaceTab("profile")}>
+            <Storefront aria-hidden="true" /> My profile
+          </button>
         </div>
       ) : null}
+
+      {account ? <PublisherProfileEditor key={account.address} hidden={workspaceTab !== "profile"} disabled={busy} load={loadPublisherProfile} save={saveProfile} /> : null}
 
       {account && workspaceTab === "setup" ? (
         <div className="publisher-tab-panel" role="tabpanel">
@@ -725,6 +765,10 @@ function mutation(body?: unknown): RequestInit {
     headers: { "x-csrf-token": readCookie("hub_csrf") },
     ...(body === undefined ? {} : { body: JSON.stringify(body) })
   };
+}
+
+function loadPublisherProfile(): Promise<ProfileResponse> {
+  return api<ProfileResponse>("/api/v1/publisher/profile");
 }
 
 async function api<T = unknown>(url: string, init: RequestInit = {}): Promise<T> {

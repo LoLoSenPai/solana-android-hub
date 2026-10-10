@@ -15,13 +15,14 @@ const repository = new CatalogRepository(database);
 
 export async function listCatalog(input: {
   channel: CatalogChannel;
+  publisherId?: string;
   query?: string;
   category?: CatalogCategory;
   sort?: CatalogSort;
   androidSdk?: number;
   genre?: GameGenre;
 }): Promise<readonly CatalogAppDto[]> {
-  const records = await repository.listReleaseCandidates(hubConfig.appEnvironment, input.query);
+  const records = await repository.listReleaseCandidates(hubConfig.appEnvironment, input.query, undefined, input.publisherId);
   const grouped = new Map<string, CatalogAppRecord[]>();
   for (const record of records) {
     const existing = grouped.get(record.id) ?? [];
@@ -81,6 +82,7 @@ function toDto(record: CatalogAppRecord): CatalogAppDto {
   const isPreview = record.release.validationStatus !== "server_binary_valid" || record.release.publicationStatus === "preview";
   return {
     id: record.id,
+    publisher: record.publisher ?? null,
     slug: record.slug,
     appMint: record.appMint,
     name: record.name,

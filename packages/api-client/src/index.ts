@@ -25,6 +25,24 @@ export const publisherLinksDtoSchema = z.object({
   telegram: z.url().nullable()
 }).default(EMPTY_PUBLISHER_LINKS);
 
+export const publisherProfileDtoSchema = z.object({
+  id: z.uuid(),
+  slug: z.string(),
+  displayName: z.string().nullable(),
+  bio: z.string().nullable(),
+  avatarUrl: z.url().nullable(),
+  portfolioUrl: z.url().nullable(),
+  links: publisherLinksDtoSchema
+});
+
+export type PublisherProfileDto = z.infer<typeof publisherProfileDtoSchema>;
+
+export const catalogPublisherDtoSchema = z.object({
+  id: z.uuid(),
+  slug: z.string(),
+  displayName: z.string().nullable()
+});
+
 export const trustFactsDtoSchema = z.object({
   publisherControl: z.literal("verified"),
   distributionConsent: z.literal("active"),
@@ -78,6 +96,7 @@ export const catalogAppDtoSchema = z.object({
   category: catalogCategorySchema.default("other"),
   genres: z.array(gameGenreSchema).default([]),
   publisherLinks: publisherLinksDtoSchema,
+  publisher: catalogPublisherDtoSchema.nullable().optional(),
   solanaMobileRating: solanaMobileRatingDtoSchema.nullable().default(null),
   releaseUpdatedAt: z.iso.datetime().nullable().default(null),
   latestRelease: releaseDtoSchema

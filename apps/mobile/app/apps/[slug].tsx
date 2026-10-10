@@ -3,13 +3,13 @@ import { AppInstaller, type InstalledPackageInfo } from "@hub/app-installer";
 import * as Linking from "expo-linking";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Animated, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppArtwork } from "@/components/AppArtwork";
 import { HubSymbol } from "@/components/HubSymbol";
 import { SolanaMobileRating } from "@/components/SolanaMobileRating";
 import { categoryDefinition } from "@/features/catalog/discovery";
-import { loadCatalogApp } from "@/features/catalog/api";
+import { hubOrigin, loadCatalogApp } from "@/features/catalog/api";
 import { getInstallAction, type InstallAction } from "@/features/catalog/install-action";
 import { approvalLabel, humanizePermission, permissionSummary, releaseBadgeLabel } from "@/features/catalog/release-presentation";
 import { listInstalledApps } from "@/storage/database";
@@ -71,6 +71,7 @@ export default function AppDetailScreen() {
   }
 
   const release = app.latestRelease;
+  const publisherProfileUrl = app.publisher ? new URL(`/publishers/${encodeURIComponent(app.publisher.slug)}`, hubOrigin).toString() : null;
   const category = categoryDefinition(app.category);
   const installAction = getInstallAction(release.versionCode, installed?.versionCode);
   const isUpdate = installAction === "update";
@@ -163,6 +164,20 @@ export default function AppDetailScreen() {
 
         <View className="bg-canvas px-5" style={{ paddingTop: 108 }}>
           <Text className="text-[32px] font-bold leading-[37px] tracking-[-0.7px] text-ink">{app.name}</Text>
+          {app.publisher ? (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`View ${app.publisher.displayName ?? "publisher"} profile`}
+              className="mt-3 flex-row items-center self-start rounded-full border border-line bg-surface px-4 py-2"
+              onPress={() => {
+                if (publisherProfileUrl) void Linking.openURL(publisherProfileUrl).catch(() => Alert.alert("Publisher profile", "Could not open the profile. Please try again."));
+              }}
+            >
+              <HubSymbol name="person" size={18} color="#77A7FF" />
+              <Text className="ml-2 text-sm font-semibold text-ink">{app.publisher.displayName ?? "View publisher profile"}</Text>
+              <HubSymbol name="open_in_new" size={16} color="#77A7FF" />
+            </Pressable>
+          ) : null}
           <Text className="mt-2 text-base leading-6 text-muted">{app.shortDescription ?? "Discover this Solana app"}</Text>
           <SolanaMobileRating rating={app.solanaMobileRating} detail />
           {app.genres.length ? <View className="mt-4 flex-row flex-wrap gap-2">{app.genres.map((genre) => <View className="rounded-full border border-line bg-surface px-3 py-2" key={genre}><Text className="text-xs font-semibold text-muted">{genre === "rpg" ? "RPG" : `${genre.charAt(0).toUpperCase()}${genre.slice(1)}`}</Text></View>)}</View> : null}

@@ -14,6 +14,12 @@ A publisher connects the wallet holding the current App NFT publishing authority
 
 Every production release must pass the server-side APK validator before it can enter the catalogue. The Android app independently checks the downloaded APK again on the user's device before handing it to Android's system installer. Solana Mobile approval, when available, remains a separate status and is never implied by publisher consent or Dapport validation.
 
+## Publisher profiles
+
+Publishers can edit their optional name, bio, avatar image URL, portfolio and social links in **My profile**. The public `/publishers/<slug>` page lists only their currently available catalogue apps, and each app page links back to its publisher. Sharing uses the device share sheet when available, with clipboard and manual-copy fallbacks. The publisher UUID remains a stable profile alias when a custom address changes.
+
+Apply `supabase/migrations/20261010112114_add_publisher_profiles.sql` before deploying the updated web/API code. Profile editing uses the existing authenticated publisher session; visitors can read public profiles without connecting a wallet.
+
 ## Development
 
 Requirements: Node.js 22.13+, pnpm 10.26.2, JDK 17, and Android SDK 36.
