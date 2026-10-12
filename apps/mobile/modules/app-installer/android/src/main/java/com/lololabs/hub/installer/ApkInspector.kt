@@ -14,7 +14,8 @@ internal data class InspectedApk(
   val versionName: String?,
   val minSdk: Int,
   val certificateSha256: String,
-  val permissions: List<String>
+  val permissions: List<String>,
+  val implicitlyAddedPermissions: List<String> = emptyList()
 )
 
 internal object ApkInspector {
@@ -44,7 +45,10 @@ internal object ApkInspector {
       versionName = info.versionName,
       minSdk = applicationInfo.minSdkVersion,
       certificateSha256 = certificateSha256,
-      permissions = permissions
+      permissions = permissions,
+      implicitlyAddedPermissions = ApkPermissionPolicy.implicitlyAddedPermissions(
+        info.requestedPermissions, info.requestedPermissionsFlags, Build.VERSION.SDK_INT
+      )
     )
     ApkIdentityPolicy.validateExpected(inspected, expected)
     validateInstalledEdition(context.packageManager, inspected)

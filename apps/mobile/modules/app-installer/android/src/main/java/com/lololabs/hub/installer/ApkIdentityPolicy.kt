@@ -10,7 +10,7 @@ internal object ApkIdentityPolicy {
     if (actual.certificateSha256 != normalizeDigest(expected.certificateSha256)) {
       throw InstallerException("APK_CERTIFICATE_MISMATCH", "APK signer does not match Release metadata")
     }
-    val unlistedPermissions = actual.permissions.toSet() - expected.permissions.toSet()
+    val unlistedPermissions = actual.permissions.toSet() - actual.implicitlyAddedPermissions.toSet() - expected.permissions.toSet()
     if (unlistedPermissions.isNotEmpty()) {
       throw InstallerException("APK_PERMISSIONS_MISMATCH", "APK requests permissions not listed in Release metadata")
     }

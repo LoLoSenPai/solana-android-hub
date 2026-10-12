@@ -63,6 +63,42 @@ class ApkIdentityPolicyTest {
     )
   }
 
+  @Test fun androidAddedPhotoSelectionPermissionPasses() {
+    val media = "android.permission.READ_MEDIA_IMAGES"
+    val selected = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+    val permissions = actual.permissions + media + selected
+    val implicit = ApkPermissionPolicy.implicitlyAddedPermissions(permissions.toTypedArray(), intArrayOf(0, 0, 4), 36)
+    ApkIdentityPolicy.validateExpected(
+      actual.copy(permissions = permissions, implicitlyAddedPermissions = implicit),
+      expected.copy(permissions = actual.permissions + media)
+    )
+  }
+
+  @Test fun explicitlyRequestedPhotoSelectionPermissionStillBlocks() = assertFailure("permissions") {
+    val permissions = actual.permissions + "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+    ApkIdentityPolicy.validateExpected(
+      actual.copy(permissions = permissions, implicitlyAddedPermissions = ApkPermissionPolicy.implicitlyAddedPermissions(permissions.toTypedArray(), intArrayOf(0, 0), 36)),
+      expected
+    )
+  }
+
+  @Test fun implicitPermissionDoesNotHideAnotherUnlistedPermission() = assertFailure("permissions") {
+    val selected = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+    val permissions = actual.permissions + selected + "android.permission.CAMERA"
+    ApkIdentityPolicy.validateExpected(
+      actual.copy(permissions = permissions, implicitlyAddedPermissions = ApkPermissionPolicy.implicitlyAddedPermissions(permissions.toTypedArray(), intArrayOf(0, 4, 0), 36)),
+      expected
+    )
+  }
+
+  @Test fun missingPermissionFlagsStayExplicit() {
+    val permissions = arrayOf("android.permission.READ_MEDIA_VISUAL_USER_SELECTED")
+    check(ApkPermissionPolicy.implicitlyAddedPermissions(permissions, null, 36).isEmpty())
+    check(ApkPermissionPolicy.implicitlyAddedPermissions(permissions, intArrayOf(), 36).isEmpty())
+    check(ApkPermissionPolicy.implicitlyAddedPermissions(permissions, intArrayOf(4), 33).isEmpty())
+    check(ApkPermissionPolicy.implicitlyAddedPermissions(null, null, 36).isEmpty())
+  }
+
   @Test fun installedDifferentEditionBlocks() = assertFailure("different signer") {
     ApkIdentityPolicy.validateInstalledEdition(actual, 1, "ef".repeat(32))
   }

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-  [string]$VersionName = "0.5.6",
-  [int]$VersionCode = 13,
+  [string]$VersionName = "0.5.7",
+  [int]$VersionCode = 14,
   [string]$ShortWorkspace = "C:\hubb03"
 )
 
@@ -129,8 +129,8 @@ try {
 
     Push-Location "android"
     try {
-      .\gradlew.bat assembleRelease --no-daemon
-      if ($LASTEXITCODE -ne 0) { throw "Gradle production release build failed" }
+      .\gradlew.bat :hub-app-installer:testDebugUnitTest assembleRelease --no-daemon
+      if ($LASTEXITCODE -ne 0) { throw "Gradle production release tests or build failed" }
     } finally {
       Pop-Location
     }
@@ -147,7 +147,8 @@ try {
     "getInstallCapability",
     "onDownloadProgress",
     "prepareInstall",
-    "installPrepared"
+    "installPrepared",
+    "implicitlyAddedPermissions"
   )
 
   $badging = & $aapt dump badging $artifactPath
