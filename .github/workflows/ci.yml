@@ -11,6 +11,19 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: hub_validation_qa
+          POSTGRES_PASSWORD: hub_qa_local
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hub_validation_qa"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_TEST_URL: postgresql://postgres:hub_qa_local@127.0.0.1:5432/hub_validation_qa
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,6 +34,18 @@ jobs:
           node-version: 22.17.1
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Prepare disposable database for validation lifecycle tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d hub_validation_qa -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon;
+          create role authenticated;
+          create role service_role;
+          SQL
+          for migration in supabase/migrations/*.sql; do
+            docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d hub_validation_qa -v ON_ERROR_STOP=1 < "$migration"
+          done
       - run: pnpm check
 
   android-native:

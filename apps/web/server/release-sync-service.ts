@@ -10,7 +10,7 @@ import { normalizeReleaseMetadata, type NormalizedReleaseMetadata } from "@hub/v
 import { shouldRequestAutomaticValidation } from "./automatic-validation";
 import { database, hubConfig } from "./runtime";
 import { OfficialSolanaMobileApprovalProvider } from "./solana-mobile-approval-provider";
-import { requestBinaryValidation } from "./validation-service";
+import { expireStaleBinaryValidations, requestBinaryValidation } from "./validation-service";
 
 const publisherRepository = new PublisherRepository(database);
 const releaseRepository = new ReleaseRepository(database);
@@ -202,6 +202,7 @@ const authorityLossCodes = new Set([
 ]);
 
 export async function syncDuePublisherApps(limit = 20) {
+  await expireStaleBinaryValidations();
   const targets = await releaseRepository.listDueSyncTargets(hubConfig.appEnvironment, limit);
   const results: Array<{ appId: string; status: "completed" | "failed" | "already_running" }> = [];
   for (const target of targets) {

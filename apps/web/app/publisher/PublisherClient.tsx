@@ -854,6 +854,9 @@ function validationFailureLabel(code: string): string {
     APK_SIZE_MISMATCH: "file size does not match",
     APK_VERSION_MISMATCH: "version does not match",
     MANIFEST_INVALID: "release check could not start",
+    VALIDATOR_DISPATCH_FAILED: "checks could not start; please retry",
+    VALIDATOR_RUNNER_FAILED: "validation service could not complete the checks; please retry",
+    VALIDATOR_TIMEOUT: "checks timed out; please retry",
     VALIDATOR_INTERNAL_ERROR: "temporary validation error"
   };
   return labels[code] ?? code.toLowerCase().replaceAll("_", " ");

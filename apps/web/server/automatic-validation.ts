@@ -6,7 +6,7 @@ export function shouldRequestAutomaticValidation(
   release: SavedRelease
 ): boolean {
   return releasePolicy === "automatic"
-    && release.validationStatus === "metadata_valid"
+    && (release.validationStatus === "metadata_valid" || release.validationStatus === "validating_binary")
     && release.publicationStatus === "unpublished"
     && release.quarantineCode === null;
 }

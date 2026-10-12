@@ -15,9 +15,12 @@ describe("automatic release validation", () => {
     expect(shouldRequestAutomaticValidation("automatic", release)).toBe(true);
   });
 
-  it("does not request checks for manual, active, published, or quarantined releases", () => {
+  it("checks an active validation so the repository can recover it if expired", () => {
+    expect(shouldRequestAutomaticValidation("automatic", { ...release, validationStatus: "validating_binary" })).toBe(true);
+  });
+
+  it("does not request checks for manual, published, or quarantined releases", () => {
     expect(shouldRequestAutomaticValidation("manual", release)).toBe(false);
-    expect(shouldRequestAutomaticValidation("automatic", { ...release, validationStatus: "validating_binary" })).toBe(false);
     expect(shouldRequestAutomaticValidation("automatic", { ...release, validationStatus: "server_binary_valid", publicationStatus: "published" })).toBe(false);
     expect(shouldRequestAutomaticValidation("automatic", { ...release, validationStatus: "quarantined", quarantineCode: "certificate_changed" })).toBe(false);
   });

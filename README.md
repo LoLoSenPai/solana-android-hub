@@ -14,6 +14,10 @@ A publisher connects the wallet holding the current App NFT publishing authority
 
 Every production release must pass the server-side APK validator before it can enter the catalogue. The Android app independently checks the downloaded APK again on the user's device before handing it to Android's system installer. Solana Mobile approval, when available, remains a separate status and is never implied by publisher consent or Dapport validation.
 
+The APK runner reports preparation failures as `VALIDATOR_RUNNER_FAILED`. Validations with no response expire after 45 minutes, retain a `VALIDATOR_TIMEOUT` audit record, and can be retried with a new correlation ID. Scheduled synchronization retries eligible automatic releases; manual releases remain under publisher control. Retried callbacks are idempotent only for the same result and authenticated GitHub run.
+
+CI runs validation lifecycle integration tests against disposable PostgreSQL 17 with all migrations applied. To run them locally, set `DATABASE_TEST_URL` to a disposable migrated database before running `pnpm --filter @hub/database test`.
+
 ## Publisher profiles
 
 Publishers can edit their optional name, bio, avatar image URL, portfolio and social links in **My profile**. The public `/publishers/<slug>` page lists only their currently available catalogue apps, and each app page links back to its publisher. Sharing uses the device share sheet when available, with clipboard and manual-copy fallbacks. The publisher UUID remains a stable profile alias when a custom address changes.

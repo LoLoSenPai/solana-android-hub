@@ -30,13 +30,17 @@ export async function recordBinaryValidationResult(input: {
   oidcSubject: string;
   oidcReplayKeyHash: string;
 }) {
-  const manifest = await repository.getManifest(input.runId);
+  const manifest = await repository.getStoredManifest(input.runId);
   if (!manifest) throw new Error("VALIDATION_RUN_NOT_FOUND_OR_COMPLETED");
   return repository.completeBinaryRun({
     ...input,
     environment: hubConfig.appEnvironment,
     resultAccepted: resultMatchesManifest(manifest, input.result)
   });
+}
+
+export async function expireStaleBinaryValidations(): Promise<number> {
+  return repository.expireStaleBinaryRuns();
 }
 
 export async function publishValidatedRelease(session: SessionRecord, releaseId: string) {

@@ -65,17 +65,19 @@ export class ValidationRepository {
       if (!['metadata_valid', 'validating_binary'].includes(release.validation_status)) {
         throw new Error(release.validation_status === "server_binary_valid" ? "RELEASE_ALREADY_VALIDATED" : "RELEASE_NOT_VALIDATABLE");
       }
-      const [active] = await tx<{ correlation_id: string; expected: JSONValue }[]>`
-        select correlation_id, expected from hub.release_validation_runs
+      const [active] = await tx<{ correlation_id: string; expected: JSONValue; expired: boolean }[]>`
+        select correlation_id, expected,
+          coalesce(started_at, created_at) < now() - interval '45 minutes' as expired
+        from hub.release_validation_runs
         where release_id = ${releaseId} and stage = 'binary' and status in ('queued', 'running')
         order by created_at desc limit 1
       `;
       if (active) {
         const restored = decodeBinaryValidationManifest(active.expected, active.correlation_id);
-        if (restored) return { manifest: restored, created: false };
+        if (restored && !active.expired) return { manifest: restored, created: false };
         await tx`
           update hub.release_validation_runs set status = 'failed', completed_at = now(),
-            failure_codes = array['MANIFEST_INVALID']
+            failure_codes = ${[active.expired ? 'VALIDATOR_TIMEOUT' : 'MANIFEST_INVALID']}
           where correlation_id = ${active.correlation_id} and status in ('queued', 'running')
         `;
       }
@@ -102,8 +104,50 @@ export class ValidationRepository {
     });
   }
 
+  public async expireStaleBinaryRuns(limit = 100): Promise<number> {
+    return this.sql.begin(async (tx) => {
+      // All lifecycle mutations lock the release before its runs so expiry,
+      // retries and callbacks cannot reset a newer validation or publication.
+      const releases = await tx<{ id: string }[]>`
+        select r.id from hub.releases r
+        where exists (
+          select 1 from hub.release_validation_runs v
+          where v.release_id = r.id and v.stage = 'binary' and v.status in ('queued', 'running')
+            and coalesce(v.started_at, v.created_at) < now() - interval '45 minutes'
+        )
+        order by r.id limit ${limit} for update of r skip locked
+      `;
+      let expiredCount = 0;
+      for (const release of releases) {
+        const expired = await tx<{ correlation_id: string }[]>`
+          update hub.release_validation_runs set status = 'failed', completed_at = now(),
+            failure_codes = array['VALIDATOR_TIMEOUT']
+          where release_id = ${release.id} and stage = 'binary' and status in ('queued', 'running')
+            and coalesce(started_at, created_at) < now() - interval '45 minutes'
+          returning correlation_id
+        `;
+        if (expired.length === 0) continue;
+        expiredCount += expired.length;
+        await tx`
+          update hub.releases r set validation_status = 'metadata_valid', updated_at = now()
+          where r.id = ${release.id} and r.validation_status = 'validating_binary'
+            and not exists (
+              select 1 from hub.release_validation_runs v where v.release_id = r.id
+                and v.stage = 'binary' and v.status in ('queued', 'running')
+            )
+        `;
+      }
+      return expiredCount;
+    });
+  }
+
   public async failToSchedule(runId: string, detail: string): Promise<void> {
     await this.sql.begin(async (tx) => {
+      const [release] = await tx<{ id: string }[]>`
+        select r.id from hub.releases r join hub.release_validation_runs v on v.release_id = r.id
+        where v.correlation_id = ${runId} and v.stage = 'binary' for update of r
+      `;
+      if (!release) return;
       const [run] = await tx<{ release_id: string }[]>`
         update hub.release_validation_runs set status = 'failed', completed_at = now(),
           failure_codes = array['VALIDATOR_DISPATCH_FAILED'],
@@ -124,6 +168,14 @@ export class ValidationRepository {
     return run ? decodeBinaryValidationManifest(run.expected, run.correlation_id) : null;
   }
 
+  public async getStoredManifest(runId: string): Promise<BinaryValidationManifest | null> {
+    const [run] = await this.sql<ValidationRow[]>`
+      select correlation_id, expected, status from hub.release_validation_runs
+      where correlation_id = ${runId} and stage = 'binary'
+    `;
+    return run ? decodeBinaryValidationManifest(run.expected, run.correlation_id) : null;
+  }
+
   public async completeBinaryRun(input: {
     runId: string;
     result: BinaryValidationResult;
@@ -133,21 +185,36 @@ export class ValidationRepository {
     environment: AppEnvironment;
   }): Promise<"succeeded" | "failed"> {
     return this.sql.begin(async (tx) => {
-      const [run] = await tx<{ release_id: string; status: string }[]>`
-        select release_id, status from hub.release_validation_runs
-        where correlation_id = ${input.runId} and stage = 'binary' for update
+      const [release] = await tx<{ id: string }[]>`
+        select r.id from hub.releases r join hub.release_validation_runs v on v.release_id = r.id
+        where v.correlation_id = ${input.runId} and v.stage = 'binary' for update of r
       `;
-      if (!run) throw new Error("VALIDATION_RUN_NOT_FOUND");
-      if (!['queued', 'running'].includes(run.status)) throw new Error("VALIDATION_RESULT_REPLAYED");
-      const succeeded = input.result.status === "succeeded" && input.resultAccepted;
+      if (!release) throw new Error("VALIDATION_RUN_NOT_FOUND");
+      const succeeded = input.result.status === "succeeded" && input.resultAccepted && input.result.failureCodes.length === 0;
       const status = succeeded ? "succeeded" : "failed";
       const failures = succeeded
         ? []
         : [...new Set(input.result.failureCodes.length > 0 ? input.result.failureCodes : ["VALIDATOR_RESULT_MISMATCH"])];
+      const observed = parseJsonValue(JSON.stringify(input.result.observed ?? {}));
+      const toolVersions = parseJsonValue(JSON.stringify(input.result.toolVersions ?? {}));
+      const [run] = await tx<{ status: string; result_matches: boolean }[]>`
+        select status, (
+          status = ${status}::hub.job_status and oidc_subject = ${input.oidcSubject}
+          and oidc_replay_key_hash = ${input.oidcReplayKeyHash}
+          and observed = ${tx.json(observed)} and tool_versions = ${tx.json(toolVersions)}
+          and failure_codes = ${failures} and log_digest is not distinct from ${input.result.logDigest ?? null}
+        ) as result_matches
+        from hub.release_validation_runs where correlation_id = ${input.runId} and stage = 'binary' for update
+      `;
+      if (!run) throw new Error("VALIDATION_RUN_NOT_FOUND");
+      if (!['queued', 'running'].includes(run.status)) {
+        if (run.result_matches) return status;
+        throw new Error("VALIDATION_RESULT_REPLAYED");
+      }
       await tx`
         update hub.release_validation_runs set status = ${status}::hub.job_status,
-          observed = ${tx.json(parseJsonValue(JSON.stringify(input.result.observed ?? {})))},
-          tool_versions = ${tx.json(parseJsonValue(JSON.stringify(input.result.toolVersions ?? {})))},
+          observed = ${tx.json(observed)},
+          tool_versions = ${tx.json(toolVersions)},
           failure_codes = ${failures}, log_digest = ${input.result.logDigest ?? null},
           oidc_subject = ${input.oidcSubject}, oidc_replay_key_hash = ${input.oidcReplayKeyHash}, completed_at = now()
         where correlation_id = ${input.runId}
@@ -155,13 +222,14 @@ export class ValidationRepository {
       await tx`
         update hub.releases set validation_status = ${succeeded ? "server_binary_valid" : "metadata_valid"}::hub.release_validation_status,
           updated_at = now()
-        where id = ${run.release_id}
+        where id = ${release.id}
       `;
       if (succeeded) {
         await tx`
           update hub.releases r set publication_status = 'published', published_at = coalesce(published_at, now()), updated_at = now()
           from hub.apps a
-          where r.id = ${run.release_id} and r.app_id = a.id and a.release_policy = 'automatic'
+          where r.id = ${release.id} and r.app_id = a.id and a.release_policy = 'automatic'
+            and r.quarantine_code is null
             and a.claim_status = 'verified' and a.distribution_enabled = true and a.suspended_at is null and a.revoked_at is null
             and exists (
               select 1 from hub.distribution_consents dc where dc.app_id = a.id
