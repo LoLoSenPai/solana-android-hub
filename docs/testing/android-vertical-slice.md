@@ -52,3 +52,27 @@ The checked-in manifest in `fixtures/apks/hub-test-app/artifacts/manifest.json` 
 - Only the Hub's own successful installation records are kept in SQLite; no installed-app inventory is uploaded.
 
 Mobile MCP was unavailable in the active connector set, so the equivalent real-device control path used explicit ADB targeting. The physically connected Seeker was not modified.
+
+## Production PrivacySafe installation — 2026-10-12
+
+Passed on the physically connected Seeker running Android API 36, using Dapport's production catalogue and Android's system installer. The device owner confirmed that PrivacySafe installed successfully; Dapport displayed `PrivacySafe is installed.`
+
+- Dapport was updated in place from 0.5.6 (13) to the signed production 0.5.7 (14) APK using `adb install -r`. Its first-install timestamp remained `2026-08-11 12:16:32`, confirming the existing installation was preserved.
+- PrivacySafe was downloaded and installed through Dapport, rather than installed directly through ADB. Android reported `installerPackageName=com.lololabs.solanaandroidhub`, package `app.privacysafe`, version `26.10-0.21.19.6` (12610006), minSdk 29 and targetSdk 36.
+- The previous failure was reproduced with Dapport 0.5.6: Android's implicit photo-selection permission caused `APK_PERMISSIONS_MISMATCH` despite a valid, matching APK. The fix excludes only permissions marked implicit by Android API 34 or newer; explicit and unknown extra permissions remain blocked.
+- Native error codes now survive the JavaScript error mapping, so a rejected APK produces a useful explanation instead of the generic preparation error.
+- All 50 mobile tests, 14 native policy tests, lint and TypeScript checks passed. GitHub CI run `38236154990` passed both the repository check and Android native jobs for source commit `d363282e99549db32402640a83c43b2e1fc9b5a8691b8b`.
+
+Tested production artifact:
+
+```text
+file=Dapport-v0.5.7.apk
+package=com.lololabs.solanaandroidhub
+versionName=0.5.7
+versionCode=14
+bytes=112960567
+sha256=0B932B198FDBBD49A3613C13AF1ED79B60BA948DB2D4B2BAE406A5B9157625CA
+certificateSha256=02F204B9CBED11E59F85B2A6DBCB34AD6F0A4658C639D58B2C27FB3BE2AD0E09
+```
+
+The physical acceptance covers PrivacySafe's installation through Dapport and Dapport's in-place signed update. It does not establish PrivacySafe's messaging behavior or Dapport's self-update UI flow. The existing dedicated installation screen remains unchanged by this release.
