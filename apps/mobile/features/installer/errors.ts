@@ -6,6 +6,9 @@ const downgradeMessage = "A newer version is already installed. Dapport will not
 const cancelledMessage = "The installation was cancelled.";
 
 const codeMessages: Record<string, string> = {
+  APP_LAUNCH_UNAVAILABLE: "This app could not be opened. Check that it is still installed.",
+  APP_OPEN_BLOCKED: "Android did not allow this app to open.",
+  APP_OPEN_FAILED: "This app could not be opened. Please try again.",
   APK_PERMISSIONS_MISMATCH: permissionMessage,
   APK_HASH_MISMATCH: verificationMessage,
   APK_SIGNATURE_INVALID: verificationMessage,

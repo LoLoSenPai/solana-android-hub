@@ -1,12 +1,15 @@
 package com.lololabs.hub.installer
 
 import android.app.PendingIntent
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import expo.modules.kotlin.functions.Coroutine
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
@@ -55,6 +58,38 @@ class AppInstallerModule : Module() {
         "status" to if (Build.VERSION.SDK_INT < 30 || packageName in targetedFixturePackages) "not_installed" else "visibility_unknown"
       )
     }
+
+    AsyncFunction("openInstalledApp") { packageName: String ->
+      requireValidPackageName(packageName)
+      val context = requireContext()
+      try {
+        if (Build.VERSION.SDK_INT >= 33) {
+          // This exact-package launcher is not filtered by package visibility.
+          // It does not supply installed-state evidence; that remains the
+          // responsibility of getInstalledPackageInfo.
+          context.packageManager.getLaunchIntentSenderForPackage(packageName)
+            .sendIntent(context, 0, null, null, null)
+        } else {
+          val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+            ?: throw InstallerException(
+              "APP_LAUNCH_UNAVAILABLE",
+              "Android could not find a visible launch activity for this package"
+            )
+          context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+      } catch (error: IntentSender.SendIntentException) {
+        throw InstallerException("APP_LAUNCH_UNAVAILABLE", "The package has no available launch activity", error)
+      } catch (error: ActivityNotFoundException) {
+        throw InstallerException("APP_LAUNCH_UNAVAILABLE", "The package launch activity is no longer available", error)
+      } catch (error: SecurityException) {
+        throw InstallerException("APP_OPEN_BLOCKED", "Android blocked opening this application", error)
+      } catch (error: InstallerException) {
+        throw error
+      } catch (error: RuntimeException) {
+        throw InstallerException("APP_OPEN_FAILED", "Android could not open this application", error)
+      }
+      Unit
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("prepareInstall") Coroutine { operationId: String, expected: ExpectedReleaseRecord ->
       require(operationId.matches(Regex("^[A-Za-z0-9_-]{8,80}$"))) { "OPERATION_ID_INVALID" }

@@ -1,18 +1,17 @@
 import type { CatalogAppDto } from "@hub/api-client";
-import { AppInstaller, type InstalledPackageInfo } from "@hub/app-installer";
 import * as Linking from "expo-linking";
-import { Link, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Animated, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppArtwork } from "@/components/AppArtwork";
+import { AppInstallButton } from "@/components/AppInstallButton";
 import { HubSymbol } from "@/components/HubSymbol";
 import { SolanaMobileRating } from "@/components/SolanaMobileRating";
 import { categoryDefinition } from "@/features/catalog/discovery";
 import { hubOrigin, loadCatalogApp } from "@/features/catalog/api";
-import { getInstallAction, type InstallAction } from "@/features/catalog/install-action";
 import { approvalLabel, humanizePermission, permissionSummary, releaseBadgeLabel } from "@/features/catalog/release-presentation";
-import { listInstalledApps } from "@/storage/database";
+import { useAppInstall } from "@/features/installer/use-app-install";
 
 export default function AppDetailScreen() {
   const router = useRouter();
@@ -21,44 +20,49 @@ export default function AppDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [app, setApp] = useState<CatalogAppDto | null>(null);
-  const [installed, setInstalled] = useState<InstalledPackageInfo | null>(null);
-  const [installedPermissions, setInstalledPermissions] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [permissionsExpanded, setPermissionsExpanded] = useState(false);
   const [technicalNamesExpanded, setTechnicalNamesExpanded] = useState(false);
   const [verificationExpanded, setVerificationExpanded] = useState(false);
+  const installation = useAppInstall(app);
+  const installed = installation.installedPackage;
+  const installedPermissions = installation.installedPermissions ?? [];
+  const goBack = () => router.canGoBack() ? router.back() : router.replace("/");
 
   useEffect(() => {
     if (!slug) return;
-    void loadCatalogApp(slug).then(async (value) => {
+    let active = true;
+    setApp(null);
+    setError(null);
+    void loadCatalogApp(slug).then((value) => {
+      if (!active) return;
       if (!value) {
         setError("App is no longer eligible");
         return;
       }
       setApp(value);
-      const [packageState, localRecords] = await Promise.all([
-        AppInstaller.getInstalledPackageInfo(value.latestRelease.packageName),
-        listInstalledApps()
-      ]);
-      setInstalled(packageState.status === "installed" ? packageState : null);
-      setInstalledPermissions(localRecords.find((record) => record.packageName === value.latestRelease.packageName)?.permissions ?? []);
     }).catch((cause: unknown) => {
+      if (!active) return;
       setError(cause instanceof Error ? cause.message : "App unavailable");
     });
+    return () => { active = false; };
   }, [slug]);
 
   if (!app && !error) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator color="#77A7FF" />
-      </View>
+      <SafeAreaView className="flex-1 bg-canvas p-5">
+        <Pressable accessibilityLabel="Go back" className="h-12 w-12 items-center justify-center rounded-2xl border border-line bg-surface" onPress={goBack}>
+          <HubSymbol name="arrow_back" size={24} />
+        </Pressable>
+        <ActivityIndicator className="mt-16" color="#77A7FF" />
+      </SafeAreaView>
     );
   }
 
   if (!app) {
     return (
       <SafeAreaView className="flex-1 bg-canvas p-5">
-        <Pressable className="h-12 w-12 items-center justify-center rounded-2xl border border-line bg-surface" onPress={() => router.back()}>
+        <Pressable accessibilityLabel="Go back" className="h-12 w-12 items-center justify-center rounded-2xl border border-line bg-surface" onPress={goBack}>
           <HubSymbol name="arrow_back" size={24} />
         </Pressable>
         <View className="mt-16 items-center rounded-[26px] border border-warning bg-surface p-8">
@@ -73,10 +77,10 @@ export default function AppDetailScreen() {
   const release = app.latestRelease;
   const publisherProfileUrl = app.publisher ? new URL(`/publishers/${encodeURIComponent(app.publisher.slug)}`, hubOrigin).toString() : null;
   const category = categoryDefinition(app.category);
-  const installAction = getInstallAction(release.versionCode, installed?.versionCode);
+  const installAction = installation.action;
   const isUpdate = installAction === "update";
-  const addedPermissions = isUpdate ? release.permissions.filter((permission) => !installedPermissions.includes(permission)) : [];
-  const removedPermissions = isUpdate ? installedPermissions.filter((permission) => !release.permissions.includes(permission)) : [];
+  const addedPermissions = isUpdate && installation.installedPermissions ? release.permissions.filter((permission) => !installedPermissions.includes(permission)) : [];
+  const removedPermissions = isUpdate && installation.installedPermissions ? installedPermissions.filter((permission) => !release.permissions.includes(permission)) : [];
   const coverArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
   const badgeLabel = releaseBadgeLabel(release.previewOnly, release.trust.solanaMobileApproval);
   const publisherLinks = [
@@ -179,6 +183,11 @@ export default function AppDetailScreen() {
             </Pressable>
           ) : null}
           <Text className="mt-2 text-base leading-6 text-muted">{app.shortDescription ?? "Discover this Solana app"}</Text>
+          {installation.stage !== "idle" && installation.detail ? (
+            <Text accessibilityLiveRegion="polite" className={installation.stage === "error" ? "mt-3 text-sm leading-5 text-warning" : "mt-3 text-sm leading-5 text-muted"}>
+              {installation.detail}
+            </Text>
+          ) : null}
           <SolanaMobileRating rating={app.solanaMobileRating} detail />
           {app.genres.length ? <View className="mt-4 flex-row flex-wrap gap-2">{app.genres.map((genre) => <View className="rounded-full border border-line bg-surface px-3 py-2" key={genre}><Text className="text-xs font-semibold text-muted">{genre === "rpg" ? "RPG" : `${genre.charAt(0).toUpperCase()}${genre.slice(1)}`}</Text></View>)}</View> : null}
           {isUpdate ? (
@@ -335,7 +344,7 @@ export default function AppDetailScreen() {
                 <Text className="mt-1 text-sm leading-5 text-muted">Dapport checks the app file on your phone before handing it to Android.</Text>
               </View>
             </View>
-            <InstallButton app={app} action={installAction} />
+            <AppInstallButton installation={installation} />
           </View>
         </View>
       </Animated.ScrollView>
@@ -353,7 +362,8 @@ export default function AppDetailScreen() {
         heroHeight={heroHeight}
         shadeOpacity={heroShadeOpacity}
         sharpArtworkOpacity={sharpHeroOpacity}
-        onBack={() => router.back()}
+        onBack={goBack}
+        actionWidth={installation.busy || installation.visibility === "loading" ? 202 : 118}
         safeTop={insets.top}
       />
       <Animated.View
@@ -380,7 +390,7 @@ export default function AppDetailScreen() {
           zIndex: 50
         }}
       >
-        <InstallButton app={app} action={installAction} compact />
+        <AppInstallButton installation={installation} compact />
       </Animated.View>
     </View>
   );
@@ -410,7 +420,8 @@ function CollapsingDetailHero({
   shadeOpacity,
   sharpArtworkOpacity,
   onBack,
-  safeTop
+  safeTop,
+  actionWidth
 }: {
   app: CatalogAppDto;
   artwork: string | undefined;
@@ -426,6 +437,7 @@ function CollapsingDetailHero({
   sharpArtworkOpacity: Animated.AnimatedInterpolation<number>;
   onBack: () => void;
   safeTop: number;
+  actionWidth: number;
 }) {
   return (
     <Animated.View
@@ -475,54 +487,13 @@ function CollapsingDetailHero({
 
         <Animated.View
           pointerEvents="none"
-          style={{ flex: 1, marginLeft: 12, marginRight: 132, opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }}
+          style={{ flex: 1, marginLeft: 12, marginRight: actionWidth, opacity: contentOpacity, transform: [{ translateY: contentTranslateY }] }}
         >
           <Text className="text-base font-bold text-ink" numberOfLines={1}>{app.name}</Text>
           <Text className="mt-0.5 text-xs text-muted" numberOfLines={1}>{app.shortDescription ?? "Discover this Solana app"}</Text>
         </Animated.View>
       </View>
     </Animated.View>
-  );
-}
-
-function InstallButton({
-  app,
-  action,
-  compact = false
-}: {
-  app: CatalogAppDto;
-  action: InstallAction;
-  compact?: boolean;
-}) {
-  const label = action === "update"
-    ? "Update"
-    : action === "current"
-      ? "Installed"
-      : action === "newer-installed"
-        ? "Newer version installed"
-        : "Install";
-
-  if (action === "current" || action === "newer-installed") {
-    return (
-      <View
-        accessibilityLabel={label}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: true }}
-        className={compact ? "rounded-full border border-line bg-surface px-5 py-3" : "mt-5 rounded-[18px] border border-line bg-surface px-5 py-4"}
-      >
-        <Text className={compact ? "text-sm font-bold text-muted" : "text-center text-base font-bold text-muted"}>
-          {compact && action === "newer-installed" ? "Newer installed" : label}
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <Link href={{ pathname: "/install/[slug]", params: { slug: app.slug } }} asChild>
-      <Pressable className={compact ? "rounded-full bg-ink px-5 py-3 active:opacity-80" : "mt-5 rounded-[18px] bg-mint px-5 py-4 active:opacity-80"}>
-        <Text className={compact ? "text-sm font-bold text-canvas" : "text-center text-base font-bold text-canvas"}>{label}</Text>
-      </Pressable>
-    </Link>
   );
 }
 

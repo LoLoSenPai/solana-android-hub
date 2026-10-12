@@ -63,6 +63,7 @@ interface NativeAppInstallerModule {
   // Optional at runtime so a mismatched legacy binary can fail with a useful
   // recovery message instead of throwing "undefined is not a function".
   getCurrentAppInfo?: () => Promise<InstalledPackageInfo>;
+  openInstalledApp?: (packageName: string) => Promise<void>;
   getInstallCapability(): Promise<InstallCapability>;
   openUnknownSourcesSettings(): Promise<void>;
   getInstalledPackageInfo(packageName: string): Promise<InstalledPackageInfo | { status: "not_installed" } | { status: "visibility_unknown" }>;

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-  [string]$VersionName = "0.5.7",
-  [int]$VersionCode = 14,
+  [string]$VersionName = "0.5.8",
+  [int]$VersionCode = 15,
   [string]$ShortWorkspace = "C:\hubb03"
 )
 
@@ -144,6 +144,7 @@ try {
   Copy-Item -LiteralPath $builtApk -Destination $artifactPath -Force
   Assert-ApkDexContains $artifactPath @(
     "getCurrentAppInfo",
+    "openInstalledApp",
     "getInstallCapability",
     "onDownloadProgress",
     "prepareInstall",

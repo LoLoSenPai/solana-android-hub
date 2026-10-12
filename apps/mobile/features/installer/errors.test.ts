@@ -56,6 +56,11 @@ describe("installErrorMessage", () => {
       .toBe("The app could not be prepared for installation. Please try again.");
   });
 
+  it("explains an opening failure without describing APK preparation", () => {
+    const error = Object.assign(new Error("Private Android launch detail"), { code: "APP_LAUNCH_UNAVAILABLE" });
+    expect(installErrorMessage(error)).toBe("This app could not be opened. Check that it is still installed.");
+  });
+
   it.each([null, undefined, 123, {}, { code: {}, message: [] }, { code: "toString", message: "Private detail" }])(
     "uses a safe fallback for malformed causes: %j", (cause) => {
       expect(installErrorMessage(cause))
