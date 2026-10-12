@@ -2,7 +2,8 @@
 param(
   [string]$VersionName = "0.5.8",
   [int]$VersionCode = 15,
-  [string]$ShortWorkspace = "C:\hubb03"
+  [string]$ShortWorkspace = "C:\hubb03",
+  [switch]$ReuseAndroidProject
 )
 
 $ErrorActionPreference = "Stop"
@@ -124,7 +125,12 @@ try {
 
   Push-Location (Join-Path $ShortWorkspace "apps\mobile")
   try {
-    pnpm exec expo prebuild --platform android --clean --no-install
+    if ($ReuseAndroidProject) {
+      Assert-Path (Join-Path (Get-Location).Path "android\gradlew.bat") "Existing Android project for incremental prebuild"
+      pnpm exec expo prebuild --platform android --no-install
+    } else {
+      pnpm exec expo prebuild --platform android --clean --no-install
+    }
     if ($LASTEXITCODE -ne 0) { throw "Expo production prebuild failed" }
 
     Push-Location "android"

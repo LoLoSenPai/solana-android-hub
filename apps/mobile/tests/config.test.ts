@@ -54,12 +54,17 @@ describe("standalone Android distribution configuration", () => {
     expect(config.android?.versionCode).toBe(3);
   });
 
-  it("declares only the fixed development fixture query", async () => {
+  it("declares one fixture plus a launcher intent and no QUERY_ALL_PACKAGES", async () => {
     const path = fileURLToPath(new URL("../modules/app-installer/android/src/main/AndroidManifest.xml", import.meta.url));
     const manifest = await readFile(path, "utf8");
     expect(manifest).not.toContain("QUERY_ALL_PACKAGES");
-    expect(manifest.match(/<package /gu)).toHaveLength(1);
-    expect(manifest).toContain("com.lololabs.hubfixture");
+    const queries = [...manifest.matchAll(/<queries\b[^>]*>([\s\S]*?)<\/queries>/gu)];
+    expect(queries).toHaveLength(1);
+    // Anchor the whole queries body so an extra package, wildcard, intent,
+    // provider or misplaced launcher declaration cannot silently expand scope.
+    expect(queries[0]?.[1]).toMatch(
+      /^\s*<package\s+android:name="com\.lololabs\.hubfixture"\s*\/>\s*<intent>\s*<action\s+android:name="android\.intent\.action\.MAIN"\s*\/>\s*<category\s+android:name="android\.intent\.category\.LAUNCHER"\s*\/>\s*<\/intent>\s*$/u
+    );
   });
 
   it("keeps the self-update API in the native module and verifies it in release APKs", async () => {
