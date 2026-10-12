@@ -12,6 +12,8 @@ import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
@@ -99,48 +101,52 @@ class AppInstallerModule : Module() {
       cancellations[operationId] = cancellation
       val destination = File(context.cacheDir, "hub-prepared-${UUID.randomUUID()}.apk")
       try {
-        val downloaded = SecureApkDownloader.download(
-          expected.downloadUrl,
-          destination,
-          expected.byteSize,
-          cancellation
-        ) { downloadedBytes, totalBytes ->
-          sendEvent(
-            "onDownloadProgress",
-            mapOf(
-              "operationId" to operationId,
-              "downloadedBytes" to downloadedBytes.toDouble(),
-              "totalBytes" to totalBytes.toDouble(),
-              "fraction" to downloadedBytes.toDouble().div(totalBytes.toDouble()).coerceIn(0.0, 1.0)
+        // Downloads and APK validation block; keep Expo's shared module queue
+        // available for catalogue/SQLite reads and cancellation during preparation.
+        withContext(Dispatchers.IO) {
+          val downloaded = SecureApkDownloader.download(
+            expected.downloadUrl,
+            destination,
+            expected.byteSize,
+            cancellation
+          ) { downloadedBytes, totalBytes ->
+            sendEvent(
+              "onDownloadProgress",
+              mapOf(
+                "operationId" to operationId,
+                "downloadedBytes" to downloadedBytes.toDouble(),
+                "totalBytes" to totalBytes.toDouble(),
+                "fraction" to downloadedBytes.toDouble().div(totalBytes.toDouble()).coerceIn(0.0, 1.0)
+              )
             )
+          }
+          if (downloaded.byteSize != expected.byteSize) throw InstallerException("APK_SIZE_MISMATCH", "APK size does not match Release metadata")
+          if (downloaded.sha256 != normalizeDigest(expected.sha256)) throw InstallerException("APK_HASH_MISMATCH", "APK SHA-256 does not match Release metadata")
+          val inspected = ApkInspector.inspectAndValidate(context, destination, expected)
+          val preparedId = UUID.randomUUID().toString()
+          val record = PreparedApkRecord(
+            preparedId = preparedId,
+            operationId = operationId,
+            filePath = destination.absolutePath,
+            expected = expected,
+            versionName = inspected.versionName,
+            actualSha256 = downloaded.sha256,
+            certificateSha256 = inspected.certificateSha256,
+            permissions = inspected.permissions
+          )
+          prepared[preparedId] = record
+          mapOf(
+            "preparedId" to preparedId,
+            "operationId" to operationId,
+            "packageName" to inspected.packageName,
+            "versionCode" to inspected.versionCode.toString(),
+            "versionName" to inspected.versionName,
+            "sha256" to downloaded.sha256,
+            "certificateSha256" to inspected.certificateSha256,
+            "permissions" to inspected.permissions,
+            "byteSize" to downloaded.byteSize.toDouble()
           )
         }
-        if (downloaded.byteSize != expected.byteSize) throw InstallerException("APK_SIZE_MISMATCH", "APK size does not match Release metadata")
-        if (downloaded.sha256 != normalizeDigest(expected.sha256)) throw InstallerException("APK_HASH_MISMATCH", "APK SHA-256 does not match Release metadata")
-        val inspected = ApkInspector.inspectAndValidate(context, destination, expected)
-        val preparedId = UUID.randomUUID().toString()
-        val record = PreparedApkRecord(
-          preparedId = preparedId,
-          operationId = operationId,
-          filePath = destination.absolutePath,
-          expected = expected,
-          versionName = inspected.versionName,
-          actualSha256 = downloaded.sha256,
-          certificateSha256 = inspected.certificateSha256,
-          permissions = inspected.permissions
-        )
-        prepared[preparedId] = record
-        mapOf(
-          "preparedId" to preparedId,
-          "operationId" to operationId,
-          "packageName" to inspected.packageName,
-          "versionCode" to inspected.versionCode.toString(),
-          "versionName" to inspected.versionName,
-          "sha256" to downloaded.sha256,
-          "certificateSha256" to inspected.certificateSha256,
-          "permissions" to inspected.permissions,
-          "byteSize" to downloaded.byteSize.toDouble()
-        )
       } catch (error: Throwable) {
         destination.delete()
         throw error

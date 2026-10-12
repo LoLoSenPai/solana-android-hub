@@ -15,6 +15,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="categories/[category]" options={{ headerShown: false }} />
         <Stack.Screen name="apps/[slug]" options={{ headerShown: false }} />
+        <Stack.Screen name="publishers/[slug]" options={{ headerShown: false }} />
         <Stack.Screen name="install/[slug]" options={{ headerShown: false }} />
         <Stack.Screen name="hub-update" options={{ title: "Dapport update", presentation: "modal" }} />
       </Stack>

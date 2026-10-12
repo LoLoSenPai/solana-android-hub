@@ -127,7 +127,7 @@ try {
   try {
     if ($ReuseAndroidProject) {
       Assert-Path (Join-Path (Get-Location).Path "android\gradlew.bat") "Existing Android project for incremental prebuild"
-      pnpm exec expo prebuild --platform android --no-install
+      pnpm exec expo prebuild --platform android --no-clean --no-install
     } else {
       pnpm exec expo prebuild --platform android --clean --no-install
     }

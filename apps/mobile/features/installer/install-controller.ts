@@ -8,7 +8,7 @@ export interface AppInstallState {
   installedPackage: InstalledPackageInfo | null;
   installedPermissions: readonly string[] | undefined;
   visibility: PackageVisibility;
-  stage: "idle" | "permission" | "downloading" | "checking" | "submitted" | "error";
+  stage: "idle" | "permission" | "downloading" | "cancelling" | "checking" | "submitted" | "error";
   detail: string;
   fraction: number;
   busy: boolean;
@@ -23,6 +23,7 @@ export interface InstallDependencies {
   installPrepared: (preparedId: string) => Promise<unknown>;
   getInstallOperation: (operationId: string) => Promise<InstallOperation | null>;
   discardPrepared: (preparedId: string) => Promise<void>;
+  cancel: (operationId: string) => Promise<void>;
   addListener: (eventName: "onDownloadProgress", listener: (event: DownloadProgressEvent) => void) => { remove(): void };
   listInstalledApps: () => Promise<readonly LocalInstallRecord[]>;
   saveInstalledApp: (record: LocalInstallRecord) => Promise<void>;
@@ -42,6 +43,7 @@ export function createInstallController(packageName: string, deps: InstallDepend
   let refreshVersion = 0;
   let pending: { app: CatalogAppDto; operationId: string } | null = null;
   let reconcilePromise: Promise<void> | null = null;
+  let activeDownload: { operationId: string; cancelled: boolean } | null = null;
   const listeners = new Set<() => void>();
   const patch = (value: Partial<AppInstallState>) => {
     state = { ...state, ...value };
@@ -58,7 +60,7 @@ export function createInstallController(packageName: string, deps: InstallDepend
       if (!operation || operation.status === "submitted") return;
       pending = null;
       if (operation.status !== "success") {
-        throw new Error(operation.statusMessage ?? `Android install ${operation.status}`);
+        throw new Error(`Android install ${operation.status}: ${operation.statusMessage ?? ""}`);
       }
       const app = attempt.app;
       await deps.saveInstalledApp({
@@ -109,6 +111,7 @@ export function createInstallController(packageName: string, deps: InstallDepend
     patch({ busy: true });
     let preparedId: string | undefined;
     let progress: { remove(): void } | undefined;
+    let download: NonNullable<typeof activeDownload> | undefined;
     try {
       await reconcile();
       if (pending) {
@@ -124,9 +127,11 @@ export function createInstallController(packageName: string, deps: InstallDepend
       }
       const release = app.latestRelease;
       const operationId = `install_${deps.now()}_${Math.random().toString(36).slice(2)}`;
+      download = { operationId, cancelled: false };
+      activeDownload = download;
       patch({ stage: "downloading", detail: "Downloading app…", fraction: 0 });
       progress = deps.addListener("onDownloadProgress", (event) => {
-        if (event.operationId !== operationId) return;
+        if (event.operationId !== operationId || download?.cancelled) return;
         const fraction = Number.isFinite(event.fraction) ? Math.min(1, Math.max(0, event.fraction)) : 0;
         patch({ fraction, ...(fraction >= 1 ? { stage: "checking", detail: "Download complete. Checking the app…" } : {}) });
       });
@@ -136,6 +141,8 @@ export function createInstallController(packageName: string, deps: InstallDepend
         certificateSha256: release.certificateSha256, permissions: release.permissions,
       });
       preparedId = prepared.preparedId;
+      // A completed native preparation can race a cancellation request. Never hand it to Android.
+      if (download.cancelled) return;
       patch({ stage: "checking", detail: "App is ready. Opening Android…" });
       await deps.installPrepared(prepared.preparedId);
       pending = { app, operationId };
@@ -147,12 +154,30 @@ export function createInstallController(packageName: string, deps: InstallDepend
       }
       if (pending) patch({ stage: "error", detail: pendingMessage });
     } catch (cause) {
-      fail(cause);
+      if (!download?.cancelled) fail(cause);
     } finally {
       progress?.remove();
       if (preparedId) await deps.discardPrepared(preparedId).catch(() => undefined);
       await refresh();
-      patch({ busy: false });
+      if (activeDownload === download) activeDownload = null;
+      patch(download?.cancelled
+        ? { stage: "idle", detail: "The download was cancelled.", fraction: 0, busy: false }
+        : { busy: false });
+    }
+  }
+
+  async function cancel() {
+    if (state.stage !== "downloading" || !activeDownload || activeDownload.cancelled) return;
+    const download = activeDownload;
+    download.cancelled = true;
+    patch({ stage: "cancelling", detail: "Stopping the download…", busy: true });
+    try {
+      await deps.cancel(download.operationId);
+    } catch {
+      // Keep the local guard even if the bridge fails: a late result must still be discarded.
+      if (activeDownload === download) {
+        patch({ detail: "Cancellation could not be confirmed. Waiting for the download to stop." });
+      }
     }
   }
 
@@ -175,6 +200,6 @@ export function createInstallController(packageName: string, deps: InstallDepend
   return {
     getSnapshot: () => state,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    install, open, refresh,
+    install, open, refresh, cancel,
   };
 }

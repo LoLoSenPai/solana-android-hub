@@ -1,15 +1,15 @@
 import type { CatalogAppDto } from "@hub/api-client";
 import * as Linking from "expo-linking";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, Animated, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Animated, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppArtwork } from "@/components/AppArtwork";
 import { AppInstallButton } from "@/components/AppInstallButton";
 import { HubSymbol } from "@/components/HubSymbol";
 import { SolanaMobileRating } from "@/components/SolanaMobileRating";
 import { categoryDefinition } from "@/features/catalog/discovery";
-import { hubOrigin, loadCatalogApp } from "@/features/catalog/api";
+import { loadCatalogApp } from "@/features/catalog/api";
 import { approvalLabel, humanizePermission, permissionSummary, releaseBadgeLabel } from "@/features/catalog/release-presentation";
 import { useAppInstall } from "@/features/installer/use-app-install";
 
@@ -75,7 +75,6 @@ export default function AppDetailScreen() {
   }
 
   const release = app.latestRelease;
-  const publisherProfileUrl = app.publisher ? new URL(`/publishers/${encodeURIComponent(app.publisher.slug)}`, hubOrigin).toString() : null;
   const category = categoryDefinition(app.category);
   const installAction = installation.action;
   const isUpdate = installAction === "update";
@@ -174,12 +173,12 @@ export default function AppDetailScreen() {
               accessibilityLabel={`View ${app.publisher.displayName ?? "publisher"} profile`}
               className="mt-3 flex-row items-center self-start rounded-full border border-line bg-surface px-4 py-2"
               onPress={() => {
-                if (publisherProfileUrl) void Linking.openURL(publisherProfileUrl).catch(() => Alert.alert("Publisher profile", "Could not open the profile. Please try again."));
+                if (app.publisher) router.push(`/publishers/${encodeURIComponent(app.publisher.slug)}` as Href);
               }}
             >
               <HubSymbol name="person" size={18} color="#77A7FF" />
               <Text className="ml-2 text-sm font-semibold text-ink">{app.publisher.displayName ?? "View publisher profile"}</Text>
-              <HubSymbol name="open_in_new" size={16} color="#77A7FF" />
+              <HubSymbol name="chevron_right" size={16} color="#77A7FF" />
             </Pressable>
           ) : null}
           <Text className="mt-2 text-base leading-6 text-muted">{app.shortDescription ?? "Discover this Solana app"}</Text>

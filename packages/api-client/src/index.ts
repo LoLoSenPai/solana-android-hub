@@ -108,6 +108,13 @@ export const catalogResponseSchema = z.object({
   requestId: z.string()
 });
 
+export const publicPublisherProfileDtoSchema = z.object({
+  profile: publisherProfileDtoSchema,
+  apps: z.array(catalogAppDtoSchema)
+});
+
+export type PublicPublisherProfileDto = z.infer<typeof publicPublisherProfileDtoSchema>;
+
 export const publicConfigDtoSchema = z.object({
   appEnvironment: z.enum(["local", "staging", "production"]),
   defaultCatalogChannel: z.literal("trusted"),
@@ -127,6 +134,12 @@ export class HubApiClient {
 
   public async getConfig(): Promise<PublicConfigDto> {
     return publicConfigDtoSchema.parse(await this.getJson("/api/v1/config"));
+  }
+
+  public async getPublicPublisherProfile(slug: string, input: { channel?: CatalogChannel } = {}): Promise<PublicPublisherProfileDto> {
+    const url = new URL(`/api/v1/publishers/${encodeURIComponent(slug)}`, this.origin);
+    if (input.channel) url.searchParams.set("channel", input.channel);
+    return publicPublisherProfileDtoSchema.parse(await this.getJson(url));
   }
 
   public async getCatalog(input: {

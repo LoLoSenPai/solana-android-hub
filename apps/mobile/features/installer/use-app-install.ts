@@ -23,6 +23,7 @@ function controllerFor(packageName: string) {
       installPrepared: (id) => AppInstaller.installPrepared(id),
       getInstallOperation: (id) => AppInstaller.getInstallOperation(id),
       discardPrepared: (id) => AppInstaller.discardPrepared(id),
+      cancel: (id) => AppInstaller.cancel(id),
       addListener: (event, listener) => AppInstaller.addListener(event, listener),
       listInstalledApps, saveInstalledApp, now: Date.now,
       wait: () => new Promise((resolve) => setTimeout(resolve, 1000)),
@@ -38,6 +39,7 @@ const emptyController = {
   refresh: noRefresh,
   install: noRefresh,
   open: noRefresh,
+  cancel: noRefresh,
 };
 
 export function useAppInstall(app: CatalogAppDto | null) {
@@ -57,5 +59,6 @@ export function useAppInstall(app: CatalogAppDto | null) {
     refresh,
     install: () => app ? controller.install(app) : Promise.resolve(),
     open: () => app ? controller.open() : Promise.resolve(),
+    cancel: () => app ? controller.cancel() : Promise.resolve(),
   };
 }

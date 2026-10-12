@@ -1,4 +1,5 @@
 import { AppInstaller } from "@hub/app-installer";
+import type { CatalogAppDto } from "@hub/api-client";
 import { Link, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
@@ -10,12 +11,14 @@ import { listInstalledApps, type LocalInstallRecord } from "@/storage/database";
 
 export default function MyAppsScreen() {
   const [apps, setApps] = useState<readonly LocalInstallRecord[]>([]);
+  const [catalogueById, setCatalogueById] = useState<Record<string, CatalogAppDto>>({});
   const [states, setStates] = useState<Record<string, string>>({});
   const [updates, setUpdates] = useState<Record<string, { versionCode: string; versionName: string }>>({});
 
   useFocusEffect(useCallback(() => {
     void Promise.all([listInstalledApps(), loadCatalog()]).then(async ([records, catalog]) => {
       setApps(records);
+      setCatalogueById(Object.fromEntries(catalog.map((app) => [app.id, app])));
       const installedStates = await Promise.all(records.map(async (record) => [record.packageName, await AppInstaller.getInstalledPackageInfo(record.packageName)] as const));
       setStates(Object.fromEntries(installedStates.map(([packageName, state]) => [packageName, state.status])));
       const nextUpdates: Record<string, { versionCode: string; versionName: string }> = {};
@@ -60,7 +63,7 @@ export default function MyAppsScreen() {
           return (
             <Link key={app.packageName} href={{ pathname: "/apps/[slug]", params: { slug: app.slug } }} className="mb-3 overflow-hidden rounded-[24px] border border-line bg-surface p-4">
               <View className="flex-row items-center">
-                <AppArtwork app={{ iconUrl: null }} size={64} radius={19} />
+                <AppArtwork app={catalogueById[app.appId] ?? { iconUrl: null }} size={64} radius={19} />
                 <View className="ml-4 flex-1">
                   <Text className="text-[17px] font-bold text-ink">{app.appName}</Text>
                   <Text className="mt-1 text-sm text-muted">Version {app.versionName}</Text>

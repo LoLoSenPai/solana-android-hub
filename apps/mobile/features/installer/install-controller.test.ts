@@ -28,6 +28,7 @@ function harness(timeout = 3000) {
     installPrepared: vi.fn(() => Promise.resolve()),
     getInstallOperation: vi.fn((operationId: string) => Promise.resolve({ operationId, packageName: "com.example", status: "success" as const, statusMessage: null, updatedAt: now })),
     discardPrepared: vi.fn(() => Promise.resolve()),
+    cancel: vi.fn(() => Promise.resolve()),
     addListener: vi.fn(() => ({ remove })),
     listInstalledApps: vi.fn(() => Promise.resolve([])),
     saveInstalledApp: vi.fn(() => Promise.resolve()),
@@ -83,7 +84,7 @@ describe("shared install controller", () => {
 
   it("cleans the listener and prepared file on cancellation without recording a successful install", async () => {
     const { deps, controller, remove } = harness();
-    vi.mocked(deps.getInstallOperation).mockImplementation((operationId) => Promise.resolve({ operationId, packageName: "com.example", status: "cancelled", statusMessage: null, updatedAt: 1000 }));
+    vi.mocked(deps.getInstallOperation).mockImplementation((operationId) => Promise.resolve({ operationId, packageName: "com.example", status: "cancelled", statusMessage: "INSTALL_FAILED_ABORTED: User rejected permissions", updatedAt: 1000 }));
     await controller.install(app);
     expect(controller.getSnapshot()).toMatchObject({ stage: "error", busy: false, detail: "The installation was cancelled." });
     expect(deps.saveInstalledApp).not.toHaveBeenCalled();
@@ -146,5 +147,55 @@ describe("shared install controller", () => {
     await controller.open();
     expect(deps.openInstalledApp).toHaveBeenCalledTimes(1);
     expect(controller.getSnapshot()).toMatchObject({ stage: "error", installedPackage: null });
+  });
+
+  it("cancels an active native download without installing and ignores further progress", async () => {
+    const { deps, controller, remove } = harness();
+    let abort!: () => void;
+    vi.mocked(deps.prepareInstall).mockImplementation(() => new Promise((_resolve, reject) => {
+      abort = () => reject(Object.assign(new Error("APK_DOWNLOAD_CANCELLED"), { code: "APK_DOWNLOAD_CANCELLED" }));
+    }));
+    vi.mocked(deps.getInstalledPackageInfo).mockResolvedValue({ ...installed, versionCode: "1" });
+    const attempt = controller.install(app);
+    await vi.waitFor(() => expect(deps.prepareInstall).toHaveBeenCalledTimes(1));
+    const operationId = vi.mocked(deps.prepareInstall).mock.calls[0]![0];
+    await Promise.all([controller.cancel(), controller.cancel()]);
+    expect(deps.cancel).toHaveBeenCalledExactlyOnceWith(operationId);
+    expect(controller.getSnapshot()).toMatchObject({ stage: "cancelling", busy: true });
+    const listener = vi.mocked(deps.addListener).mock.calls[0]![1];
+    listener({ operationId, fraction: 1, downloadedBytes: 123, totalBytes: 123 });
+    expect(controller.getSnapshot()).toMatchObject({ stage: "cancelling", fraction: 0 });
+    abort();
+    await attempt;
+    expect(controller.getSnapshot()).toMatchObject({ stage: "idle", fraction: 0, busy: false,
+      detail: "The download was cancelled.", installedPackage: { versionCode: "1" } });
+    expect(deps.installPrepared).not.toHaveBeenCalled();
+    expect(deps.saveInstalledApp).not.toHaveBeenCalled();
+    expect(deps.discardPrepared).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledTimes(1);
+  });
+
+  it("discards a preparation resolved after cancellation before making the action available again", async () => {
+    const { deps, controller, remove } = harness();
+    let finish!: () => void;
+    let cleaned!: () => void;
+    vi.mocked(deps.prepareInstall).mockImplementation((operationId) => new Promise((resolve) => {
+      finish = () => resolve({ preparedId: "late-prepared", operationId, ...installed, sha256: "hash", permissions: [], byteSize: 123 });
+    }));
+    vi.mocked(deps.discardPrepared).mockImplementation(() => new Promise((resolve) => { cleaned = resolve; }));
+    const attempt = controller.install(app);
+    await vi.waitFor(() => expect(deps.prepareInstall).toHaveBeenCalled());
+    await controller.cancel();
+    finish();
+    await vi.waitFor(() => expect(deps.discardPrepared).toHaveBeenCalledWith("late-prepared"));
+    expect(controller.getSnapshot()).toMatchObject({ stage: "cancelling", busy: true });
+    expect(deps.installPrepared).not.toHaveBeenCalled();
+    expect(deps.saveInstalledApp).not.toHaveBeenCalled();
+    cleaned();
+    await attempt;
+    expect(controller.getSnapshot()).toMatchObject({ stage: "idle", fraction: 0, busy: false });
+    expect(remove).toHaveBeenCalledTimes(1);
+    await controller.cancel();
+    expect(deps.cancel).toHaveBeenCalledTimes(1);
   });
 });
