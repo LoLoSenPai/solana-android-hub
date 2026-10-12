@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-  [string]$VersionName = "0.5.8",
-  [int]$VersionCode = 15,
+  [string]$VersionName = "0.5.9",
+  [int]$VersionCode = 16,
   [string]$ShortWorkspace = "C:\hubb03",
   [switch]$ReuseAndroidProject
 )

@@ -15,7 +15,7 @@ import {
   type BrowseCategory
 } from "@/features/catalog/discovery";
 import { loadCatalog } from "@/features/catalog/api";
-import { initializeLocalDatabase, listInstalledApps, type LocalInstallRecord } from "@/storage/database";
+import { useInstalledApps } from "@/features/installer/use-installed-apps";
 
 const HOME_CATEGORIES: readonly BrowseCategory[] = CATEGORY_DEFINITIONS
   .filter((category) => category.id !== "all")
@@ -24,17 +24,15 @@ const HOME_CATEGORIES: readonly BrowseCategory[] = CATEGORY_DEFINITIONS
 export default function DiscoverScreen() {
   const router = useRouter();
   const [apps, setApps] = useState<readonly CatalogAppDto[]>([]);
-  const [installedApps, setInstalledApps] = useState<readonly LocalInstallRecord[]>([]);
+  const { installedApps } = useInstalledApps();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      await initializeLocalDatabase();
-      const [catalog, localApps] = await Promise.all([loadCatalog(), listInstalledApps()]);
+      const catalog = await loadCatalog();
       setApps(catalog);
-      setInstalledApps(localApps);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Catalogue unavailable");
     } finally {

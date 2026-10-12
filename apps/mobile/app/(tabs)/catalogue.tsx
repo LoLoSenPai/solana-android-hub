@@ -14,14 +14,14 @@ import {
   type BrowseCategory
 } from "@/features/catalog/discovery";
 import { loadCatalog } from "@/features/catalog/api";
-import { initializeLocalDatabase, listInstalledApps, type LocalInstallRecord } from "@/storage/database";
+import { useInstalledApps } from "@/features/installer/use-installed-apps";
 
 const VISIBLE_CATEGORIES = CATEGORY_DEFINITIONS.filter((category) => category.id !== "all");
 
 export default function CatalogueScreen() {
   const router = useRouter();
   const [apps, setApps] = useState<readonly CatalogAppDto[]>([]);
-  const [installedApps, setInstalledApps] = useState<readonly LocalInstallRecord[]>([]);
+  const { installedApps, refresh: refreshInstalledApps } = useInstalledApps();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,10 +31,8 @@ export default function CatalogueScreen() {
     if (showRefresh) setRefreshing(true);
     setError(null);
     try {
-      await initializeLocalDatabase();
-      const [catalog, localApps] = await Promise.all([loadCatalog(), listInstalledApps()]);
+      const catalog = await loadCatalog();
       setApps(catalog);
-      setInstalledApps(localApps);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Catalogue unavailable");
     } finally {
@@ -70,7 +68,7 @@ export default function CatalogueScreen() {
         contentContainerClassName="px-4 pb-36"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh(true)} tintColor="#77A7FF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void refresh(true); void refreshInstalledApps(); }} tintColor="#77A7FF" />}
       >
         <View className="mb-7 mt-3 flex-row items-center justify-between">
           <View className="flex-row items-center">

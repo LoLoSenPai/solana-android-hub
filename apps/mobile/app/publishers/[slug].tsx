@@ -9,17 +9,17 @@ import { HubSymbol } from "@/components/HubSymbol";
 import { hubOrigin } from "@/features/catalog/api";
 import { localStatusForApp } from "@/features/catalog/discovery";
 import { loadPublicPublisherProfile } from "@/features/publishers/api";
-import { listInstalledApps, type LocalInstallRecord } from "@/storage/database";
+import { useInstalledApps } from "@/features/installer/use-installed-apps";
 
 export default function PublisherProfileScreen() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [data, setData] = useState<PublicPublisherProfileDto | null>(null);
-  const [installedApps, setInstalledApps] = useState<readonly LocalInstallRecord[]>([]);
+  const { installedApps, refresh: refreshInstalledApps } = useInstalledApps();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const refresh = () => setRefreshKey((value) => value + 1);
+  const refresh = () => { setRefreshKey((value) => value + 1); void refreshInstalledApps(); };
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -31,13 +31,9 @@ export default function PublisherProfileScreen() {
       setLoading(false);
       return () => { active = false; };
     }
-    void Promise.all([
-      loadPublicPublisherProfile(slug),
-      listInstalledApps().catch(() => []),
-    ]).then(([profile, localApps]) => {
+    void loadPublicPublisherProfile(slug).then((profile) => {
       if (!active) return;
       setData(profile);
-      setInstalledApps(localApps);
     }).catch(() => {
       if (active) setError(true);
     }).finally(() => {

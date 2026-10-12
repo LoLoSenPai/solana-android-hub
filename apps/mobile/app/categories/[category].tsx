@@ -13,7 +13,7 @@ import {
   type GenreFilter
 } from "@/features/catalog/discovery";
 import { loadCatalog } from "@/features/catalog/api";
-import { listInstalledApps, type LocalInstallRecord } from "@/storage/database";
+import { useInstalledApps } from "@/features/installer/use-installed-apps";
 
 const SORTS: readonly { id: BrowseSort; label: string }[] = [
   { id: "recent", label: "Newest" },
@@ -29,7 +29,7 @@ export default function CategoryScreen() {
   const definition = categoryDefinition(category);
   const isGames = category === "games";
   const [apps, setApps] = useState<readonly CatalogAppDto[]>([]);
-  const [installedApps, setInstalledApps] = useState<readonly LocalInstallRecord[]>([]);
+  const { installedApps } = useInstalledApps();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<BrowseSort>("recent");
   const [genre, setGenre] = useState<GenreFilter>("all");
@@ -40,9 +40,8 @@ export default function CategoryScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [catalog, localApps] = await Promise.all([loadCatalog(), listInstalledApps()]);
+      const catalog = await loadCatalog();
       setApps(catalog);
-      setInstalledApps(localApps);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Catalogue unavailable");
     } finally {
