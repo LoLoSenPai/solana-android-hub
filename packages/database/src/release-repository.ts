@@ -62,7 +62,11 @@ export class ReleaseRepository {
     });
   }
 
-  public async completeSyncJob(job: AcquiredSyncJob, result: unknown, finalizedSlot: bigint): Promise<void> {
+  public async completeSyncJob(job: AcquiredSyncJob, result: unknown, finalizedSlot: bigint, issues: readonly string[] = []): Promise<void> {
+    if (issues.length > 0) {
+      await this.failSyncJob(job, "SYNC_INCOMPLETE", issues.join("; "), result);
+      return;
+    }
     const serializedResult: JSONValue = parseJsonValue(JSON.stringify(result));
     await this.sql.begin(async (tx) => {
       await tx`
@@ -79,10 +83,12 @@ export class ReleaseRepository {
     });
   }
 
-  public async failSyncJob(job: AcquiredSyncJob, errorCode: string, errorDetail: string): Promise<void> {
+  public async failSyncJob(job: AcquiredSyncJob, errorCode: string, errorDetail: string, result?: unknown): Promise<void> {
+    const serializedResult: JSONValue = parseJsonValue(JSON.stringify(result ?? null));
     await this.sql.begin(async (tx) => {
       await tx`
         update hub.sync_jobs set status = 'failed', error_code = ${errorCode}, error_detail = ${errorDetail.slice(0, 1000)},
+          result = case when ${result !== undefined} then ${tx.json(serializedResult)} else result end,
           completed_at = now(), lease_expires_at = null
         where id = ${job.id} and lease_owner = ${job.leaseOwner} and status = 'running'
       `;
@@ -238,7 +244,7 @@ export class ReleaseRepository {
     });
   }
 
-  public async listDueSyncTargets(environment: AppEnvironment, limit = 20): Promise<readonly ScheduledSyncTarget[]> {
+  public async listDueSyncTargets(environment: AppEnvironment, limit = 20, force = false): Promise<readonly ScheduledSyncTarget[]> {
     const rows = await this.sql<{
       app_id: string; publisher_id: string; publisher_wallet_id: string; wallet_address: string;
     }[]>`
@@ -255,7 +261,7 @@ export class ReleaseRepository {
           select 1 from hub.distribution_consents consent where consent.app_id = a.id
             and consent.environment = ${environment}::hub.app_environment and consent.status = 'active' and consent.superseded_at is null
         )
-        and coalesce(state.next_sync_at, now()) <= now()
+        and (${force} or coalesce(state.next_sync_at, now()) <= now())
       order by coalesce(state.next_sync_at, a.updated_at) asc
       limit ${limit}
     `;

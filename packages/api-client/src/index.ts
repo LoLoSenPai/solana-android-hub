@@ -82,6 +82,13 @@ export const solanaMobileRatingDtoSchema = z.object({
   { message: "Review count must match the rating buckets", path: ["reviewCount"] }
 );
 
+export const solanaMobileStoreDtoSchema = z.object({
+  status: z.enum(["visible", "not_visible"]),
+  versionCode: z.string().regex(/^[1-9]\d*$/).nullable(),
+  checkedAt: z.iso.datetime(),
+  sourceReference: z.literal("https://dappstore.solanamobile.com/graphql#explore")
+});
+
 export const catalogAppDtoSchema = z.object({
   id: z.uuid(),
   slug: z.string(),
@@ -98,6 +105,7 @@ export const catalogAppDtoSchema = z.object({
   publisherLinks: publisherLinksDtoSchema,
   publisher: catalogPublisherDtoSchema.nullable().optional(),
   solanaMobileRating: solanaMobileRatingDtoSchema.nullable().default(null),
+  solanaMobileStore: solanaMobileStoreDtoSchema.nullable().default(null),
   releaseUpdatedAt: z.iso.datetime().nullable().default(null),
   latestRelease: releaseDtoSchema
 });

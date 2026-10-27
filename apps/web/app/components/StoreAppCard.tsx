@@ -7,6 +7,7 @@ import { useState } from "react";
 import { appHref } from "../catalog/catalog-channel";
 import { categoryLabel, genreLabel } from "./catalog-config";
 import { SolanaMobileRating } from "./SolanaMobileRating";
+import { solanaMobileStatus } from "./solana-mobile-status";
 
 export function StoreAppCard({
   app,
@@ -17,7 +18,7 @@ export function StoreAppCard({
   channel?: CatalogChannel;
   layout?: "grid" | "list";
 }) {
-  const approval = app.latestRelease.trust.solanaMobileApproval === "verified_approved";
+  const status = solanaMobileStatus(app);
   const artwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
   const href = appHref(app.slug, channel);
 
@@ -38,8 +39,8 @@ export function StoreAppCard({
         </div>
         <div className="catalogue-list-status">
           <span>Availability</span>
-          <strong className={approval ? "is-approved" : "is-unverified"}>
-            {approval ? "On Solana Mobile" : "Approval not verified"}
+          <strong className={status.visibility === "visible" ? "is-approved" : "is-unverified"}>
+            {status.label}{status.preview ? " · Development preview" : ""}
           </strong>
         </div>
         <Link className="card-action" href={href}>View app</Link>
@@ -63,11 +64,8 @@ export function StoreAppCard({
         </div>
         <div className="catalogue-card-meta">
           {app.genres.map((genre) => <span key={genre}>{genreLabel(genre)}</span>)}
-          {approval
-            ? <span className="catalogue-status-solana">On Solana Mobile</span>
-            : <span className={app.latestRelease.previewOnly ? "catalogue-status-preview" : "catalogue-status-dapport"}>
-                {app.latestRelease.previewOnly ? "Development preview" : "Solana approval not verified"}
-              </span>}
+          <span className={status.visibility === "visible" ? "catalogue-status-solana" : "catalogue-status-dapport"}>{status.label}</span>
+          {status.preview ? <span className="catalogue-status-preview">Development preview</span> : null}
         </div>
       </div>
     </article>

@@ -42,8 +42,21 @@ describe("catalog API client", () => {
       genres: [],
       publisherLinks: { website: null, x: null, discord: null, telegram: null },
       solanaMobileRating: null,
+      solanaMobileStore: null,
       releaseUpdatedAt: null
     });
+  });
+
+  it("exposes app presence independently of release approval and discards private proof fields", () => {
+    const result = catalogAppDtoSchema.parse({ ...legacyItem, solanaMobileStore: {
+      status: "visible", versionCode: "11", checkedAt: "2026-10-27T12:00:00.000Z",
+      sourceReference: "https://dappstore.solanamobile.com/graphql#explore", privatePayload: "secret"
+    } });
+    expect(result.solanaMobileStore).toEqual({
+      status: "visible", versionCode: "11", checkedAt: "2026-10-27T12:00:00.000Z",
+      sourceReference: "https://dappstore.solanamobile.com/graphql#explore"
+    });
+    expect(result.latestRelease.trust.solanaMobileApproval).toBe("unknown");
   });
 
   it("parses the official rating aggregate without any review text", () => {

@@ -17,6 +17,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ScreenshotRail } from "../../components/ScreenshotRail";
 import { SolanaMobileRating } from "../../components/SolanaMobileRating";
+import { solanaMobileStatus } from "../../components/solana-mobile-status";
 import { catalogChannelFromParam, catalogHref } from "../../catalog/catalog-channel";
 import { buildAppSocialMetadata } from "../../../server/app-social-metadata";
 import { getCatalogApp } from "../../../server/catalog-service";
@@ -51,7 +52,7 @@ export default async function AppDetailPage({ params, searchParams }: {
   if (!app) notFound();
 
   const authenticity = app.latestRelease.previewOnly ? "Development preview" : "Server-validated release";
-  const approval = approvalLabel(app.latestRelease.trust.solanaMobileApproval);
+  const status = solanaMobileStatus(app);
   const heroArtwork = app.bannerUrl ?? app.featureGraphicUrl ?? app.screenshots[0];
   const publisherLinks = [
     { label: "Website", url: app.publisherLinks.website, Icon: GlobeHemisphereWest },
@@ -175,7 +176,7 @@ export default async function AppDetailPage({ params, searchParams }: {
             <div><UserFocus aria-hidden="true" weight="duotone" /><dt>Publisher control</dt><dd>Verified from current finalized authority evidence.</dd><strong>Verified</strong></div>
             <div><Signature aria-hidden="true" weight="duotone" /><dt>Distribution consent</dt><dd>A separate, environment-bound consent is active.</dd><strong>Active</strong></div>
             <div><Fingerprint aria-hidden="true" weight="duotone" /><dt>Release authenticity</dt><dd>The APK must match its published identity and certificate.</dd><strong>{authenticity}</strong></div>
-            <div><SealCheck aria-hidden="true" weight="duotone" /><dt>Solana Mobile visibility</dt><dd>The current official release is matched by package and version.</dd><strong>{approval}</strong></div>
+            <div><SealCheck aria-hidden="true" weight="duotone" /><dt>Solana Mobile availability</dt><dd>{status.visibilityDescription} {status.releaseDescription}</dd><strong>{status.label}</strong></div>
           </dl>
         </section>
 
@@ -235,11 +236,6 @@ export default async function AppDetailPage({ params, searchParams }: {
       </article>
     </main>
   );
-}
-
-function approvalLabel(status: "unknown" | "verified_approved" | "rejected"): string {
-  if (status === "verified_approved") return "Visible on Solana Mobile";
-  return "Not verified by Solana Mobile";
 }
 
 function categoryFromApp(category: string): string {

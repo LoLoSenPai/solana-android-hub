@@ -81,6 +81,24 @@ describe("public publisher API", () => {
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: { code: "PUBLISHER_PROFILE_UNAVAILABLE", message: "The publisher profile is temporarily unavailable." }, requestId: id });
   });
+
+  it("shows official v11 presence while serving published v10 without approving it", async () => {
+    const published = record(1);
+    published.release.versionCode = 10n;
+    published.solanaMobileStore = {
+      status: "visible", versionCode: "11", checkedAt: "2026-10-27T12:00:00.000Z",
+      sourceReference: "https://dappstore.solanamobile.com/graphql#explore"
+    };
+    const unpublished = structuredClone(published);
+    unpublished.release = { ...published.release, id: "20000000-0000-4000-8000-000000000011", versionCode: 11n, publicationStatus: "unpublished", approvalStatus: "verified_approved" };
+    mocks.candidates.mockResolvedValue([unpublished, published]);
+    const result = publicPublisherProfileDtoSchema.parse(await (await request()).json());
+    expect(result.apps[0]?.solanaMobileStore?.status).toBe("visible");
+    expect(result.apps[0]?.latestRelease.versionCode).toBe("10");
+    expect(result.apps[0]?.latestRelease.trust.solanaMobileApproval).toBe("unknown");
+    const approved = publicPublisherProfileDtoSchema.parse(await (await request("?channel=approved")).json());
+    expect(approved.apps).toEqual([]);
+  });
 });
 
 function record(index: number): CatalogAppRecord {
@@ -88,7 +106,7 @@ function record(index: number): CatalogAppRecord {
     id: `10000000-0000-4000-8000-00000000000${index}`, publisher: { id: profile.id, slug: profile.slug, displayName: profile.displayName },
     appMint: `app-${index}-mint`, slug: `app-${index}`, packageName: `com.example.app${index}`, name: `App ${index}`,
     shortDescription: null, description: null, iconUri: null, screenshots: [], bannerUri: null, featureGraphicUri: null,
-    category: "other", genres: [], publisherLinks: profile.links, solanaMobileRating: null,
+    category: "other", genres: [], publisherLinks: profile.links, solanaMobileRating: null, solanaMobileStore: null,
     eligibility: { appMint: `app-${index}-mint`, claimStatus: "verified", authorityCurrent: true, consentStatus: "active", consentEnvironment: "production", distributionEnabled: true },
     release: {
       id: `20000000-0000-4000-8000-00000000000${index}`, releaseMint: `release-${index}`, appMint: `app-${index}-mint`,

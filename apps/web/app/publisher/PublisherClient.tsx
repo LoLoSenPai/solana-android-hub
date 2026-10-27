@@ -297,9 +297,13 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   });
 
   const sync = (candidate: ClaimedApp) => run(async () => {
-    const result = await api<{ releases: readonly { releaseMint: string }[] }>(`/api/v1/publisher/apps/${candidate.id}/sync`, mutation());
+    const result = await api<{ status: "completed" | "partial" | "already_running"; releases: readonly { releaseMint: string }[] }>(`/api/v1/publisher/apps/${candidate.id}/sync`, mutation());
     await refreshReleases(candidate.id);
-    notify(`Found ${result.releases.length} release${result.releases.length === 1 ? "" : "s"} for ${candidate.name}.`);
+    notify(result.status === "partial"
+      ? `Releases refreshed for ${candidate.name}, but some checks could not finish. Please retry the refresh.`
+      : result.status === "already_running" ? `A refresh is already running for ${candidate.name}.`
+        : `Found ${result.releases.length} release${result.releases.length === 1 ? "" : "s"} for ${candidate.name}.`,
+    result.status === "completed" ? "success" : "info");
   });
 
   const validateOrPublish = (candidate: ClaimedApp, release: PublisherRelease) => run(async () => {

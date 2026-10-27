@@ -24,6 +24,9 @@
 - Keep real App mints allowlisted while `device_only_preview` is in use.
 - Exercise the GitHub OIDC callback against the deployed origin before any external publisher is onboarded.
 - Vercel invokes `/api/v1/internal/cron/sync` every 15 minutes in the production deployment target. The route accepts Vercel's authenticated `GET` request and retains authenticated `POST` for manual operational runs; both require `CRON_SECRET`.
+- An authenticated operational `POST` with `{"force":true}` refreshes consented apps even when their next scheduled sync is not due. It still respects publisher consent, app authority, and manual release-publication policies.
+- Metadata, official approval, rating refresh, and validation dispatch errors are persisted in the sync result. Incomplete runs return `partial`, store `SYNC_INCOMPLETE` with a retry backoff, and produce HTTP 503 from the cron route instead of a false success. An app absent from the completed official catalogue is expected; its rating query is skipped.
+- Store badges use the last conclusive official app-visibility check, independently of approval for the exact downloadable APK. Ratings never establish approval. The release-specific `approved` channel and APK validation gates remain strict.
 
 ## Production startup requirements
 

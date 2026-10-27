@@ -95,24 +95,17 @@ export async function syncPublisherApp(
         initialBackfill
       }));
     }
-    const [officialApproval, officialRating] = app.distributionEnabled
-      ? await Promise.all([
-          reconcileOfficialApproval(app.id, app.packageName),
-          reconcileOfficialRating(app.id, app.packageName)
-        ])
-      : [
-          { status: "skipped_no_consent" as const },
-          { status: "skipped_no_consent" as const }
-        ];
+    const officialApproval = app.distributionEnabled
+      ? await reconcileOfficialApproval(app.id, app.packageName)
+      : { status: "skipped_no_consent" as const };
+    // A package absent from the complete consumer catalogue is an expected state,
+    // not a rating-provider failure (for example an app awaiting its first approval).
+    const officialRating = !app.distributionEnabled
+      ? { status: "skipped_no_consent" as const }
+      : officialApproval.status === "not_visible"
+        ? { status: "skipped_not_visible" as const }
+        : await reconcileOfficialRating(app.id, app.packageName);
     const maxReleaseSlot = verified.reduce((slot, item) => item.evidence.finalizedSlot > slot ? item.evidence.finalizedSlot : slot, authority.finalizedSlot);
-    await releaseRepository.completeSyncJob(job, {
-      discovered: discovered.length,
-      normalized: verified.length,
-      releases,
-      failures,
-      officialApproval,
-      officialRating
-    }, maxReleaseSlot);
     const validationFailures: Array<{ releaseId: string; code: string }> = [];
     for (const release of releases.filter((item) => shouldRequestAutomaticValidation(app.releasePolicy, item))) {
       try {
@@ -121,7 +114,18 @@ export async function syncPublisherApp(
         validationFailures.push({ releaseId: release.id, code: errorCode(error) });
       }
     }
-    return { status: "completed" as const, releases, failures, validationFailures };
+    const issues = [
+      ...failures.map((failure) => `METADATA:${failure.code}`),
+      ...(officialApproval.status === "unavailable" ? [`OFFICIAL_APPROVAL:${officialApproval.errorCode}`] : []),
+      ...(officialRating.status === "unavailable" ? [`OFFICIAL_RATING:${officialRating.errorCode}`] : []),
+      ...(officialRating.status === "available" && officialRating.refreshErrorCode ? [`OFFICIAL_RATING:${officialRating.refreshErrorCode}`] : []),
+      ...validationFailures.map((failure) => `VALIDATION_DISPATCH:${failure.code}`)
+    ];
+    await releaseRepository.completeSyncJob(job, {
+      discovered: discovered.length, normalized: verified.length, releases, failures,
+      officialApproval, officialRating, validationFailures, issues
+    }, maxReleaseSlot, issues);
+    return { status: issues.length ? "partial" as const : "completed" as const, releases, failures, validationFailures, officialApproval, officialRating, issues };
   } catch (error) {
     const code = errorCode(error);
     if (authorityLossCodes.has(code)) await releaseRepository.suspendForAuthorityLoss(app.id, code);
@@ -133,9 +137,13 @@ export async function syncPublisherApp(
 async function reconcileOfficialApproval(appId: string, packageName: string): Promise<{
   status: "verified" | "not_visible" | "release_not_found" | "unavailable";
   errorCode?: string;
+  androidPackage?: string;
+  versionCode?: string | null;
+  checkedAt?: string;
+  sourceReference?: string;
 }> {
   const lookup = await approvalProvider.lookupLatestVisibleRelease(packageName);
-  if (lookup.status === "unavailable") return { status: "unavailable", errorCode: lookup.errorCode };
+  if (lookup.status === "unavailable") return { status: "unavailable", errorCode: lookup.errorCode, androidPackage: lookup.androidPackage, checkedAt: lookup.checkedAt };
 
   try {
     const status = await releaseRepository.reconcileOfficialStoreApproval({
@@ -152,7 +160,11 @@ async function reconcileOfficialApproval(appId: string, packageName: string): Pr
         systemContext: lookup.systemContext
       }
     });
-    return { status };
+    return {
+      status, androidPackage: lookup.androidPackage,
+      versionCode: lookup.status === "visible" ? lookup.versionCode.toString() : null,
+      checkedAt: lookup.checkedAt, sourceReference: lookup.sourceReference
+    };
   } catch (error) {
     return { status: "unavailable", errorCode: errorCode(error) };
   }
@@ -160,6 +172,7 @@ async function reconcileOfficialApproval(appId: string, packageName: string): Pr
 
 async function reconcileOfficialRating(appId: string, packageName: string): Promise<{
   status: "available";
+  refreshErrorCode?: string;
   averageRating: number | null;
   reviewsByRating: readonly number[];
   sourceReference: string;
@@ -181,7 +194,7 @@ async function reconcileOfficialRating(appId: string, packageName: string): Prom
   const lookup = await approvalProvider.lookupRating(packageName);
   if (lookup.status === "unavailable") {
     return cached
-      ? { status: "available", ...cached }
+      ? { status: "available", ...cached, refreshErrorCode: lookup.errorCode }
       : { status: "unavailable", errorCode: lookup.errorCode };
   }
   return {
@@ -201,16 +214,16 @@ const authorityLossCodes = new Set([
   "TOKEN_METADATA_MINT_MISMATCH"
 ]);
 
-export async function syncDuePublisherApps(limit = 20) {
+export async function syncDuePublisherApps(limit = 20, force = false) {
   await expireStaleBinaryValidations();
-  const targets = await releaseRepository.listDueSyncTargets(hubConfig.appEnvironment, limit);
-  const results: Array<{ appId: string; status: "completed" | "failed" | "already_running" }> = [];
+  const targets = await releaseRepository.listDueSyncTargets(hubConfig.appEnvironment, limit, force);
+  const results: Array<{ appId: string; status: "completed" | "partial" | "failed" | "already_running"; issues?: readonly string[] }> = [];
   for (const target of targets) {
     try {
       const result = await syncPublisherApp(syncContext(target), target.appId, "scheduled");
-      results.push({ appId: target.appId, status: result.status });
-    } catch {
-      results.push({ appId: target.appId, status: "failed" });
+      results.push({ appId: target.appId, status: result.status, ...("issues" in result ? { issues: result.issues } : {}) });
+    } catch (error) {
+      results.push({ appId: target.appId, status: "failed", issues: [errorCode(error)] });
     }
   }
   return results;

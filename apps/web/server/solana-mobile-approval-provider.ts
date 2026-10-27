@@ -19,8 +19,10 @@ export const SEEKER_STORE_CONTEXT: OfficialStoreSystemContext = {
 };
 
 const PAGE_SIZE = 20;
-const MAX_CATALOG_PAGES = 30;
+const MAX_CATALOG_PAGES = 1_000;
 const CATALOG_CACHE_MS = 5 * 60 * 1_000;
+const CATALOG_ERROR_CACHE_MS = 30 * 1_000;
+const CATALOG_TIMEOUT_MS = 45 * 1_000;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 const REQUEST_TIMEOUT_MS = 5_000;
 const androidPackageSchema = z.string().trim().min(3).max(255)
@@ -38,6 +40,7 @@ const exploreResponseSchema = z.object({
           node: z.object({
             __typename: z.string(),
             dApps: z.object({
+              pageInfo: z.object({ hasNextPage: z.boolean() }),
               edges: z.array(z.object({
                 node: z.object({
                   androidPackage: androidPackageSchema,
@@ -69,8 +72,9 @@ const ratingResponseSchema = z.object({
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export class OfficialSolanaMobileApprovalProvider implements SolanaMobileApprovalProvider, SolanaMobileRatingProvider {
-  private catalogPromise: Promise<Map<string, bigint>> | null = null;
+  private catalogPromise: Promise<Map<string, bigint | null>> | null = null;
   private catalogExpiresAt = 0;
+  private catalogLoading = false;
 
   public constructor(
     private readonly fetchImpl: FetchLike = fetch,
@@ -85,6 +89,7 @@ export class OfficialSolanaMobileApprovalProvider implements SolanaMobileApprova
     try {
       const catalog = await this.loadVisibleCatalog();
       const versionCode = catalog.get(parsedPackage.data);
+      if (versionCode === null) return unavailable(parsedPackage.data, checkedAt, "OFFICIAL_PROVIDER_RELEASE_UNAVAILABLE");
       if (versionCode === undefined) {
         return {
           status: "not_visible",
@@ -135,34 +140,56 @@ export class OfficialSolanaMobileApprovalProvider implements SolanaMobileApprova
     }
   }
 
-  private loadVisibleCatalog(): Promise<Map<string, bigint>> {
+  private loadVisibleCatalog(): Promise<Map<string, bigint | null>> {
     const now = this.now().getTime();
-    if (this.catalogPromise && now < this.catalogExpiresAt) return this.catalogPromise;
+    if (this.catalogPromise && (this.catalogLoading || now < this.catalogExpiresAt)) return this.catalogPromise;
 
-    this.catalogExpiresAt = now + CATALOG_CACHE_MS;
-    this.catalogPromise = this.fetchVisibleCatalog().catch((error) => {
-      this.catalogPromise = null;
-      this.catalogExpiresAt = 0;
+    this.catalogLoading = true;
+    this.catalogPromise = this.fetchVisibleCatalog().then((catalog) => {
+      this.catalogLoading = false;
+      this.catalogExpiresAt = this.now().getTime() + CATALOG_CACHE_MS;
+      return catalog;
+    }, (error: unknown) => {
+      this.catalogLoading = false;
+      // Reuse the rejected snapshot briefly so a batch does not restart the crawl per app.
+      this.catalogExpiresAt = this.now().getTime() + CATALOG_ERROR_CACHE_MS;
       throw error;
     });
     return this.catalogPromise;
   }
 
-  private async fetchVisibleCatalog(): Promise<Map<string, bigint>> {
-    const catalog = new Map<string, bigint>();
+  private async fetchVisibleCatalog(): Promise<Map<string, bigint | null>> {
+    const catalog = new Map<string, bigint | null>();
+    const deadline = this.now().getTime() + CATALOG_TIMEOUT_MS;
     for (let page = 0; page < MAX_CATALOG_PAGES; page += 1) {
+      if (this.now().getTime() >= deadline) throw new OfficialProviderError("OFFICIAL_PROVIDER_CATALOG_TIMEOUT");
       const parsed = await this.fetchPage(page);
+      if (this.now().getTime() >= deadline) throw new OfficialProviderError("OFFICIAL_PROVIDER_CATALOG_TIMEOUT");
       let pageEntries = 0;
+      let hasNextPage = false;
+      let categoryCount = 0;
+      const previousSize = catalog.size;
       for (const edge of parsed.data?.explore.units.edges ?? []) {
-        if (edge.node.__typename !== "DAppsByCategoryUnit" || !edge.node.dApps) continue;
+        if (edge.node.__typename !== "DAppsByCategoryUnit") continue;
+        if (!edge.node.dApps) throw new OfficialProviderError("OFFICIAL_PROVIDER_INVALID_RESPONSE");
+        categoryCount += 1;
+        hasNextPage ||= edge.node.dApps.pageInfo.hasNextPage;
         for (const appEdge of edge.node.dApps.edges) {
-          const details = appEdge.node.lastRelease?.androidDetails;
-          if (!details) continue;
-          catalog.set(appEdge.node.androidPackage, BigInt(details.versionCode));
           pageEntries += 1;
+          const details = appEdge.node.lastRelease?.androidDetails;
+          const version = details ? BigInt(details.versionCode) : null;
+          const previousVersion = catalog.get(appEdge.node.androidPackage);
+          // A missing release in another category must not erase an observed version.
+          if (previousVersion === undefined || previousVersion === null || (version !== null && version > previousVersion)) {
+            catalog.set(appEdge.node.androidPackage, version);
+          }
         }
       }
-      if (pageEntries === 0) return catalog;
+      if (categoryCount === 0) throw new OfficialProviderError("OFFICIAL_PROVIDER_INVALID_RESPONSE");
+      if (hasNextPage && (pageEntries === 0 || catalog.size === previousSize)) {
+        throw new OfficialProviderError("OFFICIAL_PROVIDER_CATALOG_NOT_PROGRESSING");
+      }
+      if (!hasNextPage) return catalog;
     }
     throw new OfficialProviderError("OFFICIAL_PROVIDER_CATALOG_LIMIT_REACHED");
   }
@@ -251,6 +278,7 @@ function buildExploreQuery(page: number): string {
             __typename
             ... on DAppsByCategoryUnit {
               dApps(systemContext: ${context}, first: ${PAGE_SIZE}${after}) {
+                pageInfo { hasNextPage }
                 edges {
                   node {
                     androidPackage

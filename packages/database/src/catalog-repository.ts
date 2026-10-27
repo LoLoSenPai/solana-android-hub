@@ -31,6 +31,12 @@ export interface CatalogAppRecord {
     averageRating: number;
     reviewsByRating: readonly [number, number, number, number, number];
   } | null;
+  solanaMobileStore: {
+    status: "visible" | "not_visible";
+    versionCode: string | null;
+    checkedAt: string;
+    sourceReference: "https://dappstore.solanamobile.com/graphql#explore";
+  } | null;
   eligibility: AppEligibility;
   release: ReleaseCandidate;
   binary: {
@@ -64,6 +70,7 @@ interface CatalogRow {
   publisher_links: unknown;
   official_average_rating: number | null;
   official_reviews_by_rating: unknown;
+  official_store_checks: unknown;
   claim_status: AppEligibility["claimStatus"];
   authority_address: string | null;
   distribution_enabled: boolean;
@@ -111,6 +118,7 @@ export class CatalogRepository {
         coalesce(publisher_links.links, '{}'::jsonb) as publisher_links,
         (store_rating.rating #>> '{averageRating}')::double precision as official_average_rating,
         store_rating.rating #> '{reviewsByRating}' as official_reviews_by_rating,
+        store_presence.checks as official_store_checks,
         coalesce(
           nullif(r.source_snapshot #>> '{releaseMetadata,properties,category}', ''),
           nullif(a.source_snapshot #>> '{appMetadata,properties,category}', '')
@@ -162,11 +170,25 @@ export class CatalogRepository {
         select job.result #> '{officialRating}' as rating
         from hub.sync_jobs job
         where job.app_id = a.id
-          and job.status = 'succeeded'
+          and job.status in ('succeeded', 'failed')
           and job.result #>> '{officialRating,status}' = 'available'
         order by job.completed_at desc
         limit 1
       ) store_rating on true
+      left join lateral (
+        select jsonb_agg(history.check_result order by history.completed_at desc, history.created_at desc, history.id desc) as checks
+        from (
+          select job.id, job.completed_at, job.created_at, job.result #> '{officialApproval}' as check_result
+          from hub.sync_jobs job
+          where job.app_id = a.id
+            and job.status in ('succeeded', 'failed')
+            and job.result #>> '{officialApproval,androidPackage}' = a.package_name
+            and job.result #>> '{officialApproval,sourceReference}' = 'https://dappstore.solanamobile.com/graphql#explore'
+            and job.result #>> '{officialApproval,status}' in ('verified', 'release_not_found', 'not_visible')
+          order by job.completed_at desc, job.created_at desc, job.id desc
+          limit 32
+        ) history
+      ) store_presence on true
       left join lateral (
         select jsonb_object_agg(link.link_type::text, link.url) as links
         from hub.app_publisher_links link
@@ -204,6 +226,7 @@ function mapCatalogRow(row: CatalogRow): CatalogAppRecord {
     genres: normalizeGameGenres(row.hub_tags),
     publisherLinks: mapPublisherLinks(row.publisher_links),
     solanaMobileRating: mapOfficialRating(row.official_average_rating, row.official_reviews_by_rating),
+    solanaMobileStore: mapOfficialStorePresence(row.official_store_checks, row.package_name),
     eligibility: {
       appMint: row.app_mint,
       claimStatus: row.claim_status,
@@ -240,6 +263,28 @@ function mapPublisherLinks(value: unknown): PublisherLinks {
   const links = value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
   const link = (type: keyof PublisherLinks) => typeof links[type] === "string" ? links[type] : null;
   return { website: link("website"), x: link("x"), discord: link("discord"), telegram: link("telegram") };
+}
+
+function mapOfficialStorePresence(value: unknown, packageName: string): CatalogAppRecord["solanaMobileStore"] {
+  if (!Array.isArray(value)) return null;
+  for (const candidate of value) {
+    if (candidate === null || typeof candidate !== "object") continue;
+    const check = candidate as Record<string, unknown>;
+    if (check.androidPackage !== packageName || check.sourceReference !== "https://dappstore.solanamobile.com/graphql#explore") continue;
+    if (!["verified", "release_not_found", "not_visible"].includes(String(check.status))) continue;
+    if (typeof check.checkedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(check.checkedAt)
+        || !Number.isFinite(Date.parse(check.checkedAt))
+        || new Date(check.checkedAt).toISOString().slice(0, 19) !== check.checkedAt.slice(0, 19)) continue;
+    if (check.versionCode !== null && (typeof check.versionCode !== "string" || !/^[1-9]\d*$/.test(check.versionCode))) continue;
+    if ((check.status === "not_visible") !== (check.versionCode === null)) continue;
+    return {
+      status: check.status === "not_visible" ? "not_visible" : "visible",
+      versionCode: check.versionCode,
+      checkedAt: check.checkedAt,
+      sourceReference: check.sourceReference
+    };
+  }
+  return null;
 }
 
 function mapOfficialRating(averageRating: number | null, value: unknown): CatalogAppRecord["solanaMobileRating"] {
