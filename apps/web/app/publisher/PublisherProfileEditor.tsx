@@ -2,9 +2,11 @@
 
 import type { PublisherProfileDto } from "@hub/api-client";
 import Image from "next/image";
+import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { useEffect, useRef, useState } from "react";
 import { ShareProfileButton } from "../components/ShareProfileButton";
 import styles from "./PublisherProfileEditor.module.css";
+import studioStyles from "./PublisherStudio.module.css";
 
 export interface ProfileResponse {
   profile: PublisherProfileDto;
@@ -30,11 +32,12 @@ function draftOf(profile: PublisherProfileDto): Draft {
   };
 }
 
-export function PublisherProfileEditor({ hidden, disabled, load, save }: {
+export function PublisherProfileEditor({ hidden, disabled, load, save, onProfileChange }: {
   hidden: boolean;
   disabled: boolean;
   load: () => Promise<ProfileResponse>;
   save: (input: ProfileInput) => Promise<ProfileResponse | null>;
+  onProfileChange: (profile: ProfileResponse) => void;
 }) {
   const [saved, setSaved] = useState<ProfileResponse | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -54,13 +57,14 @@ export function PublisherProfileEditor({ hidden, disabled, load, save }: {
       if (generation.current !== request) return;
       setSaved(response);
       setDraft(draftOf(response.profile));
+      onProfileChange(response);
     }).catch((cause: unknown) => {
       if (generation.current === request) setError(cause instanceof Error ? cause.message : "Your profile could not be loaded.");
     }).finally(() => {
       if (generation.current === request) setLoading(false);
     });
     return () => { generation.current += 1; };
-  }, [load, retry]);
+  }, [load, onProfileChange, retry]);
 
   const pending = loading || saving || disabled;
   const change = (field: keyof Draft, value: string) => {
@@ -86,6 +90,7 @@ export function PublisherProfileEditor({ hidden, disabled, load, save }: {
       if (response) {
         setSaved(response);
         setDraft(draftOf(response.profile));
+        onProfileChange(response);
         setConfirmation("Your public profile is saved.");
       } else setError("Your changes were not saved. Review the error and try again.");
     } catch (cause: unknown) {
@@ -105,10 +110,8 @@ export function PublisherProfileEditor({ hidden, disabled, load, save }: {
   ] as const;
 
   return (
-    <section hidden={hidden} className={`publisher-tab-panel panel ${styles.editor}`} role="tabpanel" aria-labelledby="publisher-profile-tab" aria-busy={pending}>
-      <div className="publisher-panel-heading">
-        <div><p className="step-label">Your publisher identity</p><h2>My profile</h2><p>A public page for your published apps. Every profile field is optional.</p></div>
-      </div>
+    <section hidden={hidden} className={`publisher-tab-panel panel ${styles.editor}`} aria-labelledby="publisher-profile-title" aria-busy={pending}>
+      <p className="muted">Your public profile lists your published apps. Every profile field is optional.</p>
       {loading ? <p role="status">Loading your profile…</p> : null}
       {!loading && !draft ? <div><p role="alert">{error}</p><button type="button" className="secondary" disabled={pending} onClick={() => setRetry((value) => value + 1)}>Retry loading</button></div> : null}
       {draft ? <form onSubmit={(event) => { event.preventDefault(); void submit(); }} className={styles.form}>
@@ -122,14 +125,24 @@ export function PublisherProfileEditor({ hidden, disabled, load, save }: {
         </div>
         <div className={styles.fields}>
           <label>Display name<input maxLength={120} value={draft.displayName} disabled={pending} onChange={(event) => change("displayName", event.target.value)} autoComplete="name" /></label>
-          <label>Custom profile URL<input aria-label="Custom profile URL" maxLength={48} minLength={3} pattern="[a-z][a-z0-9-]{2,47}" autoCapitalize="none" spellCheck={false} value={draft.slug} disabled={pending} onChange={(event) => change("slug", event.target.value)} placeholder="your-studio" aria-describedby="profile-slug-help" /><small id="profile-slug-help">3–48 lowercase letters, numbers or hyphens; start with a letter. Leave empty to use your default URL. Changing it replaces your previous custom address.</small></label>
+          <label>Custom profile URL<input aria-label="Custom profile URL" maxLength={48} minLength={3} pattern="[a-z][a-z0-9\-]{2,47}" autoCapitalize="none" spellCheck={false} value={draft.slug} disabled={pending} onChange={(event) => change("slug", event.target.value)} placeholder="your-studio" aria-describedby="profile-slug-help" /><small id="profile-slug-help">3–48 lowercase letters, numbers or hyphens; start with a letter. Leave empty to use your default URL. Changing it replaces your previous custom address.</small></label>
           <label className={styles.bio}>Bio<textarea aria-label="Bio" aria-describedby="profile-bio-count" maxLength={1000} rows={5} value={draft.bio} disabled={pending} onChange={(event) => change("bio", event.target.value)} /><small id="profile-bio-count">{draft.bio.length}/1000 characters</small></label>
           {urlFields.map(([field, label, placeholder]) => <label key={field}>{label}<input aria-label={label} aria-describedby={`profile-${field}-help`} type="url" inputMode="url" pattern="https://.+" maxLength={2048} placeholder={placeholder} value={draft[field]} disabled={pending} onChange={(event) => change(field, event.target.value)} /><small id={`profile-${field}-help`}>{field === "discord" ? "Optional invitation link." : field === "x" || field === "telegram" ? "Optional public profile link." : "Optional HTTPS URL on a public domain."}</small></label>)}
         </div>
-        <div className={styles.actions}><button type="submit" disabled={pending}>{saving ? "Saving…" : "Save profile"}</button>{confirmation ? <span role="status">{confirmation}</span> : null}</div>
+        <div className={styles.actions}><button type="submit" className={studioStyles.primary} disabled={pending}>{saving ? "Saving…" : "Save profile"}</button>{confirmation ? <span role="status">{confirmation}</span> : null}</div>
         {error ? <p role="alert" className={styles.error}>{error}</p> : null}
       </form> : null}
-      {saved ? <div className={styles.publicLink}><div><strong>Saved public profile</strong><a href={saved.publicUrl} target="_blank" rel="noreferrer">View public profile ↗</a><small>{saved.publicUrl}</small></div><ShareProfileButton url={saved.publicUrl} title={saved.profile.displayName || "Publisher profile on Dapport"} /></div> : null}
+      {saved && (
+        <div className={styles.publicLink}>
+          <div>
+            <a href={`/publishers/${encodeURIComponent(saved.profile.slug)}`} target="_blank" rel="noreferrer">
+              View public profile <ArrowSquareOut size={16} aria-hidden="true" />
+            </a>
+            <small>{saved.publicUrl}</small>
+          </div>
+          <ShareProfileButton url={saved.publicUrl} title={saved.profile.displayName || "Publisher profile on Dapport"} />
+        </div>
+      )}
     </section>
   );
 }

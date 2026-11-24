@@ -7,6 +7,7 @@ export interface PublisherAppSummary {
   slug: string;
   name: string;
   packageName: string;
+  iconUrl: string | null;
   claimStatus: string;
   distributionEnabled: boolean;
   releasePolicy: string;
@@ -22,12 +23,12 @@ export class PublisherOperationsRepository {
 
   public async listApps(publisherId: string, environment: AppEnvironment): Promise<readonly PublisherAppSummary[]> {
     const rows = await this.sql<{
-      id: string; app_mint: string; slug: string; name: string; package_name: string; claim_status: string;
+      id: string; app_mint: string; slug: string; name: string; package_name: string; icon_uri: string | null; claim_status: string;
       distribution_enabled: boolean; release_policy: string; consent_status: string | null; release_count: string;
       primary_category: CatalogCategory | null; tags: GameGenre[] | null;
       publisher_links: unknown;
     }[]>`
-      select a.id, a.app_mint, a.slug, a.name, a.package_name, a.claim_status, a.distribution_enabled, a.release_policy,
+      select a.id, a.app_mint, a.slug, a.name, a.package_name, a.icon_uri, a.claim_status, a.distribution_enabled, a.release_policy,
         consent.status as consent_status, count(r.id)::text as release_count,
         classification.primary_category, classification.tags,
         coalesce(publisher_links.links, '{}'::jsonb) as publisher_links
@@ -52,6 +53,7 @@ export class PublisherOperationsRepository {
       slug: row.slug,
       name: row.name,
       packageName: row.package_name,
+      iconUrl: row.icon_uri,
       claimStatus: row.claim_status,
       distributionEnabled: row.distribution_enabled,
       releasePolicy: row.release_policy,

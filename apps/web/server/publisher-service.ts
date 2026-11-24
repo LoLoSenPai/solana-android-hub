@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { AuthRepository, PublisherRepository, type PublisherAppRecord, type SessionRecord } from "@hub/database";
+import { AuthRepository, PublisherRepository, type ClaimedPublisherAppRecord, type PublisherAppRecord, type SessionRecord } from "@hub/database";
 import { buildDistributionConsentMessage, DISTRIBUTION_SCOPES, type ReleasePolicy } from "@hub/domain";
 import type { CatalogCategory, GameGenre, PublisherLinks } from "@hub/domain";
 import {
@@ -51,7 +51,7 @@ export async function discoverPublisherApps(session: SessionRecord): Promise<rea
   return output;
 }
 
-export async function claimPublisherApp(session: SessionRecord, appMint: string): Promise<PublisherAppRecord> {
+export async function claimPublisherApp(session: SessionRecord, appMint: string): Promise<ClaimedPublisherAppRecord> {
   const { verifier } = solanaServices();
   const proof = await verifier.verifyAppAuthority({ wallet: session.walletAddress, appMint });
   const appJson = appJsonMetadataSchema.parse(await fetchHardenedJson(proof.appMetadata.metadataUri));

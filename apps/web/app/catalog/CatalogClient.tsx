@@ -1,146 +1,212 @@
 "use client";
 
-import {
-  CATALOG_CATEGORIES,
-  GAME_GENRES,
-  type CatalogAppDto,
-  type CatalogCategory,
-  type CatalogChannel,
-  type GameGenre
-} from "@hub/api-client";
+import { CATALOG_CATEGORIES, GAME_GENRES, type CatalogCategory, type CatalogChannel } from "@hub/api-client";
+import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
-import { DeviceMobile } from "@phosphor-icons/react/dist/csr/DeviceMobile";
-import { GameController } from "@phosphor-icons/react/dist/csr/GameController";
-import { ListBullets } from "@phosphor-icons/react/dist/csr/ListBullets";
-import { RocketLaunch } from "@phosphor-icons/react/dist/csr/RocketLaunch";
-import { SquaresFour } from "@phosphor-icons/react/dist/csr/SquaresFour";
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
+import { SlidersHorizontal } from "@phosphor-icons/react/dist/csr/SlidersHorizontal";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { CATEGORIES, categoryLabel, genreLabel } from "../components/catalog-config";
-import { StoreAppCard } from "../components/StoreAppCard";
-import { catalogHref } from "./catalog-channel";
-import { filterCatalogApps, type CatalogSortMode } from "./catalog-filters";
+import { CatalogCard } from "./CatalogCard";
+import styles from "./Catalog.module.css";
+import { filterCatalogApps } from "./catalog-filters";
+import type { CatalogListing } from "./catalog-listings";
 
-export function CatalogClient({ apps, channel }: { apps: readonly CatalogAppDto[]; channel: CatalogChannel }) {
-  const router = useRouter();
+const PAGE_SIZE = 12;
+type FilterKey = "query" | "category" | "genre" | "sort" | "channel" | "view";
+
+type CataloguePosition = { url: string; shown: number; scrollY: number; focusKey: string };
+type CatalogState = { dapportCatalogue?: CataloguePosition };
+
+export function CatalogClient({ channels }: {
+  channels: Record<CatalogChannel, readonly CatalogListing[]>;
+}) {
   const params = useSearchParams();
-  const categoryParam = params.get("category");
-  const category: "all" | CatalogCategory = CATALOG_CATEGORIES.includes(categoryParam as CatalogCategory)
-    ? categoryParam as CatalogCategory
-    : "all";
-  const genreParam = params.get("genre");
-  const genre: "all" | GameGenre = category === "games" && GAME_GENRES.includes(genreParam as GameGenre)
-    ? genreParam as GameGenre
-    : "all";
-  const sort: CatalogSortMode = params.get("sort") === "name" ? "name" : "recent";
+  const category = CATALOG_CATEGORIES.find((id) => id === params.get("category")) ?? "all";
+  const genre = category === "games" ? GAME_GENRES.find((id) => id === params.get("genre")) ?? "all" : "all";
+  const sort = params.get("sort") === "name" ? "name" : "recent";
   const view = params.get("view") === "list" ? "list" : "grid";
+  const channel: CatalogChannel = params.get("channel") === "approved" ? "approved" : "trusted";
   const query = params.get("query") ?? "";
 
-  const filteredApps = useMemo(() => filterCatalogApps(apps, { category, genre, query, sort }), [apps, category, genre, query, sort]);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const search = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLDetailsElement>(null);
+  const categoryToggle = useRef<HTMLButtonElement>(null);
+  const filtered = useMemo(() => filterCatalogApps(channels[channel], { category, genre, sort, query }),
+    [channels, channel, category, genre, sort, query]);
+  const shown = filtered.slice(0, limit);
+  const hasFilters = Boolean(query || category !== "all" || channel === "approved" || sort === "name" || view === "list");
+  const emptyCategory = category !== "all" && !channels.trusted.some((app) => app.category === category);
+  const emptyInventory = emptyCategory || !channels.trusted.length;
+  const total = `${filtered.length} ${filtered.length === 1 ? "app" : "apps"}`;
+  const categoryName = category === "all" ? "All apps" : categoryLabel(category);
 
-  const update = (key: string, value: string, defaults: readonly string[] = ["all", "recent", ""]) => {
-    const next = new URLSearchParams(params.toString());
-    if (defaults.includes(value)) next.delete(key);
-    else next.set(key, value);
-    if (key === "category" && value !== "games") next.delete("genre");
-    router.replace(next.size ? `/catalog?${next.toString()}` : "/catalog", { scroll: false });
+  useLayoutEffect(() => {
+    let active = true;
+    const restore = () => {
+      const saved = (history.state as CatalogState | null)?.dapportCatalogue;
+      if (!saved || saved.url !== location.href) return;
+      setLimit(Math.max(PAGE_SIZE, saved.shown));
+      void document.fonts.ready.then(() => requestAnimationFrame(() => {
+        if (!active) return;
+        document.getElementById(`catalog-card-${saved.focusKey}`)?.focus({ preventScroll: true });
+        window.scrollTo({ top: saved.scrollY, behavior: "instant" });
+      }));
+    };
+    restore();
+    window.addEventListener("pageshow", restore);
+    return () => {
+      active = false;
+      window.removeEventListener("pageshow", restore);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleLegacyHash = () => {
+      if (location.hash === "#trust-model") location.replace("/security");
+    };
+    const closeOutside = (event: PointerEvent) => {
+      if (panel.current?.open && event.target instanceof Node && !panel.current.contains(event.target)) panel.current.open = false;
+    };
+    handleLegacyHash();
+    window.addEventListener("hashchange", handleLegacyHash);
+    document.addEventListener("pointerdown", closeOutside);
+    return () => {
+      window.removeEventListener("hashchange", handleLegacyHash);
+      document.removeEventListener("pointerdown", closeOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (search.current && search.current.value !== query) search.current.value = query;
+  }, [query]);
+
+  const apply = (changes: Partial<Record<FilterKey, string>>) => {
+    const url = new URL(location.href);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    }
+    setLimit(PAGE_SIZE);
+    // Next synchronizes useSearchParams through the native history API, without a server request per keystroke.
+    history.replaceState(null, "", url);
   };
-
-  const setApprovedOnly = (approvedOnly: boolean) => {
-    const next = new URLSearchParams(params.toString());
-    if (approvedOnly) next.set("channel", "approved");
-    else next.delete("channel");
-    router.replace(next.size ? `/catalog?${next.toString()}` : "/catalog", { scroll: false });
+  const clear = () => {
+    apply({ category: "", genre: "", query: "", sort: "", channel: "", view: "" });
+    search.current?.focus({ preventScroll: true });
   };
-
-  const clear = () => router.replace("/catalog", { scroll: false });
-  const heading = category === "all" ? "All apps" : categoryLabel(category);
+  const chooseCategory = (id: CatalogCategory | "all") => {
+    apply({ category: id === "all" ? "" : id, ...(id === "games" ? {} : { genre: "" }) });
+    setMobileCategoriesOpen(false);
+    if (window.matchMedia("(max-width: 620px)").matches) categoryToggle.current?.focus();
+  };
+  const remember = (event: MouseEvent<HTMLAnchorElement>, slug: string) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+    const saved: CataloguePosition = { url: location.href, shown: shown.length, scrollY: window.scrollY, focusKey: slug };
+    history.replaceState({ ...history.state as CatalogState | null, dapportCatalogue: saved }, "");
+    const source = new URL(location.href);
+    source.hash = "";
+    try {
+      sessionStorage.setItem("dapportCatalogueNavigation", JSON.stringify({ source: source.href, destination: event.currentTarget.href }));
+    } catch { /* Browser history still restores the catalogue when storage is disabled. */ }
+  };
 
   return (
-    <>
-      <section className="catalog-page-heading">
-        <div>
-          <p className="eyebrow">Explore Android {category === "games" ? "games" : "apps"}</p>
-          <h1>{heading}</h1>
-          <p>{category === "games" ? "Puzzle, strategy, RPG and casual games—without the endless, unfiltered list." : "Find what belongs on your Android phone without wading through technical metadata."}</p>
-        </div>
-        <Link className="catalog-android-callout" href="/download">
-          {category === "games" ? <GameController aria-hidden="true" weight="duotone" /> : <DeviceMobile aria-hidden="true" weight="duotone" />}
-          <span><strong>{category === "games" ? "Install and play on Android" : "Take your catalogue to Android"}</strong><small>Use Dapport to validate, install and manage releases.</small></span>
-          <span aria-hidden="true">→</span>
-        </Link>
-      </section>
-
-      <section className="catalog-workspace" aria-label="App catalogue">
-        <nav className="catalog-category-nav" aria-label="App categories">
-          {CATEGORIES.map((item) => (
-            <Link
-              key={item.id}
-              href={catalogHref({ channel, category: item.id, view })}
-              aria-current={category === item.id ? "page" : undefined}
-            >{item.label}</Link>
-          ))}
-        </nav>
-
-        <div className="catalog-toolbar">
-          <label className="catalog-search">
-            <span>Search</span>
-            <input type="search" value={query} placeholder={`Search ${heading.toLocaleLowerCase()}`} onChange={(event) => update("query", event.target.value)} />
+    <section className={styles.section} id="apps" aria-labelledby="apps-title" onKeyDown={(event) => {
+      if (event.key !== "Escape") return;
+      if (panel.current?.open) {
+        panel.current.open = false;
+        panel.current.querySelector("summary")?.focus();
+      } else if (mobileCategoriesOpen) {
+        setMobileCategoriesOpen(false);
+        categoryToggle.current?.focus();
+      }
+    }}>
+      <header className={styles.heading}>
+        <h2 id="apps-title">Apps</h2>
+        <div className={styles.controls}>
+          <label className={styles.search}>
+            <MagnifyingGlass size={18} aria-hidden="true" />
+            <input ref={search} type="search" aria-label="Search apps" placeholder="Search" autoComplete="off" maxLength={100}
+              defaultValue={query} onChange={(event) => apply({ query: event.target.value })} />
           </label>
-          <label className="catalog-channel-toggle">
-            <span>Availability</span>
-            <span className="catalog-channel-toggle-control">
-              <input type="checkbox" checked={channel === "approved"} onChange={(event) => setApprovedOnly(event.target.checked)} />
-              <span aria-hidden="true" />
-              <strong>Solana Mobile approved only</strong>
-            </span>
-          </label>
-          <label className="select-control"><span>Sort</span><span className="select-shell"><select value={sort} onChange={(event) => update("sort", event.target.value)}>
-            <option value="recent">Recently updated</option>
-            <option value="name">Name A–Z</option>
-          </select><CaretDown aria-hidden="true" /></span></label>
-        </div>
-
-        {category === "games" ? (
-          <div className="genre-filter" role="group" aria-label="Game genres">
-            <span>Genre</span>
-            <button type="button" aria-pressed={genre === "all"} onClick={() => update("genre", "all")}>All genres</button>
-            {GAME_GENRES.map((item) => <button type="button" key={item} aria-pressed={genre === item} onClick={() => update("genre", item)}>{genreLabel(item)}</button>)}
-          </div>
-        ) : null}
-
-        <div className="catalog-results-heading">
-          <div className="catalog-results-count"><strong>{filteredApps.length}</strong><span>{filteredApps.length === 1 ? "app" : "apps"}</span></div>
-          <div className="catalog-results-actions">
-            {filteredApps.length > 0 && (category !== "all" || genre !== "all" || channel === "approved" || query) ? <button className="catalog-clear-filters" type="button" onClick={clear}>Clear filters</button> : null}
-            <div className="catalog-view-toggle" role="group" aria-label="Catalogue layout">
-              <button type="button" aria-label="Compact grid" aria-pressed={view === "grid"} onClick={() => update("view", "grid", ["grid"])}><SquaresFour aria-hidden="true" /></button>
-              <button type="button" aria-label="List" aria-pressed={view === "list"} onClick={() => update("view", "list", ["grid"])}><ListBullets aria-hidden="true" /></button>
+          <details ref={panel} className={styles.filters}>
+            <summary className={channel === "approved" || sort === "name" || view === "list" ? styles.hasFilters : undefined}>
+              <SlidersHorizontal size={18} aria-hidden="true" /> Filters
+            </summary>
+            <div className={styles.filterPanel}>
+              <label className={styles.sort}>Sort by
+                <select value={sort} onChange={(event) => apply({ sort: event.target.value === "name" ? "name" : "" })}>
+                  <option value="recent">Recently updated</option><option value="name">Name A–Z</option>
+                </select>
+              </label>
+              <label className={styles.approved}>
+                <input type="checkbox" checked={channel === "approved"}
+                  onChange={(event) => apply({ channel: event.target.checked ? "approved" : "" })} />
+                <span>Solana Mobile approved only</span>
+              </label>
+              <label className={styles.sort}>Layout
+                <select value={view} onChange={(event) => apply({ view: event.target.value === "list" ? "list" : "" })}>
+                  <option value="grid">Grid</option><option value="list">List</option>
+                </select>
+              </label>
             </div>
+          </details>
+        </div>
+      </header>
+
+      <div className={styles.categoryPicker}>
+        <button type="button" ref={categoryToggle} className={styles.categoryToggle} aria-controls="app-categories"
+          aria-expanded={mobileCategoriesOpen} onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}>
+          <span>Categories</span><strong>{categoryName}</strong><CaretDown size={18} aria-hidden="true" />
+        </button>
+        <div className={styles.categories} id="app-categories" data-open={mobileCategoriesOpen} role="group" aria-label="App categories">
+          {CATEGORIES.map(({ id, label }) => (
+            <button key={id} type="button" className={styles.category} aria-pressed={id === category} onClick={() => chooseCategory(id)}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.results}>
+        <p className={styles.count} role="status" aria-atomic="true">{shown.length < filtered.length ? `Showing ${shown.length} of ${total}` : total}</p>
+        <div className={styles.resultActions}>
+          {filtered.length > 0 && hasFilters && <button className={styles.reset} type="button" onClick={clear}>Clear filters</button>}
+          {category === "games" && <label className={styles.genres}>Genre
+            <select value={genre} onChange={(event) => apply({ genre: event.target.value === "all" ? "" : event.target.value })}>
+              <option value="all">All genres</option>
+              {GAME_GENRES.map((id) => <option key={id} value={id}>{genreLabel(id)}</option>)}
+            </select>
+          </label>}
+        </div>
+      </div>
+
+      {filtered.length > 0 ? (
+        <>
+          <div className={styles.grid} id="app-grid" data-layout={view}>
+            {shown.map((app, index) => <CatalogCard key={app.id} app={app} channel={channel} index={index} onOpen={(event) => remember(event, app.slug)} />)}
+          </div>
+          {shown.length < filtered.length && <div className={styles.pagination}>
+            <button type="button" className={styles.more} aria-controls="app-grid" onClick={() => {
+              const next = filtered[shown.length];
+              setLimit(limit + PAGE_SIZE);
+              if (next) requestAnimationFrame(() => document.getElementById(`catalog-card-${next.slug}`)?.focus());
+            }}>Show more apps</button>
+          </div>}
+        </>
+      ) : (
+        <div className={styles.empty}>
+          <h3>{emptyCategory ? `No apps in ${categoryName} yet` : emptyInventory ? "No apps on Dapport yet" : "No matching apps"}</h3>
+          <p>{emptyInventory ? "Publishers can opt in to list their apps on Dapport." : "Try another search or clear the filters."}</p>
+          <div className={styles.emptyActions}>
+            {emptyInventory && <Link className={styles.publish} href="/publisher">Publish on Dapport <ArrowRight size={18} aria-hidden="true" /></Link>}
+            {hasFilters && <button type="button" className={styles.reset} onClick={clear}>{emptyInventory ? "Browse all apps" : "Clear filters"}</button>}
           </div>
         </div>
-
-        {filteredApps.length ? (
-          <div className={`catalogue-grid${view === "list" ? " catalogue-grid-list" : ""}`}>
-            {view === "list" ? (
-              <div className="catalogue-list-header" aria-hidden="true">
-                <span>App</span><span>Category</span><span>Availability</span><span />
-              </div>
-            ) : null}
-            {filteredApps.map((app) => <StoreAppCard app={app} channel={channel} layout={view} key={app.id} />)}
-            <aside className="catalogue-growing-card">
-              <RocketLaunch aria-hidden="true" weight="duotone" />
-              <p className="eyebrow">Catalogue in progress</p>
-              <h3>{category === "games" ? "More games are on the way." : "More apps are joining Dapport."}</h3>
-              <p>Publishers can opt in as their Android releases become available.</p>
-              <Link href="/publisher">For publishers <span aria-hidden="true">→</span></Link>
-            </aside>
-          </div>
-        ) : (
-          <div className="catalogue-empty"><p className="eyebrow">No match yet</p><h3>Try a wider filter.</h3><p>Clear one filter to see more apps.</p><button type="button" onClick={clear}>Clear filters</button></div>
-        )}
-      </section>
-    </>
+      )}
+    </section>
   );
 }

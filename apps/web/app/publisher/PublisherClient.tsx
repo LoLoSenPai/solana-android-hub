@@ -6,34 +6,38 @@ import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount, WalletWithFeatures } from "@wallet-standard/base";
 import { StandardConnect, StandardEvents, type StandardConnectFeature, type StandardEventsFeature } from "@wallet-standard/features";
 import { AppWindow } from "@phosphor-icons/react/dist/csr/AppWindow";
+import { ArrowLeft } from "@phosphor-icons/react/dist/csr/ArrowLeft";
+import { ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
-import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
-import { CloudArrowUp } from "@phosphor-icons/react/dist/csr/CloudArrowUp";
-import { ListChecks } from "@phosphor-icons/react/dist/csr/ListChecks";
-import { PlusCircle } from "@phosphor-icons/react/dist/csr/PlusCircle";
-import { Storefront } from "@phosphor-icons/react/dist/csr/Storefront";
+import { Cube } from "@phosphor-icons/react/dist/csr/Cube";
+import { Plus } from "@phosphor-icons/react/dist/csr/Plus";
+import { Stack } from "@phosphor-icons/react/dist/csr/Stack";
 import { TrashSimple } from "@phosphor-icons/react/dist/csr/TrashSimple";
+import { User } from "@phosphor-icons/react/dist/csr/User";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PublisherAvatar } from "../components/PublisherAvatar";
+import { PublisherLanding } from "./PublisherLanding";
 import { PublisherProfileEditor, type ProfileInput, type ProfileResponse } from "./PublisherProfileEditor";
+import styles from "./PublisherStudio.module.css";
 
 type CompatibleWallet = WalletWithFeatures<StandardConnectFeature & SolanaSignMessageFeature>;
 type ReleasePolicy = "automatic" | "manual";
-type WorkspaceTab = "setup" | "apps" | "profile";
+type WorkspaceView = "setup" | "apps" | "manage" | "profile";
 type NoticeTone = "success" | "error" | "info";
 
 interface DiscoveredApp {
   appMint: string;
-  publisherCollectionMint: string | null;
   name: string;
   packageName: string;
-  authorityPath: string;
+  iconUrl: string | null;
 }
 
 interface ClaimedApp extends DiscoveredApp {
   id: string;
   slug: string;
+  claimStatus: string;
   consented?: boolean;
   consentStatus?: string | null;
   distributionEnabled?: boolean;
@@ -53,6 +57,7 @@ interface PublisherRelease {
   publication_status: "preview" | "unpublished" | "published" | "ignored" | "withdrawn";
   quarantine_code: string | null;
   validation_failure_codes?: readonly string[];
+  created_at: string;
 }
 
 const VALIDATION_TIME_ESTIMATE = "Usually about 1 minute";
@@ -67,16 +72,29 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const [claims, setClaims] = useState<Record<string, ClaimedApp>>({});
   const [releases, setReleases] = useState<Record<string, readonly PublisherRelease[]>>({});
   const [manualMint, setManualMint] = useState("");
-  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("setup");
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>("apps");
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [selectedAppMint, setSelectedAppMint] = useState<string | null>(null);
   const [revokingAppMint, setRevokingAppMint] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [noticeTone, setNoticeTone] = useState<NoticeTone>("info");
   const [busy, setBusy] = useState(false);
   const walletPickerTrigger = useRef<HTMLButtonElement>(null);
+  const restoreWalletFocus = useRef(false);
   const walletPickerDialog = useRef<HTMLElement>(null);
   const firstWalletOption = useRef<HTMLButtonElement>(null);
   const authenticationGeneration = useRef(0);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (account) headingRef.current?.focus();
+  }, [account, workspaceView, selectedAppMint]);
+
+  useEffect(() => {
+    if (busy || walletPickerOpen || !restoreWalletFocus.current) return;
+    restoreWalletFocus.current = false;
+    if (!account) walletPickerTrigger.current?.focus();
+  }, [account, busy, walletPickerOpen]);
 
   useEffect(() => {
     if (!activeWallet || !account || !(StandardEvents in activeWallet.features)) return;
@@ -91,8 +109,11 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       setApps([]);
       setClaims({});
       setReleases({});
+      setProfile(null);
       setSelectedAppMint(null);
-      setWorkspaceTab("setup");
+      setRevokingAppMint(null);
+      setManualMint("");
+      setWorkspaceView("apps");
       setStatus("Your wallet account changed. Connect and sign in again.");
       setNoticeTone("info");
     });
@@ -156,15 +177,19 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   useEffect(() => {
     if (!validatingAppIds) return;
     const appIds = validatingAppIds.split(",");
+    let active = true;
     const timer = window.setInterval(() => {
       void Promise.all(appIds.map(async (appId) => {
         const response = await api<{ releases: readonly PublisherRelease[] }>(`/api/v1/publisher/apps/${appId}/releases`);
         return [appId, response.releases] as const;
       })).then((entries) => {
-        setReleases((current) => ({ ...current, ...Object.fromEntries(entries) }));
+        if (active) setReleases((current) => ({ ...current, ...Object.fromEntries(entries) }));
       }).catch(() => undefined);
     }, 6_000);
-    return () => window.clearInterval(timer);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, [validatingAppIds]);
 
   const connect = (wallet: CompatibleWallet) => run(async () => {
@@ -187,6 +212,8 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       slug: string;
       name: string;
       packageName: string;
+      iconUrl: string | null;
+      claimStatus: string;
       distributionEnabled: boolean;
       releasePolicy: ReleasePolicy;
       releaseCount: string;
@@ -199,10 +226,10 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       id: app.id,
       appMint: app.appMint,
       slug: app.slug,
-      publisherCollectionMint: null,
       name: app.name,
       packageName: app.packageName,
-      authorityPath: "finalized verification",
+      iconUrl: app.iconUrl,
+      claimStatus: app.claimStatus,
       consented: app.consentStatus === "active",
       consentStatus: app.consentStatus,
       distributionEnabled: app.distributionEnabled,
@@ -219,9 +246,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
     setReleases(Object.fromEntries(releaseEntries));
     setActiveWallet(wallet);
     setAccount(nextAccount);
-    setWorkspaceTab(existing.apps.length > 0 ? "apps" : "setup");
-    setSelectedAppMint(existing.apps[0]?.appMint ?? null);
-    notify(`Connected with ${wallet.name}. ${existing.apps.length || "No"} app${existing.apps.length === 1 ? "" : "s"} loaded.`);
+    setWorkspaceView(existing.apps.length ? "apps" : "setup");
   });
 
   const requestConnection = () => {
@@ -238,8 +263,8 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   };
 
   function closeWalletPicker() {
+    restoreWalletFocus.current = true;
     setWalletPickerOpen(false);
-    requestAnimationFrame(() => walletPickerTrigger.current?.focus());
   }
 
   const discover = () => run(async () => {
@@ -250,28 +275,39 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
       : `Found ${response.apps.length} app${response.apps.length === 1 ? "" : "s"} this wallet can publish.`, response.apps.length === 0 ? "info" : "success");
   });
 
-  const claim = (candidate: DiscoveredApp) => run(async () => {
-    const response = await api<{ app: { id: string; appMint: string } }>(`/api/v1/publisher/apps/${candidate.appMint}/claim`, mutation());
-    setClaims((current) => ({ ...current, [candidate.appMint]: {
-      ...candidate,
-      id: response.app.id,
-      slug: "",
+  const claim = (appMint: string) => run(async () => {
+    const { app } = await api<{ app: DiscoveredApp & { id: string; slug: string; claimStatus: string } }>(
+      `/api/v1/publisher/apps/${encodeURIComponent(appMint)}/claim`, mutation()
+    );
+    setClaims((current) => ({ ...current, [app.appMint]: {
+      ...app,
       consentStatus: null,
       distributionEnabled: false,
       releasePolicy: "manual",
       releaseCount: 0,
       publisherLinks: { ...EMPTY_PUBLISHER_LINKS }
     } }));
-    setSelectedAppMint(candidate.appMint);
-    setWorkspaceTab("apps");
-    notify(`${candidate.name} was added. Choose its distribution and store settings next.`);
+    setManualMint("");
+    openManage(app.appMint);
+    notify(`${app.name} was added. Choose its distribution and store settings next.`);
   });
 
   const claimMint = async () => {
     const mint = manualMint.trim();
-    if (!mint) return;
-    await claim({ appMint: mint, publisherCollectionMint: null, name: `App ${shortAddress(mint)}`, packageName: "Pending finalized verification", authorityPath: "finalized verification" });
+    if (busy || mint.length < 32) return;
+    if (claims[mint]) {
+      openManage(mint);
+      setManualMint("");
+      return;
+    }
+    await claim(mint);
   };
+
+  function openManage(appMint: string) {
+    setRevokingAppMint(null);
+    setSelectedAppMint(appMint);
+    setWorkspaceView("manage");
+  }
 
   const consent = (candidate: ClaimedApp, consentPolicy: ReleasePolicy = candidate.releasePolicy ?? "manual") => run(async () => {
     if (!activeWallet || !account) throw new Error("Reconnect the signing wallet.");
@@ -368,78 +404,42 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   }
 
   const claimList = Object.values(claims);
-  const activeClaims = claimList.filter((candidate) => candidate.consentStatus !== "revoked");
-  const publishedCount = claimList.filter((candidate) => (releases[candidate.id] ?? [])
-    .some((release) => release.publication_status === "published")).length;
-  const selectedClaim = (selectedAppMint ? claims[selectedAppMint] : undefined) ?? claimList[0] ?? null;
-  const progressSteps = [
-    { label: "Wallet connected", complete: Boolean(account), icon: CheckCircle },
-    { label: "App claimed", complete: claimList.length > 0, icon: AppWindow },
-    { label: "Distribution allowed", complete: activeClaims.some((candidate) => candidate.consented), icon: ListChecks },
-    { label: "Live in catalogue", complete: publishedCount > 0, icon: Storefront }
-  ];
-  const currentProgressIndex = progressSteps.findIndex((step) => !step.complete);
+  const publisherName = profile?.profile.displayName?.trim() || "Publisher";
+  const selectedClaim = selectedAppMint ? claims[selectedAppMint] : undefined;
   const selectedReleases = selectedClaim ? releases[selectedClaim.id] ?? [] : [];
-  const selectedLiveRelease = selectedReleases.find((release) => release.publication_status === "published");
+  const selectedLiveRelease = selectedClaim ? publishedRelease(selectedClaim, selectedReleases) : undefined;
+  const latest = claimList
+    .flatMap((app) => (releases[app.id] ?? []).map((release) => ({ app, release })))
+    .sort((left, right) => Date.parse(right.release.created_at) - Date.parse(left.release.created_at))[0];
+
   return (
-    <section className="publisher-workspace" aria-busy={busy}>
-      <details className="panel publisher-first-app">
-        <summary>Publishing your first App NFT?</summary>
-        <p>Use the official Solana Mobile Publisher Portal, then return here with the same publisher wallet. A generic NFT or ownership alone cannot qualify as publisher authority.</p>
-        <div className="publisher-resource-links">
-          <a href="https://publish.solanamobile.com" target="_blank" rel="noreferrer">Open Publisher Portal</a>
-          <a href="https://docs.solanamobile.com/dapp-store/submit-new-app" target="_blank" rel="noreferrer">Read the official walkthrough</a>
-        </div>
-      </details>
-      <div className="panel">
-        <p className="step-label">1 · Publisher authentication</p>
-        <div className="publisher-auth-row">
-          <button
-            ref={walletPickerTrigger}
-            type="button"
-            className="publisher-connect-button"
-            onClick={requestConnection}
-            disabled={busy || account !== null || wallets.length === 0}
-          >
-            {account ? "Authenticated" : "Connect and sign in"}
-          </button>
-          <div className="publisher-auth-copy">
-            <strong>{account && activeWallet ? activeWallet.name : "Choose your wallet in the next step"}</strong>
-            <span>{account ? shortAddress(account.address) : "One-time authentication message · no transaction"}</span>
-          </div>
-        </div>
-        {wallets.length === 0 && <p className="wallet-unavailable-note">No compatible wallet detected. Install or unlock Phantom, Solflare, Backpack, or another Wallet Standard wallet.</p>}
-      </div>
+    <>
+      {!account && <PublisherLanding onConnect={requestConnection} busy={busy} walletCount={wallets.length} triggerRef={walletPickerTrigger} />}
 
       {walletPickerOpen && (
         <div
-          className="wallet-picker-backdrop"
+          className={styles.walletBackdrop}
           onMouseDown={(event) => { if (event.target === event.currentTarget) closeWalletPicker(); }}
         >
-          <section ref={walletPickerDialog} className="wallet-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="wallet-picker-title">
-            <div className="wallet-picker-heading">
-              <div>
-                <p className="step-label">Wallet connection</p>
-                <h2 id="wallet-picker-title">Choose your wallet</h2>
-                <p>You will review and sign a one-time authentication message. This does not submit a transaction.</p>
-              </div>
-              <button type="button" className="wallet-picker-cancel secondary" onClick={closeWalletPicker}>Cancel</button>
-            </div>
-            <div className="wallet-option-list">
+          <section ref={walletPickerDialog} className={styles.walletDialog} role="dialog" aria-modal="true" aria-labelledby="wallet-picker-title" aria-describedby="wallet-picker-description">
+            <header className={styles.walletHeading}>
+              <h2 id="wallet-picker-title">Choose your wallet</h2>
+              <button type="button" className={styles.walletCancel} onClick={closeWalletPicker}>Cancel</button>
+              <p id="wallet-picker-description">You will review and sign a one-time authentication message. This does not submit a transaction.</p>
+            </header>
+            <div className={styles.walletList}>
               {wallets.map((wallet, index) => (
                 <button
                   key={wallet.name}
                   ref={index === 0 ? firstWalletOption : undefined}
                   type="button"
-                  className="wallet-option secondary"
+                  className={styles.walletOption}
                   onClick={() => void connect(wallet)}
                   disabled={busy}
                 >
-                  <span className="wallet-option-identity">
-                    <Image className="wallet-option-icon" src={wallet.icon} width={42} height={42} alt="" unoptimized />
-                    <span><strong>{wallet.name}</strong><small>Wallet Standard · Ed25519 signing</small></span>
-                  </span>
-                  <span className="wallet-option-action">Continue</span>
+                  <Image className={styles.walletIcon} src={wallet.icon} width={40} height={40} alt="" unoptimized />
+                  <span>{wallet.name}</span>
+                  <ArrowRight className={styles.walletArrow} aria-hidden="true" />
                 </button>
               ))}
             </div>
@@ -447,105 +447,129 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
         </div>
       )}
 
-      {account ? (
-        <div className="publisher-tabs" role="tablist" aria-label="Publisher workspace">
-          <button type="button" role="tab" aria-selected={workspaceTab === "setup"} onClick={() => setWorkspaceTab("setup")}>
-            <PlusCircle aria-hidden="true" /> Add an app
-          </button>
-          <button type="button" role="tab" aria-selected={workspaceTab === "apps"} onClick={() => setWorkspaceTab("apps")}>
-            <AppWindow aria-hidden="true" /> My apps <span>{claimList.length}</span>
-          </button>
-          <button id="publisher-profile-tab" type="button" role="tab" aria-selected={workspaceTab === "profile"} onClick={() => setWorkspaceTab("profile")}>
-            <Storefront aria-hidden="true" /> My profile
-          </button>
-        </div>
-      ) : null}
-
-      {account ? <PublisherProfileEditor key={account.address} hidden={workspaceTab !== "profile"} disabled={busy} load={loadPublisherProfile} save={saveProfile} /> : null}
-
-      {account && workspaceTab === "setup" ? (
-        <div className="publisher-tab-panel" role="tabpanel">
-          <section className="publisher-journey" aria-labelledby="publisher-journey-title">
-            <div>
-              <p className="step-label">Your publication path</p>
-              <h2 id="publisher-journey-title">From App NFT to Android catalogue.</h2>
-            </div>
-            <ol>
-              {progressSteps.map((step, index) => {
-                const Icon = step.icon;
-                const state = step.complete ? "complete" : index === currentProgressIndex ? "current" : "upcoming";
-                return (
-                  <li className={state} key={step.label}>
-                    <Icon aria-hidden="true" />
-                    <span><small>Step {index + 1}</small><strong>{step.label}</strong></span>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-
-          <div className="panel publisher-step-panel">
-            <div className="publisher-step-heading">
-              <span>01</span><div><p className="step-label">Find your app</p><h2>Discover the App NFTs this wallet can publish.</h2></div>
-            </div>
-            <p className="muted">Dapport checks the publishing authority recorded on Solana. Holding an NFT alone is not enough.</p>
-            <div className="control-row">
-              <button type="button" onClick={() => void discover()} disabled={busy}>Discover my apps</button>
-            </div>
-            <div className="control-row">
-              <input aria-label="App mint" placeholder="Or paste an App mint" value={manualMint} onChange={(event) => setManualMint(event.target.value)} />
-              <button type="button" className="secondary" onClick={() => void claimMint()} disabled={busy || manualMint.trim().length < 32}>Verify and add</button>
-            </div>
-            <div className="operation-list">
-              {apps.map((candidate) => (
-                <div key={candidate.appMint} className="operation-row">
-                  <div><strong>{candidate.name}</strong><small>{candidate.packageName}</small></div>
-                  <button type="button" className="secondary" onClick={() => void claim(candidate)} disabled={busy || Boolean(claims[candidate.appMint])}>
-                    {claims[candidate.appMint] ? "Added" : "Add to Dapport"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {account && workspaceTab === "apps" ? (
-        <section className="publisher-tab-panel publisher-apps-panel" role="tabpanel" aria-labelledby="publisher-apps-title">
-          <div className="publisher-panel-heading">
-            <div><p className="step-label">Your catalogue</p><h2 id="publisher-apps-title">My apps</h2><p>Choose one app, then manage its distribution, store page and releases without mixing projects together.</p></div>
-            <button type="button" onClick={() => setWorkspaceTab("setup")}><PlusCircle aria-hidden="true" /> Add another app</button>
-          </div>
-          {claimList.length > 0 ? (
-            <>
-              <div className="publisher-app-switcher" role="tablist" aria-label="Choose an app to manage">
-                {claimList.map((candidate) => {
-                  const appReleases = releases[candidate.id] ?? [];
-                  const live = appReleases.some((release) => release.publication_status === "published");
-                  const revoked = candidate.consentStatus === "revoked";
-                  return (
-                    <button
-                      key={candidate.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={selectedClaim?.appMint === candidate.appMint}
-                      className="secondary"
-                      onClick={() => setSelectedAppMint(candidate.appMint)}
-                    >
-                      <AppWindow aria-hidden="true" />
-                      <span><strong>{candidate.name}</strong><small>{live ? "Live" : revoked ? "Removed" : "Setup in progress"}</small></span>
-                    </button>
-                  );
-                })}
+      {account && (
+        <div className={`publisher-workspace ${styles.studio}`}>
+          <aside className={styles.rail}>
+            <div className={styles.identity}>
+              <div aria-hidden="true">
+                <PublisherAvatar className={styles.avatar} name={publisherName} url={profile?.profile.avatarUrl ?? null} />
               </div>
+              <div>
+                <p className={styles.publisherName}>{publisherName}</p>
+                <small title={account.address}>{shortAddress(account.address)}</small>
+              </div>
+            </div>
+            <nav className={styles.navigation} aria-label="Publisher workspace">
+              <button type="button" aria-current={workspaceView !== "profile" ? "page" : undefined} onClick={() => setWorkspaceView("apps")}>
+                <Stack aria-hidden="true" /> My apps
+              </button>
+              <button type="button" aria-current={workspaceView === "profile" ? "page" : undefined} onClick={() => setWorkspaceView("profile")}>
+                <User aria-hidden="true" /> My profile
+              </button>
+            </nav>
+            {profile && <Link className={styles.profileLink} href={`/publishers/${encodeURIComponent(profile.profile.slug)}`}>View public profile <ArrowRight aria-hidden="true" /></Link>}
+          </aside>
 
-              {selectedClaim ? (
-                <article className="publisher-app-manager" key={selectedClaim.id}>
+          <div className={styles.content}>
+            {workspaceView === "profile" && <h1 className={styles.title} id="publisher-profile-title" tabIndex={-1} ref={headingRef}>My profile</h1>}
+            <PublisherProfileEditor
+              key={account.address}
+              hidden={workspaceView !== "profile"}
+              disabled={busy}
+              load={loadPublisherProfile}
+              save={saveProfile}
+              onProfileChange={setProfile}
+            />
+
+            {workspaceView === "apps" && (
+              <section aria-labelledby="publisher-apps-title" className={styles.apps}>
+                <header className={styles.heading}>
+                  <h1 className={styles.title} id="publisher-apps-title" tabIndex={-1} ref={headingRef}>My apps</h1>
+                  <button className={`${styles.primary} ${styles.addApp}`} type="button" onClick={() => setWorkspaceView("setup")}><Plus aria-hidden="true" /> Add an app</button>
+                </header>
+                {claimList.length ? (
+                  <ul className={styles.appList}>
+                    {claimList.map((app) => {
+                      const appReleases = releases[app.id] ?? [];
+                      const liveRelease = publishedRelease(app, appReleases);
+                      const version = liveRelease ?? appReleases[0];
+                      const appStatus = appOverviewStatus(app, appReleases[0], liveRelease);
+                      return (
+                        <li key={app.id} className={styles.appRow}>
+                          <AppIcon key={app.iconUrl} url={app.iconUrl} />
+                          <div className={styles.appIdentity}>
+                            <h2>{app.name}</h2>
+                            <p>{app.packageName}</p>
+                          </div>
+                          <div className={styles.appRelease}>
+                            <span className={styles.appStatus} data-tone={appStatus.tone}>{appStatus.label}</span>
+                            {version && <small>{versionLabel(version)}</small>}
+                          </div>
+                          <button className={styles.manageApp} type="button" aria-label={`Manage app ${app.name}`} onClick={() => openManage(app.appMint)}>
+                            Manage app <ArrowRight aria-hidden="true" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className={styles.empty}>
+                    <AppWindow aria-hidden="true" />
+                    <h2>No apps here yet.</h2>
+                    <p>Add an App NFT this wallet has publishing authority for.</p>
+                  </div>
+                )}
+                {latest && (
+                  <section aria-labelledby="publisher-latest-release" className={styles.latest}>
+                    <h2 id="publisher-latest-release">Latest release</h2>
+                    <div className={styles.latestDetails}>
+                      <span className={styles.releaseIcon}><Cube aria-hidden="true" /></span>
+                      <p><strong>{latest.app.name}</strong><span>{versionLabel(latest.release)}</span><span>{releaseOverviewStatus(latest.app, latest.release).label}</span></p>
+                    </div>
+                  </section>
+                )}
+              </section>
+            )}
+
+            {workspaceView === "setup" && (
+              <section className={styles.subview} aria-labelledby="publisher-add-title">
+                <button type="button" className={styles.back} onClick={() => setWorkspaceView("apps")}><ArrowLeft aria-hidden="true" /> Back to my apps</button>
+                <h1 className={styles.title} id="publisher-add-title" tabIndex={-1} ref={headingRef}>Add an app</h1>
+                <div className="panel publisher-step-panel" aria-busy={busy}>
+                  <h2>Find your App NFT</h2>
+                  <p className="muted">Discover the App NFTs this wallet can publish, or enter an App mint directly. Dapport verifies your publishing authority on Solana.</p>
+                  <div className="control-row">
+                    <button type="button" className={styles.primary} onClick={() => void discover()} disabled={busy}>Discover my apps</button>
+                  </div>
+                  <form className="control-row" onSubmit={(event) => { event.preventDefault(); void claimMint(); }}>
+                    <input aria-label="App mint" placeholder="Or paste an App mint" autoCapitalize="none" spellCheck={false} value={manualMint} onChange={(event) => setManualMint(event.target.value)} />
+                    <button type="submit" className="secondary" disabled={busy || manualMint.trim().length < 32}>Verify and add</button>
+                  </form>
+                  {apps.length > 0 && (
+                    <div className="operation-list">
+                      {apps.map((candidate) => (
+                        <div key={candidate.appMint} className="operation-row">
+                          <div><strong>{candidate.name}</strong><small>{candidate.packageName}</small></div>
+                          <button type="button" className="secondary" onClick={() => void claim(candidate.appMint)} disabled={busy || Boolean(claims[candidate.appMint])}>
+                            {claims[candidate.appMint] ? "Added" : "Add to Dapport"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className={styles.setupHelp}>Need an App NFT? <a href="https://publish.solanamobile.com" target="_blank" rel="noreferrer">Open the Solana Mobile Publisher Portal <ArrowSquareOut aria-hidden="true" /></a></p>
+                </div>
+              </section>
+            )}
+
+            {workspaceView === "manage" && selectedClaim && (
+              <section className={styles.subview} aria-labelledby="publisher-managed-app-title">
+                <button type="button" className={styles.back} onClick={() => setWorkspaceView("apps")}><ArrowLeft aria-hidden="true" /> Back to my apps</button>
+                <article className="publisher-app-manager" key={selectedClaim.id} aria-busy={busy}>
                   <header className="publisher-manager-header">
-                    <div className="publisher-app-symbol"><AppWindow aria-hidden="true" /></div>
+                    <AppIcon key={selectedClaim.iconUrl} url={selectedClaim.iconUrl} compact />
                     <div className="publisher-manager-title">
-                      <span className={`publisher-app-state ${selectedLiveRelease ? "live" : selectedClaim.consentStatus === "revoked" ? "revoked" : "pending"}`}>{selectedLiveRelease ? "Live" : selectedClaim.consentStatus === "revoked" ? "Removed" : "Setup in progress"}</span>
-                      <h3>{selectedClaim.name}</h3>
+                      <h1 className={styles.managedTitle} id="publisher-managed-app-title" tabIndex={-1} ref={headingRef}>{selectedClaim.name}</h1>
                       <p>{selectedClaim.packageName}</p>
                     </div>
                     <div className="publisher-manager-actions">
@@ -567,7 +591,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
 
                   <section className="publisher-manager-section" aria-labelledby={`distribution-${selectedClaim.id}`}>
                     <div className="publisher-manager-section-heading">
-                      <div><p className="step-label">Distribution</p><h3 id={`distribution-${selectedClaim.id}`}>Choose how releases reach Dapport.</h3></div>
+                      <div><p className="step-label">Distribution</p><h2 id={`distribution-${selectedClaim.id}`}>Choose how releases reach Dapport.</h2></div>
                       <span>{selectedClaim.consented ? "Allowed" : selectedClaim.consentStatus === "revoked" ? "Removed" : "Action needed"}</span>
                     </div>
                     <p>Review the <a href="/publisher/distribution-terms" target="_blank" rel="noreferrer">distribution terms</a>, then sign an app-specific consent message. No transaction is sent.</p>
@@ -583,7 +607,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
 
                   <section className="publisher-manager-section" aria-labelledby={`storefront-${selectedClaim.id}`}>
                     <div className="publisher-manager-section-heading">
-                      <div><p className="step-label">Store page</p><h3 id={`storefront-${selectedClaim.id}`}>Help people find and follow this app.</h3></div>
+                      <div><p className="step-label">Store page</p><h2 id={`storefront-${selectedClaim.id}`}>Help people find and follow this app.</h2></div>
                     </div>
                     <StorefrontEditor
                       key={selectedClaim.id}
@@ -595,7 +619,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
 
                   <section className="publisher-manager-section" aria-labelledby={`releases-${selectedClaim.id}`}>
                     <div className="publisher-manager-section-heading">
-                      <div><p className="step-label">Releases</p><h3 id={`releases-${selectedClaim.id}`}>APK checks and publication.</h3></div>
+                      <div><p className="step-label">Releases</p><h2 id={`releases-${selectedClaim.id}`}>APK checks and publication.</h2></div>
                       <button type="button" className="secondary" onClick={() => void sync(selectedClaim)} disabled={busy || !selectedClaim.consented}>Refresh releases</button>
                     </div>
                     <p>Dapport checks the APK referenced by each Release NFT before it can be installed from the catalogue.</p>
@@ -618,16 +642,72 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
                     </div>
                   </section>
                 </article>
-              ) : null}
-            </>
-          ) : (
-            <div className="publisher-empty-apps"><CloudArrowUp aria-hidden="true" /><h3>No apps here yet.</h3><p>Start with the App NFT published from your wallet.</p><button type="button" onClick={() => setWorkspaceTab("setup")}>Add your first app</button></div>
-          )}
-        </section>
-      ) : null}
-      {busy || status ? <p className={`publisher-toast ${noticeTone}`} role={noticeTone === "error" ? "alert" : "status"}>{busy ? "Working…" : status}</p> : null}
-    </section>
+              </section>
+            )}
+          </div>
+        </div>
+      )}
+      {busy || status ? <p className={`publisher-toast ${busy ? "info" : noticeTone}`} role={!busy && noticeTone === "error" ? "alert" : "status"}>{busy ? "Working…" : status}</p> : null}
+    </>
   );
+}
+
+function AppIcon({ url, compact = false }: { url: string | null; compact?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className={styles.appIcon} data-compact={compact}>
+      {url && /^https:\/\//i.test(url) && !failed
+        ? <Image src={url} alt="" width={76} height={76} unoptimized referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+        : <AppWindow aria-hidden="true" />}
+    </span>
+  );
+}
+
+type OverviewStatus = { label: string; tone: "published" | "pending" | "warning" | "removed" };
+
+function appRestriction(app: ClaimedApp): OverviewStatus | undefined {
+  if (app.consentStatus === "revoked" || app.claimStatus === "revoked") return { label: "Removed", tone: "removed" };
+  if (app.claimStatus === "suspended") return { label: "Suspended", tone: "warning" };
+  if (app.claimStatus === "pending") return { label: "Claim pending", tone: "pending" };
+}
+
+function publishedRelease(app: ClaimedApp, releases: readonly PublisherRelease[]) {
+  if (!app.consented || !app.distributionEnabled || appRestriction(app)) return undefined;
+  return releases.find((release) => release.publication_status === "published" && release.validation_status !== "quarantined");
+}
+
+function appOverviewStatus(app: ClaimedApp, latest: PublisherRelease | undefined, live: PublisherRelease | undefined): OverviewStatus {
+  const restriction = appRestriction(app);
+  if (restriction) return restriction;
+  if (live) return { label: "Published", tone: "published" };
+  if (!app.consented) return { label: "Setup in progress", tone: "pending" };
+  if (!app.distributionEnabled) return { label: "Distribution paused", tone: "warning" };
+  if (!latest) return { label: "Awaiting release", tone: "pending" };
+  return releaseOverviewStatus(app, latest);
+}
+
+function releaseOverviewStatus(app: ClaimedApp, release: PublisherRelease): OverviewStatus {
+  if (release.publication_status === "withdrawn") return { label: "Removed", tone: "removed" };
+  const restriction = appRestriction(app);
+  if (restriction) return restriction;
+  if (release.publication_status === "ignored") return { label: "Ignored", tone: "pending" };
+  if (release.validation_status === "quarantined" || release.quarantine_code) return { label: "Blocked", tone: "warning" };
+  if (release.publication_status === "published") {
+    if (app.consented && app.distributionEnabled) return { label: "Published", tone: "published" };
+    return { label: "Distribution paused", tone: "warning" };
+  }
+  if (release.validation_status === "validating_binary") return { label: "Checks in progress", tone: "pending" };
+  if (release.validation_status === "server_binary_valid") return { label: "Ready to publish", tone: "pending" };
+  if (release.validation_status === "metadata_valid") {
+    return release.validation_failure_codes?.length
+      ? { label: "Checks need attention", tone: "warning" }
+      : { label: "Ready for checks", tone: "pending" };
+  }
+  return { label: "Unpublished", tone: "pending" };
+}
+
+function versionLabel(release: PublisherRelease): string {
+  return release.version_name ? `Version ${release.version_name}` : `Build ${release.version_code}`;
 }
 
 function DistributionEditor({
@@ -663,7 +743,7 @@ function DistributionEditor({
       </label>
       <small className="publisher-terms-version">Terms: {termsVersion}</small>
       <div className="control-row compact">
-        <button type="button" onClick={() => onConsent(policy)} disabled={disabled || (app.consented && !policyChanged)}>{actionLabel}</button>
+        <button type="button" className={styles.primary} onClick={() => onConsent(policy)} disabled={disabled || (app.consented && !policyChanged)}>{actionLabel}</button>
         <button type="button" className="secondary" onClick={onSync} disabled={disabled || !app.consented}>Find latest releases</button>
       </div>
     </div>

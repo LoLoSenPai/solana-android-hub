@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { listCatalog } from "../../../server/catalog-service";
 import { getPublicPublisherProfile } from "../../../server/publisher-profile-service";
 import { hubConfig } from "../../../server/runtime";
-import { catalogChannelFromParam, catalogHref } from "../../catalog/catalog-channel";
+import { CatalogCard } from "../../catalog/CatalogCard";
+import catalogStyles from "../../catalog/Catalog.module.css";
+import { catalogChannelFromParam } from "../../catalog/catalog-channel";
+import { toCatalogListing } from "../../catalog/catalog-listings";
 import { PublisherAvatar } from "../../components/PublisherAvatar";
+import { PublisherLinks } from "../../components/PublisherLinks";
 import { ShareProfileButton } from "../../components/ShareProfileButton";
-import { StoreAppCard } from "../../components/StoreAppCard";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -45,17 +50,12 @@ export default async function PublicPublisherPage({ params, searchParams }: Prop
   if (slug !== profile.slug) redirect(`${profilePath}${channel === "approved" ? "?channel=approved" : ""}`);
   const apps = await listCatalog({ channel, publisherId: profile.id });
   const name = profile.displayName || "Publisher";
-  const links = [
-    { label: "Website", url: profile.links.website },
-    { label: "Portfolio", url: profile.portfolioUrl },
-    { label: "X", url: profile.links.x },
-    { label: "Discord", url: profile.links.discord },
-    { label: "Telegram", url: profile.links.telegram }
-  ].filter((link): link is { label: string; url: string } => Boolean(link.url));
 
   return (
     <main className={styles.page}>
-      <Link className={styles.back} href={catalogHref({ channel })}>← Explore the catalogue</Link>
+      <Link className={styles.back} href={channel === "approved" ? "/?channel=approved#apps" : "/#apps"}>
+        <ArrowLeft size={18} aria-hidden="true" /> Explore the catalogue
+      </Link>
       <section className={styles.hero} aria-labelledby="publisher-name">
         <div className={styles.identity}>
           <PublisherAvatar name={name} url={profile.avatarUrl} className={styles.avatar} />
@@ -67,9 +67,7 @@ export default async function PublicPublisherPage({ params, searchParams }: Prop
         </div>
         <div className={styles.share}><ShareProfileButton url={new URL(profilePath, hubConfig.hubOrigin).toString()} title={`${name} on Dapport`} /></div>
         {profile.bio && <p className={styles.bio}>{profile.bio}</p>}
-        {links.length > 0 && <nav className={styles.links} aria-label={`${name} links`}>
-          {links.map(({ label, url }) => <a key={label} href={url} target="_blank" rel="noopener noreferrer">{label}<span aria-hidden="true"> ↗</span></a>)}
-        </nav>}
+        <PublisherLinks links={profile.links} portfolioUrl={profile.portfolioUrl} label={`${name} links`} />
       </section>
       <section className={styles.apps} aria-labelledby="publisher-apps">
         <div className={styles.appsHeading}>
@@ -77,8 +75,8 @@ export default async function PublicPublisherPage({ params, searchParams }: Prop
           <p>{channel === "approved" ? "On Solana Mobile" : "Discover this publisher’s apps"}</p>
         </div>
         {apps.length > 0
-          ? <div className={styles.grid}>{apps.map((app) => <StoreAppCard key={app.id} app={app} channel={channel} />)}</div>
-          : <div className={styles.empty}><h3>No apps available yet</h3><p>{channel === "approved" ? "This publisher has no apps in the Solana Mobile selection yet." : "This publisher’s apps will appear here when they become available."}</p>{channel === "approved" && <Link href={profilePath}>View all available apps →</Link>}</div>}
+          ? <div className={catalogStyles.grid}>{apps.map((app, index) => <CatalogCard key={app.id} app={toCatalogListing(app)} channel={channel} index={index} />)}</div>
+          : <div className={styles.empty}><h3>No apps available yet</h3><p>{channel === "approved" ? "This publisher has no apps in the Solana Mobile selection yet." : "This publisher’s apps will appear here when they become available."}</p>{channel === "approved" && <Link href={profilePath}>View all available apps <ArrowRight size={18} aria-hidden="true" /></Link>}</div>}
       </section>
     </main>
   );

@@ -13,7 +13,7 @@ import { database, hubConfig } from "./runtime";
 
 const repository = new CatalogRepository(database);
 
-export async function listCatalog(input: {
+type CatalogInput = {
   channel: CatalogChannel;
   publisherId?: string;
   query?: string;
@@ -21,14 +21,33 @@ export async function listCatalog(input: {
   sort?: CatalogSort;
   androidSdk?: number;
   genre?: GameGenre;
-}): Promise<readonly CatalogAppDto[]> {
+};
+
+export async function listCatalog(input: CatalogInput): Promise<readonly CatalogAppDto[]> {
   const records = await repository.listReleaseCandidates(hubConfig.appEnvironment, input.query, undefined, input.publisherId);
+  return selectCatalog(groupByApp(records), input);
+}
+
+export async function listCatalogChannels() {
+  const records = await repository.listReleaseCandidates(hubConfig.appEnvironment);
+  const grouped = groupByApp(records);
+  return {
+    trusted: selectCatalog(grouped, { channel: "trusted" }),
+    approved: selectCatalog(grouped, { channel: "approved" })
+  };
+}
+
+function groupByApp(records: readonly CatalogAppRecord[]) {
   const grouped = new Map<string, CatalogAppRecord[]>();
   for (const record of records) {
     const existing = grouped.get(record.id) ?? [];
     existing.push(record);
     grouped.set(record.id, existing);
   }
+  return grouped;
+}
+
+function selectCatalog(grouped: ReadonlyMap<string, CatalogAppRecord[]>, input: CatalogInput): readonly CatalogAppDto[] {
   const results: CatalogAppDto[] = [];
   for (const appRecords of grouped.values()) {
     const app = appRecords[0];

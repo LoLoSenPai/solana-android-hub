@@ -1,67 +1,93 @@
 "use client";
 
+import { List } from "@phosphor-icons/react/dist/csr/List";
+import { X } from "@phosphor-icons/react/dist/csr/X";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import styles from "./SiteNavigation.module.css";
 
-interface NavigationItem {
-  href: string;
-  label: string;
-  active: (pathname: string, homepageSection: HomepageSection) => boolean;
-  section?: HomepageSection;
-  hub?: boolean;
-  publisher?: boolean;
-}
+const sections = [
+  { href: "/#apps", label: "Apps" },
+  { href: "/publisher", label: "For publishers" }
+] as const;
 
-type HomepageSection = "discover" | "trust-model";
-
-const NAV_ITEMS: readonly NavigationItem[] = [
-  { href: "/#discover", label: "Discover", section: "discover", active: (pathname, section) => pathname === "/" && section === "discover" },
-  { href: "/catalog", label: "Catalogue", active: (pathname) => pathname === "/catalog" || pathname.startsWith("/apps/") },
-  { href: "/#trust-model", label: "Trust model", section: "trust-model", active: (pathname, section) => pathname === "/" && section === "trust-model" },
-  { href: "/download", label: "Get Dapport", active: (pathname) => pathname === "/download", hub: true },
-  { href: "/publisher", label: "For publishers", active: (pathname) => pathname.startsWith("/publisher"), publisher: true }
-];
-
-export function SiteNavigation({ onboardingEnabled }: Readonly<{ onboardingEnabled: boolean }>) {
+export function SiteNavigation() {
   const pathname = usePathname();
-  const [homepageSection, setHomepageSection] = useState<HomepageSection>("discover");
+  const onApp = pathname.startsWith("/apps/");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const mobileMenu = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
 
   useEffect(() => {
-    if (pathname !== "/") return;
-    const trustSection = document.getElementById("trust-model");
-    if (!trustSection) return;
-    const updateActiveSection = () => {
-      const probe = window.innerHeight * 0.5;
-      const bounds = trustSection.getBoundingClientRect();
-      setHomepageSection(bounds.top <= probe && bounds.bottom > probe ? "trust-model" : "discover");
-    };
-    updateActiveSection();
-    window.addEventListener("scroll", updateActiveSection, { passive: true });
-    window.addEventListener("hashchange", updateActiveSection);
+    window.addEventListener("popstate", closeMenu);
+    window.addEventListener("hashchange", closeMenu);
     return () => {
-      window.removeEventListener("scroll", updateActiveSection);
-      window.removeEventListener("hashchange", updateActiveSection);
+      window.removeEventListener("popstate", closeMenu);
+      window.removeEventListener("hashchange", closeMenu);
     };
-  }, [pathname]);
+  }, [closeMenu]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function outside(event: PointerEvent) {
+      if (event.target instanceof Node && !mobileMenu.current?.contains(event.target)) closeMenu();
+    }
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [closeMenu, menuOpen]);
+
+  function sectionLinks() {
+    return sections.map(({ href, label }) => {
+      const active = href === "/publisher"
+        ? pathname === "/publisher" || pathname.startsWith("/publisher/")
+        : pathname === "/" || pathname === "/catalog" || onApp || pathname.startsWith("/publishers/");
+      return <Link key={href} className={styles.navLink} href={href}
+        aria-current={active ? (pathname === href ? "page" : "location") : undefined}
+        onClick={closeMenu}>{label}</Link>;
+    });
+  }
+  const MenuIcon = menuOpen ? X : List;
 
   return (
-    <nav aria-label="Primary navigation">
-      {NAV_ITEMS.map((item) => {
-        const active = item.active(pathname, homepageSection);
-        const label = item.publisher && !onboardingEnabled ? "Publisher onboarding" : item.label;
-        return (
-          <Link
-            key={item.href}
-            className={item.hub ? "hub-nav-link" : item.publisher ? "publisher-link" : undefined}
-            href={item.href}
-            aria-current={active ? (item.section ? "location" : "page") : undefined}
-            onClick={() => item.section && setHomepageSection(item.section)}
-          >
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      <Link className={styles.wordmark} href="/" aria-label="Dapport home" onNavigate={closeMenu}>
+        <Image src="/dapport-mark-512.png" alt="" width={32} height={32} />
+        Dapport
+      </Link>
+      <nav className={styles.primary} aria-label="Main navigation">
+        <div className={styles.desktopSections}>{sectionLinks()}</div>
+        <Link href="/security" className={styles.navLink} onNavigate={closeMenu}
+          aria-label="FAQ & security" aria-current={pathname === "/security" ? "page" : undefined}>
+          FAQ<span className={styles.longLabel}>&nbsp;&amp; security</span>
+        </Link>
+      </nav>
+      {onApp
+        ? <a className={styles.help} href="#install">How to install</a>
+        : <Link className={styles.download} href="/download" onNavigate={closeMenu}
+            aria-current={pathname === "/download" ? "page" : undefined}>Get Dapport</Link>}
+      <div className={styles.mobile} ref={mobileMenu}
+        onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) closeMenu(); }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && menuOpen) {
+            event.preventDefault();
+            closeMenu();
+            trigger.current?.focus({ preventScroll: true });
+          }
+        }}>
+        <button ref={trigger} className={styles.menuButton} type="button" aria-label="Site menu"
+          aria-controls="site-menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(value => !value)}>
+          <MenuIcon size={21} aria-hidden="true" />
+        </button>
+        <nav id="site-menu" className={styles.menu} aria-label="Site menu" hidden={!menuOpen}>
+          {sectionLinks()}
+        </nav>
+      </div>
+    </>
   );
 }

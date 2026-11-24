@@ -1,155 +1,22 @@
-import type { CatalogAppDto } from "@hub/api-client";
-import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight";
-import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown";
-import { Compass } from "@phosphor-icons/react/dist/ssr/Compass";
-import { DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
-import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass";
-import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
-import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle";
-import Image from "next/image";
 import Link from "next/link";
-import { CATEGORIES } from "./catalog-config";
-import { CategoryCarousel } from "./CategoryCarousel";
-import { StoreAppCard } from "./StoreAppCard";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight";
+import styles from "../catalog/Home.module.css";
 
-export function CatalogueExperience({
-  apps,
-  previewEnvironment
-}: {
-  apps: readonly CatalogAppDto[];
-  previewEnvironment: boolean;
-}) {
-  const categoryCounts = new Map(CATEGORIES.map((category) => [category.id, category.id === "all"
-    ? apps.length
-    : apps.filter((app) => app.category === category.id).length]));
-
+export function CatalogueExperience() {
   return (
-    <>
-      <section className="hub-hero" id="discover" aria-labelledby="catalogue-title">
-        <Image
-          className="hub-hero-art"
-          src="/dapport-hero-chromatic.webp"
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 760px) 100vw, 1440px"
-        />
-        <div className="hub-hero-scrim" aria-hidden="true" />
-        <div className="hub-hero-copy">
-          <p className="eyebrow">Dapport</p>
-          <h1 id="catalogue-title">Solana apps. <span>Any Android.</span></h1>
-          <p className="hero-intro">Discover publisher-approved Solana apps on the web, then install and keep them updated on the Android phone you already own.</p>
-          <div className="hero-actions">
-            <Link className="primary-action" href="/catalog">Browse the catalogue <span aria-hidden="true">→</span></Link>
-            <Link className="signature-action" href="/download"><span>Get Dapport</span><Sparkle aria-hidden="true" weight="fill" /></Link>
-          </div>
-          <div className="hub-hero-proof" aria-label="How Dapport works">
-            <div><Compass aria-hidden="true" /><span><strong>Browse on the web</strong><small>Publisher-provided apps and artwork.</small></span></div>
-            <div><DeviceMobile aria-hidden="true" /><span><strong>Install on Android</strong><small>No special Solana phone required.</small></span></div>
-            <div><ShieldCheck aria-hidden="true" /><span><strong>Checks you can see</strong><small>Publisher, release and consent stay separate.</small></span></div>
-          </div>
+    <section className={styles.lead} id="discover" aria-labelledby="intro">
+      <div className={styles.hero}>
+        <div className={styles.copy}>
+          <h1 id="intro"><span>Solana apps.</span> <span>Any Android.</span></h1>
+          <p>Discover Solana games and apps. Install and update them with Dapport on the Android phone you already own.</p>
         </div>
-        <aside className="catalogue-growth-note">
-          <span>{apps.length} {apps.length === 1 ? "app" : "apps"} available now</span>
-          <strong>The catalogue is growing.</strong>
-          <small>New publishers can bring their Android releases to Dapport.</small>
+        <aside className={styles.invitation} aria-labelledby="invite-title">
+          <span className={styles.audience}>For publishers</span>
+          <h2 id="invite-title">Reach more Android users.</h2>
+          <p>Choose your Solana Mobile apps and authorize Dapport to distribute them.</p>
+          <Link href="/publisher">List your app <ArrowRight aria-hidden="true" /></Link>
         </aside>
-        {previewEnvironment ? <span className="environment-badge">Preview catalogue</span> : null}
-      </section>
-
-      <form className="discovery-command" action="/catalog" aria-label="Search the catalogue">
-        <label className="command-search">
-          <span>Search</span>
-          <MagnifyingGlass aria-hidden="true" />
-          <input name="query" type="search" placeholder="Search apps, categories or keywords" />
-        </label>
-        <label className="command-select">
-          <span>Category</span>
-          <select name="category" defaultValue="all">
-            {CATEGORIES.map((category) => <option value={category.id} key={category.id}>{category.label}</option>)}
-          </select>
-          <CaretDown aria-hidden="true" />
-        </label>
-        <label className="command-select">
-          <span>Sort</span>
-          <select name="sort" defaultValue="recent">
-            <option value="recent">Recently updated</option>
-            <option value="name">Name A–Z</option>
-          </select>
-          <CaretDown aria-hidden="true" />
-        </label>
-        <button type="submit">Explore</button>
-      </form>
-
-      <section className="category-section" aria-labelledby="category-heading">
-        <div className="editorial-heading">
-          <div>
-            <p className="eyebrow">Explore categories</p>
-            <h2 id="category-heading">Find your next favorite.</h2>
-          </div>
-          <p>Jump straight into a category. Games open with genre filters; focused categories stay deliberately simple.</p>
-        </div>
-        <CategoryCarousel counts={Object.fromEntries(categoryCounts)} />
-      </section>
-
-      <section className="discover-section" aria-labelledby="latest-heading">
-        <div className="editorial-heading">
-          <div><p className="eyebrow">Available now</p><h2 id="latest-heading">Open something new.</h2></div>
-          <p>Real publisher artwork, a clear promise, and the information you need before deciding what belongs on your phone.</p>
-        </div>
-        {apps.length ? <div className="catalogue-grid">{apps.toSorted(compareRecent).slice(0, 4).map((app) => <StoreAppCard app={app} key={app.id} />)}</div> : null}
-        <div className="section-action-row"><Link className="secondary-action" href="/catalog">See every app and filter <span aria-hidden="true">→</span></Link></div>
-      </section>
-
-      <section className="how-it-works" aria-labelledby="how-heading">
-        <div className="editorial-heading">
-          <div><p className="eyebrow">From discovery to updates</p><h2 id="how-heading">One simple Android flow.</h2></div>
-          <p>The website helps you choose. Dapport performs the final checks on your phone and hands the release to Android.</p>
-        </div>
-        <ol>
-          <li>
-            <span className="flow-number" aria-hidden="true">01</span>
-            <span className="flow-art" aria-hidden="true"><Image src="/process-icons/browse-web.webp" alt="" width={512} height={512} sizes="180px" /></span>
-            <span className="flow-copy"><strong>Browse on the web</strong><p>Explore apps, artwork and categories without installing anything first.</p></span>
-            <ArrowRight className="flow-arrow" aria-hidden="true" />
-          </li>
-          <li>
-            <span className="flow-number" aria-hidden="true">02</span>
-            <span className="flow-art" aria-hidden="true"><Image src="/process-icons/send-android.webp" alt="" width={512} height={512} sizes="180px" /></span>
-            <span className="flow-copy"><strong>Send to Android</strong><p>Open the release with Dapport and validate it on your device.</p></span>
-            <ArrowRight className="flow-arrow" aria-hidden="true" />
-          </li>
-          <li>
-            <span className="flow-number" aria-hidden="true">03</span>
-            <span className="flow-art" aria-hidden="true"><Image src="/process-icons/manage-updates.webp" alt="" width={512} height={512} sizes="180px" /></span>
-            <span className="flow-copy"><strong>Manage updates</strong><p>Keep apps installed through Dapport current without uploading your app inventory.</p></span>
-          </li>
-        </ol>
-      </section>
-
-      <section className="trust-explainer" id="trust-model" aria-labelledby="trust-heading">
-        <div>
-          <p className="eyebrow">Openness with visible checks</p>
-          <h2 id="trust-heading">You stay in control.</h2>
-          <p>Publishers opt in. Dapport does not control your keys, data or funds, and Solana Mobile approval is never implied.</p>
-          <div className="trust-links">
-            <Link className="text-link" href="/security">Security & transparency <span aria-hidden="true">→</span></Link>
-            <Link className="text-link" href="/download">How installation works <span aria-hidden="true">→</span></Link>
-          </div>
-        </div>
-        <ol className="trust-steps">
-          <li><span>01</span><strong>Publisher control</strong><small>Current authority is checked on Solana.</small></li>
-          <li><span>02</span><strong>Permission to list</strong><small>Distribution consent is signed separately.</small></li>
-          <li><span>03</span><strong>Release identity</strong><small>Package, version, hash and signer must match.</small></li>
-          <li><span>04</span><strong>Independent approval</strong><small>Solana Mobile status is shown only when recorded.</small></li>
-        </ol>
-      </section>
-    </>
+      </div>
+    </section>
   );
-}
-
-function compareRecent(left: CatalogAppDto, right: CatalogAppDto): number {
-  const leftTime = Date.parse(left.releaseUpdatedAt ?? "") || 0;
-  const rightTime = Date.parse(right.releaseUpdatedAt ?? "") || 0;
-  return rightTime - leftTime || left.name.localeCompare(right.name);
 }

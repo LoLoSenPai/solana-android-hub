@@ -1,6 +1,8 @@
 import type { CatalogAppDto } from "@hub/api-client";
+import { CATALOG_CATEGORIES } from "@hub/api-client";
 import { describe, expect, it } from "vitest";
 import { filterCatalogApps } from "../app/catalog/catalog-filters";
+import { catalogListings } from "../app/catalog/catalog-listings";
 import { CATEGORIES } from "../app/components/catalog-config";
 
 const puzzle = app("puzzle", "games", ["puzzle"], "2026-08-09T00:00:00.000Z");
@@ -26,8 +28,32 @@ describe("web catalogue filters", () => {
     }).map((item) => item.slug)).toEqual(["wallet"]);
   });
 
-  it("keeps uncategorized apps in All apps without exposing a vague More category", () => {
-    expect(CATEGORIES.some((category) => category.id === "other")).toBe(false);
+  it("exposes each supported category including Other apps", () => {
+    expect(CATEGORIES.map(({ id }) => id).sort()).toEqual(["all", ...CATALOG_CATEGORIES].sort());
+    const other = app("other", "other", [], "");
+    expect(filterCatalogApps([puzzle, other], { category: "other", genre: "all", sort: "name", query: "" })).toEqual([other]);
+  });
+
+  it("can find apps by publisher name, category label, or genre", () => {
+    const entry = { ...puzzle, publisher: { id: puzzle.id, slug: "studio", displayName: "Pixel Café" } };
+    for (const query of ["pixel cafe", "games", "puzzle"]) {
+      expect(filterCatalogApps([entry, wallet], { category: "all", genre: "all", sort: "name", query })).toEqual([entry]);
+    }
+  });
+
+  it("keeps the artwork and status of an earlier approved release in the approved channel", () => {
+    const approved = {
+      ...puzzle,
+      bannerUrl: "https://example.com/approved.jpg",
+      latestRelease: {
+        ...puzzle.latestRelease,
+        id: "20000000-0000-4000-8000-000000000002",
+        trust: { ...puzzle.latestRelease.trust, solanaMobileApproval: "verified_approved" as const }
+      }
+    };
+    const channels = catalogListings({ trusted: [puzzle], approved: [approved] });
+    expect(channels.trusted[0]).toMatchObject({ coverUrl: null, visibility: "unknown" });
+    expect(channels.approved[0]).toMatchObject({ coverUrl: approved.bannerUrl, visibility: "visible" });
   });
 });
 

@@ -19,7 +19,8 @@ export const CATEGORIES: readonly {
   { id: "productivity", label: "Productivity", caption: "Get useful things done", tone: "violet" },
   { id: "social-identity", label: "Social & identity", caption: "Communities and profiles", tone: "sky" },
   { id: "ai-agents", label: "AI & agents", caption: "Intelligent onchain experiences", tone: "sand" },
-  { id: "lifestyle", label: "Lifestyle", caption: "Everyday Solana experiences", tone: "slate" }
+  { id: "lifestyle", label: "Lifestyle", caption: "Everyday Solana experiences", tone: "slate" },
+  { id: "other", label: "Other apps", caption: "More Solana apps", tone: "slate" }
 ];
 
 export function categoryLabel(category: CatalogCategory): string {

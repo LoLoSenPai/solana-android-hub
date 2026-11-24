@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import Image from "next/image";
+import localFont from "next/font/local";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { isPublisherOnboardingEnabled } from "@/server/publisher-availability";
 import { SiteNavigation } from "./components/SiteNavigation";
+import navigationStyles from "./components/SiteNavigation.module.css";
 import "./globals.css";
+
+const dmSans = localFont({ src: "./fonts/dm-sans.woff2", weight: "400 800", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://dapport.app"),
@@ -12,7 +15,7 @@ export const metadata: Metadata = {
     default: "Dapport — Solana apps. Any Android.",
     template: "%s · Dapport"
   },
-  description: "Discover publisher-approved Solana apps on the web, then install and manage them on any compatible Android phone.",
+  description: "Discover Solana apps shared by their publishers and install them on your compatible Android phone.",
   icons: {
     icon: [{ url: "/favicon-64.png", sizes: "64x64", type: "image/png" }],
     apple: "/apple-touch-icon.png"
@@ -38,35 +41,27 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  const onboardingEnabled = isPublisherOnboardingEnabled(process.env.HELIUS_API_KEY);
   const currentYear = new Date().getFullYear();
 
   return (
-    <html lang="en">
-      <body>
-        <header className="site-header">
-          <div className="site-header-inner">
-            <Link className="wordmark" href="/#discover" aria-label="Dapport home">
-              <Image src="/dapport-mark-512.png" alt="" width={48} height={48} priority />
-              <span>Dapport <small>Solana apps · Android</small></span>
-            </Link>
-            <SiteNavigation onboardingEnabled={onboardingEnabled} />
+    <html lang="en" data-scroll-behavior="smooth">
+      <body className={dmSans.className}>
+        <header className={navigationStyles.header}>
+          <div className={navigationStyles.headerInner}>
+            <SiteNavigation />
           </div>
         </header>
         {children}
-        <footer className="site-footer">
-          <div className="footer-brand">
-            <Image src="/dapport-mark-512.png" alt="" width={56} height={56} />
-            <div><strong>Dapport</strong><span>Solana apps. Any Android.</span></div>
-          </div>
-          <div className="footer-links">
-            <Link href="/catalog">Catalogue</Link>
-            <Link href="/#trust-model">Trust model</Link>
-            <Link href="/security">Security</Link>
-            <Link href="/download">Get Dapport</Link>
-            <Link href="/publisher">{onboardingEnabled ? "Publisher workspace" : "Publisher onboarding status"}</Link>
-          </div>
-          <p>© {currentYear} Dapport. Third-party catalogue using publisher-authorized Solana app data; not operated by or endorsed by Solana Mobile.</p>
+        <footer className={navigationStyles.foot}>
+          <Link className={navigationStyles.wordmark} href="/" aria-label="Dapport home">
+            <Image src="/dapport-mark-512.png" alt="" width={25} height={25} /> Dapport
+          </Link>
+          <nav aria-label="Resources">
+            <Link href="/download">How installation works</Link>
+            <Link href="/security">FAQ &amp; security</Link>
+            <Link href="/publisher">For publishers</Link>
+          </nav>
+          <small>© {currentYear} Dapport. Independent catalogue. Not operated by or endorsed by Solana Mobile.</small>
         </footer>
       </body>
     </html>

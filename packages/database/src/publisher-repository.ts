@@ -16,6 +16,12 @@ export interface PublisherAppRecord {
   distributionEnabled: boolean;
 }
 
+export interface ClaimedPublisherAppRecord extends PublisherAppRecord {
+  slug: string;
+  name: string;
+  iconUrl: string | null;
+}
+
 interface AppRow {
   id: string;
   publisher_id: string;
@@ -54,7 +60,7 @@ export class PublisherRepository {
     sourceSnapshotJson: string;
     sourceSnapshotHash: string;
     evidenceHash: string;
-  }): Promise<PublisherAppRecord> {
+  }): Promise<ClaimedPublisherAppRecord> {
     const evidenceSnapshotJson = JSON.stringify({
       ...input.proof,
       finalizedSlot: input.proof.finalizedSlot.toString()
@@ -67,7 +73,7 @@ export class PublisherRepository {
       `;
       if (existing && existing.publisher_id !== input.publisherId) throw new Error("APP_ALREADY_CLAIMED");
 
-      const [app] = await tx<AppRow[]>`
+      const [app] = await tx<(AppRow & { slug: string; name: string; icon_uri: string | null })[]>`
         insert into hub.apps (
           publisher_id, app_mint, publisher_collection_mint, package_name, slug, name, short_description, description,
           icon_uri, screenshots, metadata_uri, source_snapshot, source_snapshot_hash, claim_status,
@@ -96,7 +102,8 @@ export class PublisherRepository {
           authority_last_verified_slot = excluded.authority_last_verified_slot,
           authority_last_verified_at = now(),
           updated_at = now()
-        returning id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy, distribution_enabled
+        returning id, publisher_id, app_mint, publisher_collection_mint, package_name, metadata_uri, claim_status, release_policy, distribution_enabled,
+          slug, name, icon_uri
       `;
       if (!app) throw new Error("APP_CLAIM_NOT_SAVED");
       await tx`update hub.app_claims set superseded_at = now() where app_id = ${app.id} and superseded_at is null`;
@@ -109,7 +116,7 @@ export class PublisherRepository {
           ${input.proof.finalizedSlot.toString()}, ${input.evidenceHash}, ${tx.json(parseJsonValue(evidenceSnapshotJson))}, now()
         )
       `;
-      return mapApp(app);
+      return { ...mapApp(app), slug: app.slug, name: app.name, iconUrl: app.icon_uri };
     });
   }
 
