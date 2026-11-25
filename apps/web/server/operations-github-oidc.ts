@@ -4,6 +4,9 @@ import { hubConfig } from "./runtime";
 const issuer = "https://token.actions.githubusercontent.com";
 const githubJwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks`));
 const ref = "refs/heads/main";
+// GitHub includes these immutable IDs in the production repository's default subject.
+const productionOwnerId = "87042754";
+const productionRepositoryId = "1327221601";
 
 interface WorkflowPolicy {
   workflowFile: string;
@@ -37,9 +40,11 @@ export async function verifyOperationsGithubToken(
       clockTolerance: "5 seconds"
     });
     const workflowRef = `${repository}/.github/workflows/${policy.workflowFile}@${ref}`;
-    const subject = `repo:${repository}:ref:${ref}`;
+    const [owner, name] = repository.split("/");
+    const subject = `repo:${owner}@${productionOwnerId}/${name}@${productionRepositoryId}:ref:${ref}`;
     const { run_id: runId, run_attempt: runAttempt } = payload;
     if (payload.aud !== policy.audience || payload.repository !== repository || payload.ref !== ref || payload.sub !== subject
+      || payload.repository_id !== productionRepositoryId || payload.repository_owner_id !== productionOwnerId
       || payload.workflow_ref !== workflowRef || (payload.job_workflow_ref !== undefined && payload.job_workflow_ref !== workflowRef)
       || (payload.event_name !== "schedule" && payload.event_name !== "workflow_dispatch")
       || typeof runId !== "string" || !/^[1-9][0-9]*$/u.test(runId)

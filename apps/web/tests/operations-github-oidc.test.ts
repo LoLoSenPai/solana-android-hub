@@ -7,10 +7,11 @@ vi.mock("../server/runtime", () => ({ hubConfig: {} }));
 const repository = "LoLoSenPai/solana-android-hub";
 const policy = { workflowFile: "publication-health.yml", audience: "dapport-publication-health" };
 const workflowRef = `${repository}/.github/workflows/publication-health.yml@refs/heads/main`;
-const subject = `repo:${repository}:ref:refs/heads/main`;
+const subject = "repo:LoLoSenPai@87042754/solana-android-hub@1327221601:ref:refs/heads/main";
 const claims = {
   iss: "https://token.actions.githubusercontent.com", aud: policy.audience, sub: subject,
-  repository, workflow_ref: workflowRef, ref: "refs/heads/main", event_name: "schedule", run_id: "123", run_attempt: "1"
+  repository, repository_id: "1327221601", repository_owner_id: "87042754",
+  workflow_ref: workflowRef, ref: "refs/heads/main", event_name: "schedule", run_id: "123", run_attempt: "1"
 };
 let keys: Awaited<ReturnType<typeof generateKeyPair>>;
 let otherKeys: Awaited<ReturnType<typeof generateKeyPair>>;
@@ -38,6 +39,9 @@ describe("operations GitHub OIDC", () => {
     ["audience", { aud: "dapport-apk-dispatcher" }],
     ["multi-audience", { aud: [policy.audience, "different-audience"] }],
     ["repository", { repository: "other/repo" }],
+    ["repository ID", { repository_id: "1" }],
+    ["owner ID", { repository_owner_id: "1" }],
+    ["legacy subject", { sub: `repo:${repository}:ref:refs/heads/main` }],
     ["branch", { ref: "refs/heads/feature" }],
     ["subject", { sub: `repo:${repository}:pull_request` }],
     ["workflow", { workflow_ref: workflowRef.replace("publication-health.yml", "apk-validator.yml") }],
