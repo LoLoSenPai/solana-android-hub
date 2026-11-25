@@ -69,15 +69,15 @@ export class PublisherOperationsRepository {
     return this.sql<{
       id: string; release_mint: string; version_name: string; version_code: string; validation_status: string;
       publication_status: string; quarantine_code: string | null; created_at: Date;
-      validation_failure_codes: string[];
+      validation_run_status: string | null; validation_failure_codes: string[];
     }[]>`
       select r.id, r.release_mint, r.version_name, r.version_code::text, r.validation_status,
         r.publication_status, r.quarantine_code, r.discovered_at as created_at,
-        coalesce(validation.failure_codes, array[]::text[]) as validation_failure_codes
+        validation.status as validation_run_status, coalesce(validation.failure_codes, array[]::text[]) as validation_failure_codes
       from hub.releases r join hub.apps a on a.id = r.app_id
       left join lateral (
-        select failure_codes from hub.release_validation_runs
-        where release_id = r.id and stage = 'binary' and status = 'failed'
+        select status, failure_codes from hub.release_validation_runs
+        where release_id = r.id and stage = 'binary'
         order by created_at desc limit 1
       ) validation on true
       where r.app_id = ${appId} and a.publisher_id = ${publisherId}

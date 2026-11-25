@@ -35,7 +35,9 @@ Configuration validation refuses production startup unless all of the following 
 - final HTTPS `HUB_ORIGIN`;
 - `RELEASE_PUBLICATION_GATE=server_and_device`;
 - non-development `CONSENT_TERMS_VERSION`;
-- database, Helius, session-pepper, cron, admin-wallet, GitHub repository, and validator dispatch configuration.
+- database, Helius, session-pepper, cron, admin-wallet, and GitHub repository configuration.
+
+In production, a validation request creates a queued run with an immutable APK manifest. The `dispatch-apks.yml` workflow polls the queue on its ten-minute schedule and can also be run manually on `main` to collect waiting work. GitHub authenticates the dispatcher to Dapport with OIDC and grants it a short-lived repository token to start the APK validator. The validator returns its results under a separate identity. Publication follows the existing publisher consent and release policy. Staging still uses direct workflow dispatch with its configured token.
 
 Before public launch, additionally complete production signing, legal/terms/privacy/takedown review, backups and restore rehearsal, alerting, incident ownership, physical-device install/update validation, and an Android developer-registration reassessment. These items do not block local implementation.
 

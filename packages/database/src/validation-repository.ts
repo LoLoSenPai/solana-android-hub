@@ -67,7 +67,8 @@ export class ValidationRepository {
       }
       const [active] = await tx<{ correlation_id: string; expected: JSONValue; expired: boolean }[]>`
         select correlation_id, expected,
-          coalesce(started_at, created_at) < now() - interval '45 minutes' as expired
+          (case when status = 'queued' then created_at else coalesce(started_at, created_at) end)
+            < now() - interval '45 minutes' as expired
         from hub.release_validation_runs
         where release_id = ${releaseId} and stage = 'binary' and status in ('queued', 'running')
         order by created_at desc limit 1
@@ -104,6 +105,37 @@ export class ValidationRepository {
     });
   }
 
+  public async reserveQueuedBinaryRuns(): Promise<string[]> {
+    // For a queued run started_at leases dispatch. The first manifest read replaces
+    // it with the runner start time. Repeated leases never extend the queue lifetime.
+    const rows = await this.sql<{ correlation_id: string }[]>`
+      with available as (
+        select v.id from hub.release_validation_runs v
+        join hub.releases r on r.id = v.release_id
+        join hub.apps a on a.id = r.app_id
+        where v.stage = 'binary' and v.provider = 'github_actions_ephemeral' and v.status = 'queued'
+          and v.created_at >= now() - interval '45 minutes'
+          and (v.started_at is null or v.started_at < now() - interval '15 minutes')
+          and r.validation_status = 'validating_binary' and r.publication_status = 'unpublished'
+          and r.quarantine_code is null and a.claim_status = 'verified' and a.distribution_enabled
+          and a.suspended_at is null and a.revoked_at is null
+          and exists (
+            select 1 from hub.app_claims c where c.app_id = a.id
+              and c.status = 'verified' and c.superseded_at is null
+          )
+          and exists (
+            select 1 from hub.distribution_consents dc where dc.app_id = a.id
+              and dc.environment = 'production' and dc.status = 'active' and dc.superseded_at is null
+          )
+        order by v.created_at, v.id limit 10 for update of v skip locked
+      )
+      update hub.release_validation_runs v set started_at = now()
+      from available where v.id = available.id
+      returning v.correlation_id
+    `;
+    return rows.map((row) => row.correlation_id);
+  }
+
   public async expireStaleBinaryRuns(limit = 100): Promise<number> {
     return this.sql.begin(async (tx) => {
       // All lifecycle mutations lock the release before its runs so expiry,
@@ -113,7 +145,8 @@ export class ValidationRepository {
         where exists (
           select 1 from hub.release_validation_runs v
           where v.release_id = r.id and v.stage = 'binary' and v.status in ('queued', 'running')
-            and coalesce(v.started_at, v.created_at) < now() - interval '45 minutes'
+            and (case when v.status = 'queued' then v.created_at else coalesce(v.started_at, v.created_at) end)
+              < now() - interval '45 minutes'
         )
         order by r.id limit ${limit} for update of r skip locked
       `;
@@ -123,7 +156,8 @@ export class ValidationRepository {
           update hub.release_validation_runs set status = 'failed', completed_at = now(),
             failure_codes = array['VALIDATOR_TIMEOUT']
           where release_id = ${release.id} and stage = 'binary' and status in ('queued', 'running')
-            and coalesce(started_at, created_at) < now() - interval '45 minutes'
+            and (case when status = 'queued' then created_at else coalesce(started_at, created_at) end)
+              < now() - interval '45 minutes'
           returning correlation_id
         `;
         if (expired.length === 0) continue;
@@ -161,7 +195,8 @@ export class ValidationRepository {
 
   public async getManifest(runId: string): Promise<BinaryValidationManifest | null> {
     const [run] = await this.sql<ValidationRow[]>`
-      update hub.release_validation_runs set status = 'running', started_at = coalesce(started_at, now())
+      update hub.release_validation_runs set status = 'running',
+        started_at = case when status = 'queued' then now() else coalesce(started_at, now()) end
       where correlation_id = ${runId} and stage = 'binary' and status in ('queued', 'running')
       returning correlation_id, expected, status
     `;
@@ -229,6 +264,7 @@ export class ValidationRepository {
           update hub.releases r set publication_status = 'published', published_at = coalesce(published_at, now()), updated_at = now()
           from hub.apps a
           where r.id = ${release.id} and r.app_id = a.id and a.release_policy = 'automatic'
+            and r.publication_status not in ('ignored', 'withdrawn')
             and r.quarantine_code is null
             and a.claim_status = 'verified' and a.distribution_enabled = true and a.suspended_at is null and a.revoked_at is null
             and exists (
@@ -246,6 +282,7 @@ export class ValidationRepository {
       update hub.releases r set publication_status = 'published', published_at = coalesce(published_at, now()), updated_at = now()
       from hub.apps a
       where r.id = ${releaseId} and r.app_id = a.id and a.publisher_id = ${publisherId}
+        and r.publication_status not in ('ignored', 'withdrawn')
         and r.validation_status = 'server_binary_valid' and r.quarantine_code is null
         and a.claim_status = 'verified' and a.distribution_enabled = true and a.suspended_at is null and a.revoked_at is null
         and exists (

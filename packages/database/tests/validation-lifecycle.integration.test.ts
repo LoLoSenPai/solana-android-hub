@@ -31,7 +31,7 @@ describe.skipIf(!databaseUrl)("binary validation lifecycle (PostgreSQL)", () => 
     }
   });
 
-  async function fixture(consent = false) {
+  async function fixture(consent = false, environment: "local" | "production" = "local") {
     const publisherId = randomUUID();
     const appId = randomUUID();
     const releaseId = randomUUID();
@@ -54,10 +54,15 @@ describe.skipIf(!databaseUrl)("binary validation lifecycle (PostgreSQL)", () => 
       values (${releaseId}, ${appId}, ${mint}, 'https://qa.example/release', '{}'::jsonb,
         ${digest}, ${`qa.integration.p${suffix}`}, '1.0', 1, 'https://qa.example/app.apk', 1234, ${digest},
         ${digest}, 26, array['android.permission.INTERNET'], true, true, 1, 'metadata_valid')`;
+    if (environment === "production") {
+      await sql`insert into hub.app_claims (app_id, publisher_wallet_id, status, authority_path, finalized_slot,
+        evidence_hash, evidence_snapshot, verified_at)
+        values (${appId}, ${walletId}, 'verified', 'update_authority', 1, ${digest}, '{}'::jsonb, now())`;
+    }
     if (consent) {
       await sql`insert into hub.distribution_consents (app_id, publisher_wallet_id, environment, message,
         signature, nonce_hash, scopes, release_policy, terms_version, issued_at, signing_expires_at, verified_at)
-        values (${appId}, ${walletId}, 'local', 'QA consent', 'QA signature', ${Buffer.from(suffix)},
+        values (${appId}, ${walletId}, ${environment}::hub.app_environment, 'QA consent', 'QA signature', ${Buffer.from(suffix)},
           array['facilitate_apk_installation','list_app','monitor_future_releases','use_public_metadata'],
           'automatic', 'qa', now(), now() + interval '10 minutes', now())`;
     }
@@ -86,6 +91,54 @@ describe.skipIf(!databaseUrl)("binary validation lifecycle (PostgreSQL)", () => 
       environment: "local" as const
     };
   }
+
+  it("exclusively leases queued runs, resets the lease on start and preserves the original queue deadline", async () => {
+    const f = await fixture(true, "production");
+    const run = await repository.createBinaryRun(f.releaseId, f.publisherId);
+    const id = run.manifest.runId;
+    const reservations = await Promise.all(Array.from({ length: 3 }, () => repository.reserveQueuedBinaryRuns()));
+    expect(reservations.flat().filter((value) => value === id)).toEqual([id]);
+    await sql`update hub.release_validation_runs set started_at = now() - interval '16 minutes' where correlation_id = ${id}`;
+    expect(await repository.reserveQueuedBinaryRuns()).toContain(id);
+    await sql`update hub.release_validation_runs set started_at = now() - interval '5 minutes' where correlation_id = ${id}`;
+    expect(await repository.getManifest(id)).toEqual(run.manifest);
+    const [running] = await sql`select status, started_at > now() - interval '1 minute' as fresh_start
+      from hub.release_validation_runs where correlation_id = ${id}`;
+    expect(running).toMatchObject({ status: "running", fresh_start: true });
+    expect(await repository.reserveQueuedBinaryRuns()).not.toContain(id);
+
+    const stale = await fixture(true, "production");
+    const old = await repository.createBinaryRun(stale.releaseId, stale.publisherId);
+    const oldId = old.manifest.runId;
+    expect(await repository.reserveQueuedBinaryRuns()).toContain(oldId);
+    await sql`update hub.release_validation_runs set created_at = now() - interval '46 minutes'
+      where correlation_id = ${oldId}`;
+    expect(await repository.reserveQueuedBinaryRuns()).not.toContain(oldId);
+    await repository.expireStaleBinaryRuns();
+    expect(await repository.getManifest(oldId)).toBeNull();
+    expect((await repository.createBinaryRun(stale.releaseId, stale.publisherId)).manifest.runId).not.toBe(oldId);
+  });
+
+  it("excludes withdrawn releases, revoked apps and consent outside production from the dispatcher", async () => {
+    const local = await fixture(true);
+    const revoked = await fixture(true, "production");
+    const withdrawn = await fixture(true, "production");
+    const blocked = await Promise.all([local, revoked, withdrawn].map((f) => repository.createBinaryRun(f.releaseId, f.publisherId)));
+    await sql`update hub.apps set revoked_at = now() where id = ${revoked.appId}`;
+    await sql`update hub.releases set publication_status = 'withdrawn' where id = ${withdrawn.releaseId}`;
+    const reserved = await repository.reserveQueuedBinaryRuns();
+    for (const run of blocked) expect(reserved).not.toContain(run.manifest.runId);
+  });
+
+  it.each(["ignored", "withdrawn"] as const)("preserves a release marked %s while its runner was in flight", async (publicationStatus) => {
+    const f = await fixture(true);
+    const run = await repository.createBinaryRun(f.releaseId, f.publisherId);
+    await repository.getManifest(run.manifest.runId);
+    await sql`update hub.releases set publication_status = ${publicationStatus}::hub.publication_status where id = ${f.releaseId}`;
+    expect(await repository.completeBinaryRun(callback(run.manifest.runId))).toBe("succeeded");
+    await expect(repository.publishValidatedRelease(f.releaseId, f.publisherId, "local")).rejects.toThrow("RELEASE_NOT_PUBLISHABLE");
+    expect(await releaseState(f.releaseId)).toMatchObject({ publication_status: publicationStatus, published_at: null });
+  });
 
   it("serializes concurrent creation and reuses a fresh queued/running run", async () => {
     const f = await fixture();

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BinaryValidationManifest, BinaryValidationResult } from "@hub/database";
+import type { HubConfig } from "@hub/config";
 
 const repository = vi.hoisted(() => ({
   createBinaryRun: vi.fn<(releaseId: string, publisherId: string) => Promise<{ manifest: BinaryValidationManifest; created: boolean }>>(),
@@ -9,13 +10,11 @@ const repository = vi.hoisted(() => ({
   completeBinaryRun: vi.fn<(input: { resultAccepted: boolean }) => Promise<"succeeded" | "failed">>()
 }));
 vi.mock("@hub/database", () => ({ ValidationRepository: class { constructor() { return repository; } } }));
-vi.mock("../server/runtime", () => ({
-  database: {},
-  hubConfig: {
-    appEnvironment: "production", githubRepository: "owner/hub", githubActionsToken: "test-token",
-    githubValidatorRef: "main", hubOrigin: "https://hub.example.com"
-  }
+const config = vi.hoisted((): Pick<HubConfig, "appEnvironment" | "githubRepository" | "githubActionsToken" | "githubValidatorRef" | "hubOrigin"> => ({
+  appEnvironment: "production", githubRepository: "owner/hub",
+  githubValidatorRef: "main", hubOrigin: "https://hub.example.com"
 }));
+vi.mock("../server/runtime", () => ({ database: {}, hubConfig: config }));
 
 import { recordBinaryValidationResult, requestBinaryValidation } from "../server/validation-service";
 
@@ -34,6 +33,8 @@ const identity = { runId: manifest.runId, oidcSubject: "github-subject", oidcRep
 
 beforeEach(() => {
   vi.resetAllMocks();
+  config.appEnvironment = "production";
+  delete config.githubActionsToken;
   repository.getStoredManifest.mockResolvedValue(manifest);
   repository.completeBinaryRun.mockResolvedValue("succeeded");
   repository.createBinaryRun.mockResolvedValue({ manifest, created: true });
@@ -103,6 +104,14 @@ describe("recordBinaryValidationResult", () => {
 });
 
 describe("requestBinaryValidation", () => {
+  it("queues production work without a long-lived dispatch credential", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await expect(requestBinaryValidation({ publisherId: "publisher" }, "release")).resolves.toEqual({ status: "validating_binary", runId: manifest.runId });
+    expect(repository.createBinaryRun).toHaveBeenCalledWith("release", "publisher");
+    expect(fetch).not.toHaveBeenCalled();
+    expect(repository.failToSchedule).not.toHaveBeenCalled();
+  });
   it("does not redispatch an active fresh run", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
@@ -111,8 +120,10 @@ describe("requestBinaryValidation", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("dispatches a new correlation with the configured ref and origin", async () => {
-    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+  it.each([200, 204])("accepts a successful staging dispatch (%s) with the configured ref and origin", async (status) => {
+    config.appEnvironment = "staging";
+    config.githubActionsToken = "test-token";
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status }));
     vi.stubGlobal("fetch", fetch);
     await requestBinaryValidation({ publisherId: "publisher" }, "release");
     expect(repository.createBinaryRun).toHaveBeenCalledWith("release", "publisher");
@@ -121,13 +132,17 @@ describe("requestBinaryValidation", () => {
     expect(repository.failToSchedule).not.toHaveBeenCalled();
   });
 
-  it("marks non-204 dispatch responses as failed to schedule", async () => {
+  it("marks unsuccessful staging dispatch responses as failed to schedule", async () => {
+    config.appEnvironment = "staging";
+    config.githubActionsToken = "test-token";
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 503 }));
     await expect(requestBinaryValidation({ publisherId: "publisher" }, "release")).rejects.toThrow("VALIDATOR_DISPATCH_HTTP_503");
     expect(repository.failToSchedule).toHaveBeenCalledWith(manifest.runId, "VALIDATOR_DISPATCH_HTTP_503");
   });
 
   it("marks transport errors as failed to schedule and preserves their cause", async () => {
+    config.appEnvironment = "staging";
+    config.githubActionsToken = "test-token";
     const error = new Error("transport failed");
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(error));
     await expect(requestBinaryValidation({ publisherId: "publisher" }, "release")).rejects.toBe(error);

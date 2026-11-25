@@ -4,18 +4,19 @@ import { database, hubConfig } from "./runtime";
 const repository = new ValidationRepository(database);
 
 export async function requestBinaryValidation(session: Pick<SessionRecord, "publisherId">, releaseId: string) {
-  if (hubConfig.appEnvironment === "local" && !hubConfig.githubRepository) {
+  const useQueue = hubConfig.appEnvironment === "production";
+  if (!hubConfig.githubRepository || (!useQueue && !hubConfig.githubActionsToken)) {
     throw new Error("VALIDATOR_NOT_CONFIGURED");
   }
-  if (!hubConfig.githubRepository || !hubConfig.githubActionsToken) throw new Error("VALIDATOR_NOT_CONFIGURED");
   const request = await repository.createBinaryRun(releaseId, session.publisherId);
   const { manifest } = request;
-  if (!request.created) return { status: "validating_binary" as const, runId: manifest.runId };
-  try {
-    await dispatchValidation(manifest);
-  } catch (error) {
-    await repository.failToSchedule(manifest.runId, error instanceof Error ? error.message : "GitHub dispatch failed");
-    throw error;
+  if (request.created && !useQueue) {
+    try {
+      await dispatchValidation(manifest);
+    } catch (error) {
+      await repository.failToSchedule(manifest.runId, error instanceof Error ? error.message : "GitHub dispatch failed");
+      throw error;
+    }
   }
   return { status: "validating_binary" as const, runId: manifest.runId };
 }
@@ -83,5 +84,5 @@ async function dispatchValidation(manifest: BinaryValidationManifest): Promise<v
     }),
     signal: AbortSignal.timeout(15_000)
   });
-  if (response.status !== 204) throw new Error(`VALIDATOR_DISPATCH_HTTP_${response.status}`);
+  if (response.status !== 200 && response.status !== 204) throw new Error(`VALIDATOR_DISPATCH_HTTP_${response.status}`);
 }

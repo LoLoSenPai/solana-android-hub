@@ -2,6 +2,7 @@ export * from "./auth-repository";
 export * from "./admin-repository";
 export * from "./catalog-repository";
 export * from "./client";
+export * from "./publication-health-repository";
 export * from "./publisher-repository";
 export * from "./publisher-profile-repository";
 export * from "./publisher-operations-repository";

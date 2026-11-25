@@ -61,10 +61,10 @@ describe("parseHubConfig", () => {
       SESSION_PEPPER: "1234567890123456",
       CRON_SECRET: "1234567890123456",
       ADMIN_WALLETS: "11111111111111111111111111111111",
-      GITHUB_REPOSITORY: "example/solana-hub",
-      GITHUB_ACTIONS_TOKEN: "secret"
+      GITHUB_REPOSITORY: "example/solana-hub"
     });
     expect(config.publicationGate).toBe("server_and_device");
+    expect(config.githubActionsToken).toBeUndefined();
     expect(publicRuntimeConfig(config).previewEnabled).toBe(false);
   });
 

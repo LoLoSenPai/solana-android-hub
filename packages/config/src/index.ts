@@ -61,8 +61,8 @@ const environmentSchema = z
       if (!value.DATABASE_URL || !value.HELIUS_API_KEY || !value.SESSION_PEPPER || !value.CRON_SECRET) {
         context.addIssue({ code: "custom", message: "Production database, Helius, session, and cron secrets are required" });
       }
-      if (!value.GITHUB_REPOSITORY || !value.GITHUB_ACTIONS_TOKEN) {
-        context.addIssue({ code: "custom", message: "Production GitHub validator repository and dispatch token are required" });
+      if (!value.GITHUB_REPOSITORY) {
+        context.addIssue({ code: "custom", message: "Production GitHub validator repository is required" });
       }
       if (adminWallets.length === 0) {
         context.addIssue({ code: "custom", path: ["ADMIN_WALLETS"], message: "At least one production admin wallet is required" });
@@ -110,7 +110,7 @@ export function parseHubConfig(input: NodeJS.ProcessEnv | Record<string, string 
     adminWallets: new Set(splitAddressList(parsed.ADMIN_WALLETS)),
     ...(parsed.CRON_SECRET ? { cronSecret: parsed.CRON_SECRET } : {}),
     ...(parsed.GITHUB_REPOSITORY ? { githubRepository: parsed.GITHUB_REPOSITORY } : {}),
-    ...(parsed.GITHUB_ACTIONS_TOKEN ? { githubActionsToken: parsed.GITHUB_ACTIONS_TOKEN } : {}),
+    ...(parsed.APP_ENV !== "production" && parsed.GITHUB_ACTIONS_TOKEN ? { githubActionsToken: parsed.GITHUB_ACTIONS_TOKEN } : {}),
     githubValidatorRef: parsed.GITHUB_VALIDATOR_REF,
     githubOidcAudience: parsed.GITHUB_OIDC_AUDIENCE
   };

@@ -1,0 +1,73 @@
+name: Dispatch queued APK validations
+
+on:
+  schedule:
+    - cron: '4,14,24,34,44,54 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  id-token: write
+
+concurrency:
+  group: production-apk-dispatcher
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const origin = 'https://dapport.app';
+            const token = await core.getIDToken('dapport-apk-dispatcher');
+            core.setSecret(token);
+            const response = await fetch(origin + '/api/v1/internal/validator/queue', {
+              method: 'POST',
+              headers: { authorization: 'Bearer ' + token },
+              redirect: 'error',
+              signal: AbortSignal.timeout(20_000)
+            });
+            if (!response.ok) throw new Error('Queue HTTP ' + response.status);
+            const { runIds } = await response.json();
+            const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!Array.isArray(runIds) || runIds.length > 10 ||
+                !runIds.every(id => typeof id === 'string' && uuid.test(id))) {
+              throw new Error('Unexpected queue response');
+            }
+            if (!runIds.length) return;
+
+            // A previous dispatch may have succeeded while the GitHub runner was still queued.
+            // Every dispatchable Hub record is at most 45 minutes old.
+            const workflow = { ...context.repo, workflow_id: 'apk-validator.yml' };
+            const pages = github.paginate.iterator(github.rest.actions.listWorkflowRuns, {
+              ...workflow, branch: 'main', event: 'workflow_dispatch', per_page: 100,
+              created: '>=' + new Date(Date.now() - 60 * 60_000).toISOString()
+            });
+            const active = new Set();
+            for await (const page of pages) {
+              for (const run of page.data) {
+                if (run.status !== 'completed') active.add(run.display_title);
+              }
+            }
+
+            const failed = [];
+            for (const id of new Set(runIds)) {
+              if (active.has('APK validation ' + id)) continue;
+              try {
+                const dispatch = await github.rest.actions.createWorkflowDispatch({
+                  ...workflow, ref: 'main',
+                  inputs: { correlation_id: id, hub_origin: origin },
+                  request: { timeout: 15_000 }
+                });
+                if (dispatch.status !== 200 && dispatch.status !== 204) throw new Error('Unexpected status');
+                core.info('Dispatched ' + id);
+              } catch (error) {
+                failed.push(id);
+                core.error('Dispatch failed for ' + id + ' (HTTP ' + (error.status || 'unavailable') + ')');
+              }
+            }
+            if (failed.length) core.setFailed('Dispatch failed for ' + failed.length + ' validation(s)');

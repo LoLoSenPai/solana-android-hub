@@ -56,11 +56,10 @@ interface PublisherRelease {
   validation_status: "discovered" | "metadata_valid" | "validating_binary" | "server_binary_valid" | "quarantined";
   publication_status: "preview" | "unpublished" | "published" | "ignored" | "withdrawn";
   quarantine_code: string | null;
+  validation_run_status?: string | null;
   validation_failure_codes?: readonly string[];
   created_at: string;
 }
-
-const VALIDATION_TIME_ESTIMATE = "Usually about 1 minute";
 
 export function PublisherClient({ termsVersion }: { termsVersion: string }) {
   const registry = useMemo(getWallets, []);
@@ -631,7 +630,7 @@ export function PublisherClient({ termsVersion }: { termsVersion: string }) {
                             {release.validation_status === "validating_binary" ? (
                               <span className="validation-live" role="status">
                                 <i aria-hidden="true" />
-                                <span>Updating automatically<small>{VALIDATION_TIME_ESTIMATE}</small></span>
+                                <span>Updating automatically</span>
                               </span>
                             ) : null}
                             {releaseActionLabel(release) ? <button type="button" onClick={() => void validateOrPublish(selectedClaim, release)} disabled={busy || Boolean(release.quarantine_code)}>{releaseActionLabel(release)}</button> : null}
@@ -696,7 +695,7 @@ function releaseOverviewStatus(app: ClaimedApp, release: PublisherRelease): Over
     if (app.consented && app.distributionEnabled) return { label: "Published", tone: "published" };
     return { label: "Distribution paused", tone: "warning" };
   }
-  if (release.validation_status === "validating_binary") return { label: "Checks in progress", tone: "pending" };
+  if (release.validation_status === "validating_binary") return { label: releaseStatusLabel(release), tone: "pending" };
   if (release.validation_status === "server_binary_valid") return { label: "Ready to publish", tone: "pending" };
   if (release.validation_status === "metadata_valid") {
     return release.validation_failure_codes?.length
@@ -916,7 +915,9 @@ function releaseStatusLabel(release: PublisherRelease): string {
   if (release.publication_status === "withdrawn") return "Removed from the catalogue";
   if (release.publication_status === "ignored") return "Ignored by publisher";
   if (release.publication_status === "published") return "Published in the production catalogue";
-  if (release.validation_status === "validating_binary") return `Dapport checks in progress · ${VALIDATION_TIME_ESTIMATE.toLowerCase()}`;
+  if (release.validation_status === "validating_binary") {
+    return release.validation_run_status === "queued" ? "Queued for APK checks" : "APK checks in progress";
+  }
   if (release.validation_status === "server_binary_valid") return "Dapport checks passed · ready to publish";
   if (release.validation_status === "metadata_valid" && release.validation_failure_codes?.length) {
     return `Checks need attention · ${validationFailureLabel(release.validation_failure_codes[0] ?? "VALIDATION_FAILED")}`;

@@ -1,7 +1,8 @@
-import { AdminRepository, type SessionRecord } from "@hub/database";
+import { AdminRepository, PublicationHealthRepository, type SessionRecord } from "@hub/database";
 import { database, hubConfig } from "./runtime";
 
 const repository = new AdminRepository(database);
+const publicationHealth = new PublicationHealthRepository(database);
 
 export function isAdmin(session: SessionRecord | null): session is SessionRecord {
   return session !== null && hubConfig.adminWallets.has(session.walletAddress);
@@ -10,6 +11,11 @@ export function isAdmin(session: SessionRecord | null): session is SessionRecord
 export async function getAdminOverview(session: SessionRecord) {
   requireAdmin(session);
   return repository.overview();
+}
+
+export async function getPublicationHealth(session: SessionRecord) {
+  requireAdmin(session);
+  return publicationHealth.read(hubConfig.appEnvironment);
 }
 
 export async function setReleaseApproval(session: SessionRecord, input: {

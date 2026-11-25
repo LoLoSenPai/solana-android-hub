@@ -20,6 +20,18 @@
 - Retry idempotently with a new GitHub run. A completed callback replay is rejected.
 - Local allowlisted previews may continue only outside production and retain development labeling.
 
+## Publication monitoring
+
+**Dapport publication health** runs at minutes `13` and `43` UTC and can be run manually from the Actions tab on `main`. It reads production health through a dedicated GitHub OIDC identity. Actions shows issue codes and counts. The [Dapport admin page](https://dapport.app/admin) shows affected apps and validation IDs. To receive failed-run notifications, enable GitHub Actions notifications for the account responsible for the schedule and confirm who receives them when the schedule is changed or re-enabled. [GitHub workflow notifications](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
+
+- `VALIDATOR_DISPATCH_HTTP_401` or `VALIDATOR_DISPATCH_FAILED` — check dispatch configuration and permissions. Use the app slug, APK version and validation ID from the failure to find the affected attempt.
+- `VALIDATOR_OVERDUE`, `VALIDATOR_TIMEOUT`, `VALIDATOR_RUNNER_FAILED`, `MANIFEST_INVALID` or `VALIDATOR_NOT_STARTED` — check the dispatcher and validator runs, their logs and the callback. The monitor gives active validations 45 minutes and a new automatic release an hour to start validation. After a timeout, the alert stays active while the replacement is queued.
+- `AUTOMATIC_PUBLICATION_PENDING` — the newest APK passed server validation but is still unpublished under the automatic policy. Inspect the publication transition and current consent.
+- `SCHEDULED_SYNC_OVERDUE` or `RELEASE_SYNC_FAILED` — check the Vercel sync logs and the job history for the app. The monitor allows two hours for scheduled synchronization and sustained failures.
+- `PUBLICATION_MONITOR_AUTH_REJECTED`, `PUBLICATION_MONITOR_WRONG_ENVIRONMENT` or `PUBLICATION_MONITOR_READ_FAILED` — check the production deployment, repository configuration and database connectivity. Use the request ID to correlate the check with production logs.
+
+After resolving a failure, run **Dapport publication health** again on `main` to verify recovery. An APK awaiting a manual publishing decision, expected validation refusals and older releases superseded by a newer publication stay out of the alert.
+
 ## Consent revocation or takedown
 
 - Revoke the environment-specific consent, disable distribution, and withdraw selected Releases transactionally.
