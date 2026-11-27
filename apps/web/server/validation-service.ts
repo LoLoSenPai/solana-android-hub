@@ -1,4 +1,5 @@
 import { ValidationRepository, type BinaryValidationManifest, type BinaryValidationResult, type SessionRecord } from "@hub/database";
+import { wakeApkDispatcher } from "./github-app-dispatch";
 import { database, hubConfig } from "./runtime";
 
 const repository = new ValidationRepository(database);
@@ -10,7 +11,9 @@ export async function requestBinaryValidation(session: Pick<SessionRecord, "publ
   }
   const request = await repository.createBinaryRun(releaseId, session.publisherId);
   const { manifest } = request;
-  if (request.created && !useQueue) {
+  if (request.created && useQueue) {
+    await wakeApkDispatcher(hubConfig.githubRepository, manifest.runId);
+  } else if (request.created) {
     try {
       await dispatchValidation(manifest);
     } catch (error) {

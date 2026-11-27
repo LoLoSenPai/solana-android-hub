@@ -22,6 +22,8 @@
 
 ## Publication monitoring
 
+To check the immediate dispatch path, send an authenticated `POST` to `https://dapport.app/api/v1/internal/cron/sync` with the production cron bearer credential and JSON body `{"operation":"wake_apk_dispatcher"}`. The HTTP 202 response carries the request ID. Find it in the title of **Dispatch queued APK validations** on GitHub, verify the run succeeded on `main` under the Dapport GitHub App bot and check its log for the number of reserved APK validations. A zero count verifies authentication and queue access. If it reserves a release, follow its correlation ID through the validator and check the catalogue version. The scheduled poll also runs when the immediate wake-up fails.
+
 **Dapport publication health** runs at minutes `13` and `43` UTC and can be run manually from the Actions tab on `main`. It reads production health through a dedicated GitHub OIDC identity. Actions shows issue codes and counts. The [Dapport admin page](https://dapport.app/admin) shows affected apps and validation IDs. To receive failed-run notifications, enable GitHub Actions notifications for the account responsible for the schedule and confirm who receives them when the schedule is changed or re-enabled. [GitHub workflow notifications](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
 
 - `VALIDATOR_DISPATCH_HTTP_401` or `VALIDATOR_DISPATCH_FAILED` — check dispatch configuration and permissions. Use the app slug, APK version and validation ID from the failure to find the affected attempt.

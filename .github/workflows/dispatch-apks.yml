@@ -1,9 +1,15 @@
 name: Dispatch queued APK validations
+run-name: ${{ inputs.correlation_id && format('Dispatch queued APK validations · {0}', inputs.correlation_id) || 'Dispatch queued APK validations' }}
 
 on:
   schedule:
     - cron: '4,14,24,34,44,54 * * * *'
   workflow_dispatch:
+    inputs:
+      correlation_id:
+        description: Dapport request or validation ID
+        type: string
+        required: false
 
 permissions:
   actions: write
@@ -38,6 +44,7 @@ jobs:
                 !runIds.every(id => typeof id === 'string' && uuid.test(id))) {
               throw new Error('Unexpected queue response');
             }
+            core.info('Reserved ' + runIds.length + ' APK validation(s)');
             if (!runIds.length) return;
 
             // A previous dispatch may have succeeded while the GitHub runner was still queued.

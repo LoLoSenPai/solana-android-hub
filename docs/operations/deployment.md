@@ -37,7 +37,9 @@ Configuration validation refuses production startup unless all of the following 
 - non-development `CONSENT_TERMS_VERSION`;
 - database, Helius, session-pepper, cron, admin-wallet, and GitHub repository configuration.
 
-In production, a validation request creates a queued run with an immutable APK manifest. The `dispatch-apks.yml` workflow polls the queue on its ten-minute schedule and can also be run manually on `main` to collect waiting work. GitHub authenticates the dispatcher to Dapport with OIDC and grants it a short-lived repository token to start the APK validator. The validator returns its results under a separate identity. Publication follows the existing publisher consent and release policy. Staging still uses direct workflow dispatch with its configured token.
+Production stores an immutable APK manifest, then asks GitHub to run `dispatch-apks.yml` on `main`. Install the private Dapport GitHub App on the Dapport repository alone with the Actions write permission. Configure `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID` and the sensitive server-side PEM `GITHUB_APP_PRIVATE_KEY` on the Vercel Production target, then deploy. The server exchanges its signed assertion for a short-lived installation token scoped to the repository.
+
+The dispatcher also polls on a ten-minute GitHub schedule. If the immediate request fails, the validation stays queued for the same dispatcher. Both triggers use the same eligibility checks, lease and separate OIDC identity for the APK validator. Publication follows the publisher's consent and release policy. Staging uses its configured direct dispatch token.
 
 Before public launch, additionally complete production signing, legal/terms/privacy/takedown review, backups and restore rehearsal, alerting, incident ownership, physical-device install/update validation, and an Android developer-registration reassessment. These items do not block local implementation.
 
