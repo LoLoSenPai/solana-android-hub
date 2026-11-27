@@ -11,6 +11,7 @@ const productionRepositoryId = "1327221601";
 interface WorkflowPolicy {
   workflowFile: string;
   audience: string;
+  manualOnly?: boolean;
 }
 
 interface OperationsGithubIdentity {
@@ -43,10 +44,11 @@ export async function verifyOperationsGithubToken(
     const [owner, name] = repository.split("/");
     const subject = `repo:${owner}@${productionOwnerId}/${name}@${productionRepositoryId}:ref:${ref}`;
     const { run_id: runId, run_attempt: runAttempt } = payload;
+    const allowedEvent = payload.event_name === "workflow_dispatch" || (!policy.manualOnly && payload.event_name === "schedule");
     if (payload.aud !== policy.audience || payload.repository !== repository || payload.ref !== ref || payload.sub !== subject
       || payload.repository_id !== productionRepositoryId || payload.repository_owner_id !== productionOwnerId
       || payload.workflow_ref !== workflowRef || (payload.job_workflow_ref !== undefined && payload.job_workflow_ref !== workflowRef)
-      || (payload.event_name !== "schedule" && payload.event_name !== "workflow_dispatch")
+      || !allowedEvent
       || typeof runId !== "string" || !/^[1-9][0-9]*$/u.test(runId)
       || typeof runAttempt !== "string" || !/^[1-9][0-9]*$/u.test(runAttempt)) return null;
     return { subject, runId, runAttempt };

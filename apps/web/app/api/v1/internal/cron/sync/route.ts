@@ -1,6 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { wakeApkDispatcher } from "@/server/github-app-dispatch";
 import { apiError, requestId } from "@/server/http";
 import { syncDuePublisherApps } from "@/server/release-sync-service";
 import { hubConfig } from "@/server/runtime";
@@ -8,51 +7,35 @@ import { hubConfig } from "@/server/runtime";
 export const maxDuration = 300;
 
 export async function GET(request: Request): Promise<NextResponse> {
-  return runCronOperation(request);
+  return runSync(request);
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  return runCronOperation(request);
+  return runSync(request);
 }
 
-async function runCronOperation(request: Request): Promise<NextResponse> {
+async function runSync(request: Request): Promise<NextResponse> {
   const id = requestId(request);
   if (!validCronSecret(request)) return apiError(401, "CRON_AUTH_REJECTED", id, "Cron authentication was rejected.");
+  if (!hubConfig.heliusApiKey) return apiError(503, "HELIUS_NOT_CONFIGURED", id, "Release synchronization is not configured.");
   let force = false;
   if (request.method === "POST" && request.body) {
     try {
       const text = await request.text();
       if (text.length > 1024) throw new Error("BODY_TOO_LARGE");
       const body: unknown = JSON.parse(text || "{}");
-      if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("INVALID_BODY");
-      const keys = Object.keys(body);
-      if (keys.length === 1 && "operation" in body && body.operation === "wake_apk_dispatcher") {
-        return wakeDispatcher(id);
-      }
-      if (keys.some((key) => key !== "force")
+      if (!body || typeof body !== "object" || Array.isArray(body)
+        || Object.keys(body).some((key) => key !== "force")
         || ("force" in body && typeof body.force !== "boolean")) throw new Error("INVALID_BODY");
       force = "force" in body && body.force === true;
     } catch {
       return apiError(400, "INVALID_SYNC_OPTIONS", id, "Sync options are invalid.");
     }
   }
-  if (!hubConfig.heliusApiKey) return apiError(503, "HELIUS_NOT_CONFIGURED", id, "Release synchronization is not configured.");
   const results = await syncDuePublisherApps(20, force);
   const incomplete = results.filter((result) => result.status === "failed" || result.status === "partial").length;
   return NextResponse.json({ attempted: results.length, incomplete, results, requestId: id }, {
     status: incomplete ? 503 : 200,
-    headers: { "cache-control": "no-store", "x-request-id": id }
-  });
-}
-
-async function wakeDispatcher(id: string): Promise<NextResponse> {
-  const repository = hubConfig.githubRepository;
-  if (hubConfig.appEnvironment !== "production" || !repository
-    || !await wakeApkDispatcher(repository, id).catch(() => false)) {
-    return apiError(503, "APK_DISPATCHER_UNAVAILABLE", id, "The APK dispatcher could not be started.");
-  }
-  return NextResponse.json({ status: "accepted", requestId: id }, {
-    status: 202,
     headers: { "cache-control": "no-store", "x-request-id": id }
   });
 }

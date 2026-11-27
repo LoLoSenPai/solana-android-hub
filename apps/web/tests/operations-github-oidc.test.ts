@@ -6,6 +6,7 @@ vi.mock("../server/runtime", () => ({ hubConfig: {} }));
 
 const repository = "LoLoSenPai/solana-android-hub";
 const policy = { workflowFile: "publication-health.yml", audience: "dapport-publication-health" };
+const dispatchCheck = { ...policy, audience: "dapport-apk-dispatch-check", manualOnly: true };
 const workflowRef = `${repository}/.github/workflows/publication-health.yml@refs/heads/main`;
 const subject = "repo:LoLoSenPai@87042754/solana-android-hub@1327221601:ref:refs/heads/main";
 const claims = {
@@ -20,18 +21,31 @@ beforeAll(async () => {
   [keys, otherKeys] = await Promise.all([generateKeyPair("RS256"), generateKeyPair("RS256")]);
 });
 
-function verify(overrides: JWTPayload = {}, { wrongSigner = false, missingExpiry = false } = {}) {
+function verify(overrides: JWTPayload = {}, { wrongSigner = false, missingExpiry = false, workflowPolicy = policy } = {}) {
   const now = Math.floor(Date.now() / 1000);
   const payload = { iat: now, nbf: now, ...(missingExpiry ? {} : { exp: now + 300 }), ...claims, ...overrides };
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "RS256" })
     .sign(wrongSigner ? otherKeys.privateKey : keys.privateKey)
-    .then((token) => verifyOperationsGithubToken(token, repository, policy, () => keys.publicKey));
+    .then((token) => verifyOperationsGithubToken(token, repository, workflowPolicy, () => keys.publicKey));
 }
 
 describe("operations GitHub OIDC", () => {
   it.each(["schedule", "workflow_dispatch"])("accepts a signed token for the exact workflow on main via %s", async (eventName) => {
     expect(await verify({ event_name: eventName })).toEqual({ subject, runId: "123", runAttempt: "1" });
+  });
+
+  it("accepts a manual run with the dispatch-check audience", async () => {
+    expect(await verify({ event_name: "workflow_dispatch", aud: dispatchCheck.audience }, { workflowPolicy: dispatchCheck }))
+      .toEqual({ subject, runId: "123", runAttempt: "1" });
+  });
+
+  it("rejects a scheduled run with the dispatch-check audience", async () => {
+    expect(await verify({ event_name: "schedule", aud: dispatchCheck.audience }, { workflowPolicy: dispatchCheck })).toBeNull();
+  });
+
+  it("rejects a manual publication-health read token for the dispatch check", async () => {
+    expect(await verify({ event_name: "workflow_dispatch", aud: policy.audience }, { workflowPolicy: dispatchCheck })).toBeNull();
   });
 
   it.each([
